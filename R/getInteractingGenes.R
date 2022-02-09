@@ -1,3 +1,6 @@
+## author: Atul Deshpande
+## email: adeshpande@jhu.edu
+
 find_pattern_hotspots <- function(spatialPatterns, params = NULL, patternName = "Pattern_1", outlier = "positive")
 {
   if (is.null(params)){

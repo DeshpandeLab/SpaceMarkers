@@ -1,3 +1,6 @@
+## author: Atul Deshpande
+## email: adeshpande@jhu.edu
+
 # loading log-transformed 10X Visium expression data from standar 10X Visium folder
 load10XExpr<- function(visiumDir = NULL,h5filename= 'filtered_feature_bc_matrix.h5'){
     h5FilePath <- dir(path = visiumDir,pattern = h5filename,full.names = T)
