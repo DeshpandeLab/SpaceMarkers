@@ -47,7 +47,7 @@ getInteractingGenes <- function(data, reconstruction=NULL, spatialPatterns, refP
     colnames(hotspot.regions) <- patternList
     
     interacting.genes <- list();
-    fullMat <- as.matrix(fullMat)
+    data <- as.matrix(data)
     
     for (pattern in setdiff(patternList,refPattern)){
       region <- hotspot.regions[,refPattern];
@@ -58,11 +58,11 @@ getInteractingGenes <- function(data, reconstruction=NULL, spatialPatterns, refP
         print(paste0(refPattern, " and ", pattern, " do not sufficiently interact. Skipping statistical test for genes."))
       } else {
         if (mode=="residual"){
-          residualMat <- fullMat - reconstruction
+          residualMat <- data - reconstruction
           interacting.genes <- c(interacting.genes,find_genes_of_interest_nonparametric_fast(testMat = residualMat, goodGenes = NULL, region=region))
         }
         else if (mode=="DE")
-          interacting.genes <- c(interacting.genes,find_genes_of_interest_nonparametric_fast(testMat = fullMat, goodGenes = NULL, region=region))
+          interacting.genes <- c(interacting.genes,find_genes_of_interest_nonparametric_fast(testMat = data, goodGenes = NULL, region=region))
         else
           stop("Invalid mode.")
       }
