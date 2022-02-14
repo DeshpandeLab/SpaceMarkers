@@ -50,13 +50,14 @@ find_genes_of_interest_nonparametric_fast <- function(testMat, goodGenes = NULL,
 {
   require("matrixTests")
   region = factor(region)
-  pattern1 = levels(region)[2]
-  pattern2 = levels(region)[3]
+  patnames <- levels(region)[which(levels(region)!="Interacting")]
+  pattern1 = patnames[1]
+  pattern2 = patnames[2]
   if (!is.null(goodGenes)){
     subset_goodGenes <- intersect(rownames(testMat),goodGenes)
     testMat = testMat[subset_goodGenes,]
   }
-  residuals.kruskal = row_kruskalwallis(x = as.matrix(testMat), g = !is.na(region))
+  residuals.kruskal = matrixTests::row_kruskalwallis(x = as.matrix(testMat), g = !is.na(region))
   qq <- qvalue::qvalue(residuals.kruskal$pvalue,fdr.level = 0.05, pfdr = F, pi0 = 1)
   residuals.kruskal = cbind(residuals.kruskal,p.adj = qq$qvalues)
   ind <- rownames(residuals.kruskal[which(residuals.kruskal$p.adj<5e-2),])
