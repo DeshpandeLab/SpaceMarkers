@@ -35,9 +35,9 @@ find_pattern_hotspots <- function(spatialPatterns, params = NULL, patternName = 
 }
 
 
-getInteractingGenes <- function(data, reconstruction=NULL, spatialPatterns, refPattern="Pattern_1", mode=c("residual","DE")){
+getInteractingGenes <- function(data, reconstruction=NULL, spatialPatterns, refPattern="Pattern_1", mode=c("residual","DE"), minOverlap = 50){
     if (mode=="residual"&&is.null(reconstruction)) stop("Reconstruction matrix not provided for residual mode.")
-    if (all(dim(data)!=dim(reconstruction))) stop("Original and reconstructed matrix do not have the same dimensions.")
+    if (mode=="residual"&&all(dim(data)!=dim(reconstruction))) stop("Original and reconstructed matrix do not have the same dimensions.")
     patternList <- colnames(spatialPatterns)[startsWith(colnames(spatialPatterns),"Pattern_")]
     hotspot.regions = c()
     for (patternName in patternList)
@@ -53,7 +53,7 @@ getInteractingGenes <- function(data, reconstruction=NULL, spatialPatterns, refP
       region <- hotspot.regions[,refPattern];
       region <- ifelse(!is.na(region) & !is.na(hotspot.regions[,pattern]),"Interacting",ifelse(!is.na(region),region,hotspot.regions[,pattern]))
       region <- factor(region)
-      if (length(levels(region))<3||any(table(region)<50)) #default 50
+      if (length(levels(region))<3||any(table(region)<minOverlap)) #default 50
       {
         print(paste0(refPattern, " and ", pattern, " do not sufficiently interact. Skipping statistical test for genes."))
       } else {
