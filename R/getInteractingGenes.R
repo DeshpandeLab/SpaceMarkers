@@ -35,16 +35,26 @@ find_pattern_hotspots <- function(spatialPatterns, params = NULL, patternName = 
 }
 
 
-getInteractingGenes <- function(data, reconstruction=NULL, spatialPatterns, refPattern="Pattern_1", mode=c("residual","DE"), minOverlap = 50){
+getInteractingGenes <- function(data, reconstruction=NULL, spatialPatterns, refPattern="Pattern_1", mode=c("residual","DE"), minOverlap = 50, hotspot.regions = NULL){
     if (mode=="residual"&&is.null(reconstruction)) stop("Reconstruction matrix not provided for residual mode.")
     if (mode=="residual"&&all(dim(data)!=dim(reconstruction))) stop("Original and reconstructed matrix do not have the same dimensions.")
     patternList <- colnames(spatialPatterns)[startsWith(colnames(spatialPatterns),"Pattern_")]
-    hotspot.regions = c()
-    for (patternName in patternList)
+    if (is.null(hotspot.regions))
+      {
+      hotspot.regions = c()
+      for (patternName in patternList)
       {
         hotspot.regions <- cbind(hotspot.regions,find_pattern_hotspots(spatialPatterns = spatialPatterns, patternName = patternName, params = optParams[,patternName], outlier = "positive") )
+      }
+      colnames(hotspot.regions) <- patternList
     }
-    colnames(hotspot.regions) <- patternList
+    else if (!((refPattern %in% colnames(hotspot.regions)) && (nrow(hotspot.regions)== ncol(data))))
+    {
+      stop("Error: hotspot.regions does not have refPattern column or dimension does not match with data.")
+    }
+    else
+      print("Using user provided hotspot regions.")
+      
     
     interacting.genes <- list();
     data <- as.matrix(data)
