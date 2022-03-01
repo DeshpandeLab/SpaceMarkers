@@ -67,7 +67,10 @@ getInteractingGenes <- function(data, reconstruction=NULL, spatialPatterns,
       hotspotRegions = c()
       for (patternName in patternList)
       {
-        hotspotRegions <- cbind(hotspotRegions,find_pattern_hotspots(spatialPatterns = spatialPatterns, patternName = patternName, params = optParams[,patternName], outlier = "positive") )
+        hotspotRegions <- cbind(hotspotRegions,find_pattern_hotspots(spatialPatterns = spatialPatterns, 
+																	patternName = patternName, 
+																	params = optParams[,patternName], 
+																	outlier = "positive") )
       }
       colnames(hotspotRegions) <- patternList
     }
