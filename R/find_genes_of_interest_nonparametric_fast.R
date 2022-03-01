@@ -1,6 +1,8 @@
 #' @import matrixTests
 #' @import rstatix
 #' @import matrixStats
+#' @import stats
+#' @import utils
 #import description end
 0
 
@@ -9,10 +11,10 @@
 ## author: Atul Deshpande
 ## email: adeshpande@jhu.edu
 
-do_dunnTest = function(in.kruskal){
-  out = array(NA,dim = 3, dimnames = c("pval","interaction-pattern1","interaction-pattern2"))
-  temp.summary = summary(in.kruskal)
-  out["pval"] = in.summary[[1]]$`Pr(>F)`[1]
+do_dunnTest <- function(in.kruskal){
+  out <- array(NA,dim = 3, dimnames = c("pval","interaction-pattern1","interaction-pattern2"))
+  temp.summary <- summary(in.kruskal)
+  out["pval"] <- in.summary[[1]]$`Pr(>F)`[1]
 }
 perform.dunn.test = function(in.data){
   test <- dunn_test(in.data,residuals~region)
