@@ -1,3 +1,11 @@
+#' @import matrixTests
+#' @import rstatix
+#' @import matrixStats
+#import description end
+0
+
+
+
 ## author: Atul Deshpande
 ## email: adeshpande@jhu.edu
 
@@ -7,14 +15,12 @@ do_dunnTest = function(in.kruskal){
   out["pval"] = in.summary[[1]]$`Pr(>F)`[1]
 }
 perform.dunn.test = function(in.data){
-  require("rstatix")
   test <- dunn_test(in.data,residuals~region)
   ofInterest <- which(test$group1=="Interacting"|test$group2=="Interacting")
   #ofInterest <- 1:2
   return(unlist(test[,c("statistic","p.adj")]))
 }
 fast.dunn.test = function(in.data,region){
-  require("matrixStats")
   region = factor(region)
   pattern1 = levels(region)[2]
   pattern2 = levels(region)[3]
@@ -46,9 +52,26 @@ fast.dunn.test = function(in.data,region){
   p.adj <- ifelse(pvals*3>1,1,pvals*3)
   return(cbind(zVals,p.adj))
 }
-find_genes_of_interest_nonparametric_fast <- function(testMat, goodGenes = NULL, region, alternative = "greater")
+
+#===================
+#' find_genes_of_interest_nonparametric_fast
+#' Calculate ...
+#'
+#' This function calculates ...
+#'
+#'
+#' @param testMat 	...
+#' @param goodGenes ...
+#' @param region	...
+#'
+#'
+#'
+#'
+#' @return a list of ...
+
+
+find_genes_of_interest_nonparametric_fast <- function(testMat, goodGenes = NULL, region)
 {
-  require("matrixTests")
   region = factor(region)
   patnames <- levels(region)[which(levels(region)!="Interacting")]
   pattern1 = patnames[1]

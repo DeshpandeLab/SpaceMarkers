@@ -1,9 +1,16 @@
+#' @import spatstat
+#' @import ape
+#' @import pracma
+#import description end
+0
+
+
+
 ## author: Atul Deshpande
 ## email: adeshpande@jhu.edu
 
 find_kernel_outliers_for_sensitivity <- function(pattern, locs, pattern_threshold = 0.15, sigma = 10, kernelthreshold = 2, method = "Pattern_Threshold", outlier = "positive")
 {
-  require("pracma")
   allwin <- spatstat.geom::owin(xrange = c(min(locs$x),max(locs$x)), yrange = c(min(locs$y),max(locs$y)))
   X <-spatstat.geom::ppp(x = locs$x, y = locs$y, window = allwin, marks = pattern)
   
@@ -42,9 +49,19 @@ getOptimalSigmaThresh <- function(pattern, locs, sigmaVec, threshVec){
   threshOpt1_ind <- which.min(abs(unlist(mor_2_ind[1,])-unlist(mor_2_ind[2,])))
   return(data.frame(sigmaOpt = smallSigmaVec[sigmaOpt1_ind], threshOpt = threshVec[threshOpt1_ind]))
 }
+#===================
+#' getSpatialParameters
+#' Calculate ...
+#'
+#' This function calculates ...
+#'
+#' @export
+#'
+#' @param spatialPatterns 	...
+#'
+#'
 
 getSpatialParameters <- function(spatialPatterns){
-  require("spatstat","ape")
   good_gene_threshold <- 3;  
   sigmaRes <- max(floor(min(diff(range(spatialPatterns$x)),diff(range(spatialPatterns$y)))/250),1)
   sigmaVec <- seq(2,40*sigmaRes,sigmaRes)
