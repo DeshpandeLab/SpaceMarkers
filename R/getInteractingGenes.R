@@ -42,12 +42,16 @@ find_pattern_hotspots <- function(spatialPatterns, params = NULL, patternName = 
 
 #' @export
 #'
-#' @param data 	...
-#' @param reconstruction ...
+#' @param data 	original spatial data matrix
+#' @param reconstruction reconstruction of the data matrix from latent spaces
+#' Required for "residual" mode
 #' @param spatialPatterns	...
+#' #' @param optParams    a matrix with dimensions 2 X N, where N is the number of patterns with optimal parameters for outlier detection calculated from function getSpatialParameters(). The first row contains the kernel width sigmaOpt for each pattern, ahd the second threshold is the threshOpt (outlier threshold) for each pattern. Users can also input their preferred param values.
+#' The default value is NULL.
 #' @param refPattern	a character string that specifies the pattern whose "interaction" with every other pattern we want to study. 
 #' The default value is "Pattern_1".
-#' @param mode	...
+#' @param mode	SpaceMarkers mode of operation. 
+#' possible values are "residual" or "DE"
 #' @param minOverlap ... 
 #' @param hotspotRegions	...
 #'
@@ -56,12 +60,22 @@ find_pattern_hotspots <- function(spatialPatterns, params = NULL, patternName = 
 #' @return a list of ...
 
 
-getInteractingGenes <- function(data, reconstruction=NULL, spatialPatterns, 
+getInteractingGenes <- function(data, reconstruction=NULL, spatialPatterns, optParams=NULL,
 	refPattern="Pattern_1", mode=c("residual","DE"), minOverlap = 50, hotspotRegions = NULL){
-	
+    
     if (mode=="residual"&&is.null(reconstruction)) stop("Reconstruction matrix not provided for residual mode.")
     if (mode=="residual"&&all(dim(data)!=dim(reconstruction))) stop("Original and reconstructed matrix do not have the same dimensions.")
     patternList <- colnames(spatialPatterns)[startsWith(colnames(spatialPatterns),"Pattern_")]
+    if (is.null(optParams)){
+        print("optParams not provided. Calculating optParams.")
+        optParams <- getSpatialParameters(spatialPatterns)
+    }
+    else{
+        print("Using user provided optParams.")
+        if (any(colnames(optParams)!=patternList)) stop("Error: colnames of optParams must match Pattern names.")
+        if (any(rownames(optParams)!=c("sigmaOpt","threshOpt"))) stop("Error: rownames of optParams must match c(\"sigmaOpt\",\"threshOpt\")")
+        if(any(!is.numeric(optParams))) stop("Error: optParams must be numeric.")
+    }
     if (is.null(hotspotRegions))
       {
       hotspotRegions = c()
@@ -106,12 +120,12 @@ getInteractingGenes <- function(data, reconstruction=NULL, spatialPatterns,
     
     interacting_genes <- lapply(interacting.genes, as.data.frame)
     for (i in seq(1,length(interacting_genes)))
-      interacting_genes[[i]]$p.adj <- as.numeric(interacting_genes[[i]]$p.adj)
+      interacting_genes[[i]]$KW.p.adj <- as.numeric(interacting_genes[[i]]$KW.p.adj)
     
     for (i in seq(1,length(interacting_genes)))
     {
       if (all(dim(interacting_genes[[i]])>1))   {
-        od <- order(interacting_genes[[i]]$p.adj)
+        od <- order(interacting_genes[[i]]$KW.p.adj)
         interacting_genes[[i]] <- interacting_genes[[i]][od,]
       }
     }
