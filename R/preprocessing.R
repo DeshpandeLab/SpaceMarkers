@@ -1,9 +1,26 @@
+#' @import hdf5r
+#' @import jsonlite
+#' @import dplyr
+#import description end
+0
+ 
 ## author: Atul Deshpande
 ## email: adeshpande@jhu.edu
 
-# loading log-transformed 10X Visium expression data from standar 10X Visium folder
+# 
+#===================
+#' load10XExpr
+#' load log-transformed 10X Visium expression data from standard 10X Visium folder
+#'
+#' This function loads ...
+#'
+#' @export
+#'
+#' @param visiumDir 	...
+#' @param h5filename 	...
+#'
+#'
 load10XExpr<- function(visiumDir = NULL,h5filename= 'filtered_feature_bc_matrix.h5'){
-    require("hdf5r")
     h5FilePath <- dir(path = visiumDir,pattern = h5filename,full.names = T)
     
     hf <- hdf5r::h5file(filename = h5FilePath, mode='r')
@@ -31,8 +48,19 @@ load10XExpr<- function(visiumDir = NULL,h5filename= 'filtered_feature_bc_matrix.
     return(spMat)
 }
 
+#===================
+#' load10XCoords
+#' Load ...
+#'
+#' This function loads ...
+#'
+#' @export
+#'
+#' @param visiumDir 	...
+#' @param resolution 	...
+#'
+#'
 load10XCoords <- function(visiumDir, resolution = "lowres"){
-    require(jsonlite);require(dplyr)
     scale_json <- dir(paste0(visiumDir,'/spatial'),pattern = "scalefactors_json.json",full.names = T)
     scale_values <- jsonlite::read_json(scale_json)
     scale_dia <- scale_values$spot_diameter_fullres
