@@ -46,12 +46,14 @@ find_pattern_hotspots <- function(spatialPatterns, params = NULL, patternName = 
 #' @param reconstruction reconstruction of the data matrix from latent spaces
 #' Required for "residual" mode
 #' @param spatialPatterns	...
-#' #' @param optParams    a matrix with dimensions 2 X N, where N is the number of patterns with optimal parameters for outlier detection calculated from function getSpatialParameters(). The first row contains the kernel width sigmaOpt for each pattern, ahd the second threshold is the threshOpt (outlier threshold) for each pattern. Users can also input their preferred param values.
+#' @param optParams    a matrix with dimensions 2 X N, where N is the number of patterns with optimal parameters for outlier
+#' detection calculated from function getSpatialParameters(). The first row contains the kernel width sigmaOpt for each
+#' pattern, ahd the second threshold is the threshOpt (outlier threshold) for each pattern. Users can also input their
+#' preferred param values.
 #' The default value is NULL.
-#' @param refPattern	a character string that specifies the pattern whose "interaction" with every other pattern we want to study. 
-#' The default value is "Pattern_1".
-#' @param mode	SpaceMarkers mode of operation. 
-#' possible values are "residual" or "DE"
+#' @param refPattern	a character string that specifies the pattern whose "interaction" with every other pattern we want
+#' to study. The default value is "Pattern_1".
+#' @param mode	SpaceMarkers mode of operation. Possible values are "residual" or "DE".
 #' @param minOverlap ... 
 #' @param hotspotRegions	...
 #'
