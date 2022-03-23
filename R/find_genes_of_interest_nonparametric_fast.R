@@ -49,20 +49,21 @@ row.dunn.test = function(in.data,region){
 
 #===================
 #' find_genes_of_interest_nonparametric_fast
-#' Calculate ...
+#' Identify genes associated with pattern interaction.
 #'
-#' This function calculates ...
+#' This function identifies genes exhibiting significantly higher values of testMat in the Interaction region of the two 
+#' patterns compared #' to regions with exclusive influence from either pattern. It uses Kruskal-Wallis test followed by
+#' posthoc analysis using Dunn's Test to identify the genes.
 #'
 #'
 #' @param testMat 	...
 #' @param goodGenes ...
 #' @param region	...
-#' @param fdr.level False Discovery Rate
-#' default value is 0.05
+#' @param fdr.level False Discovery Rate. The default value is 0.05.
 #'
 #'
 #'
-#' @return a list of genes associated exhibiting significantly higher values of testMat in the Interaction region of the two patterns compared to regions with exclusive influence from either pattern. ...
+#' @return a list of genes exhibiting significantly higher values of testMat in the Interaction region of the two #' patterns compared to regions with exclusive influence from either pattern.
 
 
 find_genes_of_interest_nonparametric_fast <- function(testMat, goodGenes = NULL, region, fdr.level = 0.05)

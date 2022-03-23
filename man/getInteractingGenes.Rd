@@ -9,6 +9,7 @@ getInteractingGenes(
   data,
   reconstruction = NULL,
   spatialPatterns,
+  optParams = NULL,
   refPattern = "Pattern_1",
   mode = c("residual", "DE"),
   minOverlap = 50,
@@ -16,16 +17,23 @@ getInteractingGenes(
 )
 }
 \arguments{
-\item{data}{...}
+\item{data}{original spatial data matrix}
 
-\item{reconstruction}{...}
+\item{reconstruction}{reconstruction of the data matrix from latent spaces
+Required for "residual" mode}
 
 \item{spatialPatterns}{...}
 
-\item{refPattern}{a character string that specifies the pattern whose "interaction" with every other pattern we want to study.
-The default value is "Pattern_1".}
+\item{optParams}{a matrix with dimensions 2 X N, where N is the number of patterns with optimal parameters for outlier
+detection calculated from function getSpatialParameters(). The first row contains the kernel width sigmaOpt for each
+pattern, ahd the second threshold is the threshOpt (outlier threshold) for each pattern. Users can also input their
+preferred param values.
+The default value is NULL.}
 
-\item{mode}{...}
+\item{refPattern}{a character string that specifies the pattern whose "interaction" with every other pattern we want
+to study. The default value is "Pattern_1".}
+
+\item{mode}{SpaceMarkers mode of operation. Possible values are "residual" or "DE".}
 
 \item{minOverlap}{...}
 
