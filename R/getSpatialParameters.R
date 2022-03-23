@@ -67,7 +67,6 @@ getSpatialParameters <- function(spatialPatterns){
   sigmaVec <- seq(2,40*sigmaRes,sigmaRes)
   threshVec <- seq(1,3,0.1)
   
-  goodGenes <- rownames(fullMat)[apply(fullMat,1,function(x) sum(x>0)>=good_gene_threshold)]
   patternList <- colnames(spatialPatterns)[startsWith(colnames(spatialPatterns),"Pattern_")]
   optParams<-sapply(patternList, function(i) unlist(getOptimalSigmaThresh(pattern = spatialPatterns[,i], locs = data.frame(x = spatialPatterns$x, y = spatialPatterns$y), sigmaVec, threshVec)))
   return(optParams)
