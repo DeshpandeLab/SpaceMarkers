@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="SpaceMarkersHexWhite.png" width="200" title="SpaceMarkers hex logo">
+</p>
+
 # SpaceMarkers
 An R/Bioconductor software tool to identify genes associated with latent space interactions in spatial transcriptomics.
 
