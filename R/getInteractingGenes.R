@@ -1,5 +1,6 @@
 ## author: Atul Deshpande
 ## email: adeshpande@jhu.edu
+## Need Documentation
 
 find_pattern_hotspots <- function(spatialPatterns, params = NULL, patternName = "Pattern_1", outlier = "positive")
 {
