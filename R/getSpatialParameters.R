@@ -8,6 +8,7 @@
 
 ## author: Atul Deshpande
 ## email: adeshpande@jhu.edu
+## Need Documentation
 
 find_kernel_outliers_for_sensitivity <- function(pattern, locs, pattern_threshold = 0.15, sigma = 10, kernelthreshold = 2, method = "Pattern_Threshold", outlier = "positive")
 {
