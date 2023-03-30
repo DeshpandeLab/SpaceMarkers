@@ -51,18 +51,18 @@ getOptimalSigmaThresh <- function(pattern, locs, sigmaVec, threshVec){
 }
 #===================
 #' getSpatialParameters
-#' Calculate ...
+#' Calculate the Optimal Parameters for Interacting Cells
 #'
-#' This function calculates ...
+#' This function calculates the optimal width of the gaussian distribution (sigmaOpt) as well as the outlier threshold around the set of spots (thresOpt) for each pattern from a latent feature space.
 #'
 #' @export
 #'
-#' @param spatialPatterns 	...
+#' @param spatialPatterns  A data frame that contains the spatial coordinates for each cell type. The column names must include 'x' and 'y' as well as a set of numbered columns named  'Pattern_1.....N'.
 #'
 #'
 
 getSpatialParameters <- function(spatialPatterns){
-  good_gene_threshold <- 3;  
+  good_gene_threshold <- 3;
   sigmaRes <- max(floor(min(diff(range(spatialPatterns$x)),diff(range(spatialPatterns$y)))/250),1)
   sigmaVec <- seq(2,40*sigmaRes,sigmaRes)
   threshVec <- seq(1,3,0.1)
