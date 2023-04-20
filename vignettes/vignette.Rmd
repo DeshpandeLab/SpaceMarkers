@@ -28,9 +28,7 @@ install.packages("remotes")
 remotes::install_github("FertigLab/SpaceMarkers", dependencies = TRUE, build_vignettes = TRUE)
 
 ```
-```{r}
 
-```
 
 ## Importing Libraries
 ```{r message = FALSE}
@@ -139,7 +137,6 @@ getInteractingGenes: This function identifies the regions of influence and inter
 #Takes approximately 7 minutes
 SpaceMarkers <- getInteractingGenes(data = counts_matrix, reconstruction = cogaps_matrix, optParams = optParams,spatialPatterns = spPatterns, refPattern = SpaceMarkersRefPattern, mode = SpaceMarkersMode)
 
- 
 
 #options(warn = defaultW)
 
@@ -226,6 +223,54 @@ DE_to_res
 In addition to IGHE, HNRNPAB, and APOC1, CLU and TYROBP are also ranked high in both methods. There were 11 genes that were interacting in 'DE' mode but not 'residual' mode. 
 
 There is some agreement with interacting genes between the two methods but there are also quite a few differences. Therefore, the selected mode can significantly impact the downstream results and should be taken into consideration based on the specific biological question being answered and the data available.
+
+```{r}
+install.packages("viridis")
+install.packages("hrbrthemes")
+install.packages("gridExtra")
+install.packages("ggplot2")
+library(viridis)
+library(hrbrthemes)
+library(gridExtra)
+library(ggplot2)
+
+
+geneList <- c("IGHE","APOC1","C1QC","TGM2","HNRNPAB")
+region <- SpaceMarkers$hotspotRegions[,1]
+region <- ifelse(!is.na(region) & !is.na(SpaceMarkers$hotspotRegions[,5]),"Interacting",ifelse(!is.na(region),region,SpaceMarkers$hotspotRegions[,5]))
+region <- factor(region, levels = c("Pattern_1","Interacting","Pattern_5"))
+
+plist <- list()
+mplot2 <- t(as.matrix(counts_matrix[,!is.na(region)]))
+mplot2 <- as.data.frame(as.matrix(mplot2))
+mplot2 <- cbind(mplot2,region = region[!is.na(region)])
+for (ii in 1:length(geneList)){
+ 
+  
+  plist[[ii]] <- mplot2 %>% ggplot( aes_string(x='region', y=geneList[ii], fill='region')) +
+    geom_boxplot() +
+        scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+        geom_jitter(color="black", size=0.4, alpha=0.9) +
+        theme_ipsum() +
+        theme(legend.position="none",plot.title = element_text(size=11),axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+     ggtitle(paste0(geneList[ii]," Expression (Log)")) +
+    xlab("") 
+}
+n <- length(plist)
+nCol <- floor(sqrt(n))
+```
+
+
+The genes in the plots have higher expression in Pattern_5 and the interacting region compared to Pattern_1
+```{r}
+do.call("grid.arrange", c(list(plist[[1]],plist[[4]], plist[[5]]), ncol=3))
+```
+
+The genes in the plots have higher expression in Pattern_1 and the interacting region compared to Pattern_5
+```{r}
+do.call("grid.arrange", c(list(plist[[2]],plist[[3]]), ncol=2))
+```
+
 
 ## load10XExpr() Arguments
 ```{r echo=FALSE}

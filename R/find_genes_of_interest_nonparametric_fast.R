@@ -56,9 +56,9 @@ row.dunn.test = function(in.data,region){
 #' posthoc analysis using Dunn's Test to identify the genes.
 #'
 #'
-#' @param testMat 	...
-#' @param goodGenes ...
-#' @param region	...
+#' @param testMat A matrix of counts with cells as columns and genes as rows
+#' @param goodGenes A vector of user specified genes expected to interact a priori. The default for this is NULL as the function can find these genes itself
+#' @param region A data frame of the reference pattern regions that overlap with the other patterns
 #' @param fdr.level False Discovery Rate. The default value is 0.05.
 #'
 #'
