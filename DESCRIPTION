@@ -7,9 +7,13 @@ Author: Atul Deshpande [aut, cre],
 Maintainer: Ludmila Danilova <ldanilo1@jhmi.edu>
 Description: An R/Bioconductor software tool to identify genes associated with latent space interactions in spatial transcriptomics.
 Depends: ape, dplyr, hdf5r, jsonlite, matrixStats, matrixTests, pracma, rstatix, spatstat
-Imports: Matrix, qvalue, spatstat.core, spatstat.geom, stats, utils
+Imports: Matrix, qvalue, spatstat.explore, spatstat.geom, stats, utils
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.2
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
