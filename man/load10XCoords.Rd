@@ -3,15 +3,15 @@
 \name{load10XCoords}
 \alias{load10XCoords}
 \title{load10XCoords
-Load ...}
+Load 10x Visium Spatial Coordinates}
 \usage{
 load10XCoords(visiumDir, resolution = "lowres")
 }
 \arguments{
-\item{visiumDir}{...}
+\item{visiumDir}{A string path to the location of the folder containing the spatial coordinates. The folder in your visiumDir must be named 'spatial' and must contain files 'scalefactors_json.json' and 'tissue_positions_list.csv.'}
 
-\item{resolution}{...}
+\item{resolution}{A string specifying which values to look for in the .json object. Can be either lowres or highres.}
 }
 \description{
-This function loads ...
+This function loads spatial coordinates for each cell from a 10X Visium spatial folder.
 }

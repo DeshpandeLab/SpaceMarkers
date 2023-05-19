@@ -3,13 +3,13 @@
 \name{getSpatialParameters}
 \alias{getSpatialParameters}
 \title{getSpatialParameters
-Calculate ...}
+Calculate the Optimal Parameters for Interacting Cells}
 \usage{
 getSpatialParameters(spatialPatterns)
 }
 \arguments{
-\item{spatialPatterns}{...}
+\item{spatialPatterns}{A data frame that contains the spatial coordinates for each cell type. The column names must include 'x' and 'y' as well as a set of numbered columns named  'Pattern_1.....N'.}
 }
 \description{
-This function calculates ...
+This function calculates the optimal width of the gaussian distribution (sigmaOpt) as well as the outlier threshold around the set of spots (thresOpt) for each pattern from a latent feature space.
 }

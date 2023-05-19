@@ -1,6 +1,5 @@
 #' @import hdf5r
 #' @import jsonlite
-#' @import dplyr
 #import description end
 0
 
@@ -64,7 +63,7 @@ load10XCoords <- function(visiumDir, resolution = "lowres"){
   scale_json <- dir(paste0(visiumDir,'/spatial'),pattern = "scalefactors_json.json",full.names = T)
   scale_values <- jsonlite::read_json(scale_json)
   scale_dia <- scale_values$spot_diameter_fullres
-  scale_factor <- scale_values[[contains(vars = names(scale_values),match=resolution)]]
+  scale_factor <- scale_values[grepl(resolution, names(scale_values))][[1]]
   coord_file <- dir(paste0(visiumDir,'/spatial'),pattern = "tissue_positions_list.csv",full.names = T)
   coord_values <- read.csv(coord_file,header = F)
   coord_values <- coord_values[,c(1,5,6)]

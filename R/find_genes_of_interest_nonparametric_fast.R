@@ -1,7 +1,7 @@
 #' @import matrixTests
-#' @import rstatix
-#' @import matrixStats
-#' @import stats
+#' @importFrom rstatix filter
+#' @importFrom matrixStats count
+#' @importFrom  stats lag dist pnorm sd
 #' @import utils
 #import description end
 0

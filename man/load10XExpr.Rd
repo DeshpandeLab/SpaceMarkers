@@ -3,15 +3,15 @@
 \name{load10XExpr}
 \alias{load10XExpr}
 \title{load10XExpr
-load log-transformed 10X Visium expression data from standard 10X Visium folder}
+load 10X Visium Expression Data}
 \usage{
 load10XExpr(visiumDir = NULL, h5filename = "filtered_feature_bc_matrix.h5")
 }
 \arguments{
-\item{visiumDir}{...}
+\item{visiumDir}{A string path to the h5 file with expression information.}
 
-\item{h5filename}{...}
+\item{h5filename}{A string of the name of the h5 file in the directory.}
 }
 \description{
-This function loads ...
+This log-transformed 10X Visium expression data from standard 10X Visium folder.
 }
