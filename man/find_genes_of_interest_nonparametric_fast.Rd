@@ -13,11 +13,11 @@ find_genes_of_interest_nonparametric_fast(
 )
 }
 \arguments{
-\item{testMat}{...}
+\item{testMat}{A matrix of counts with cells as columns and genes as rows}
 
-\item{goodGenes}{...}
+\item{goodGenes}{A vector of user specified genes expected to interact a priori. The default for this is NULL as the function can find these genes itself}
 
-\item{region}{...}
+\item{region}{A data frame of the reference pattern regions that overlap with the other patterns}
 
 \item{fdr.level}{False Discovery Rate. The default value is 0.05.}
 }

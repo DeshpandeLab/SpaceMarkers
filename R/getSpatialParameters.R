@@ -1,5 +1,5 @@
 #' @import spatstat
-#' @import ape
+#' @importFrom ape where
 #' @import pracma
 #import description end
 0
@@ -68,6 +68,6 @@ getSpatialParameters <- function(spatialPatterns){
   threshVec <- seq(1,3,0.1)
   
   patternList <- colnames(spatialPatterns)[startsWith(colnames(spatialPatterns),"Pattern_")]
-  optParams<-sapply(patternList, function(i) unlist(getOptimalSigmaThresh(pattern = spatialPatterns[,i], locs = data.frame(x = spatialPatterns$x, y = spatialPatterns$y), sigmaVec, threshVec)))
+  optParams <- sapply(patternList, function(i) unlist(getOptimalSigmaThresh(pattern = spatialPatterns[,i], locs = data.frame(x = spatialPatterns$x, y = spatialPatterns$y), sigmaVec, threshVec)))
   return(optParams)
 }
