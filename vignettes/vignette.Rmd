@@ -5,7 +5,7 @@ date: "2023-02-15"
 # output:
 #   md_document:
 #     variant: gfm
-output: rmarkdown::html_vignette
+output: html_vignette
 vignette: >
     %\VignetteIndexEntry{Inferring Immune Interactions in Breast Cancer}
     %\VignetteEngine{knitr::rmarkdown}
@@ -13,21 +13,21 @@ vignette: >
 ---
 
 ```{r global.options, include = FALSE}
-knitr::opts_chunk$set(
+knitr::opts_knit$set(
     collapse = TRUE,
     comment = "#>",
     fig.align   = 'center'
 )
 
 knitr::opts_chunk$set(out.extra = 'style="display:block; margin:auto;"')  # center
+#knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
 
 ```
 
 
-
 ## Overview
 
-SpaceMarkers leverages latent feature analysis of the spatial components of transcriptomic data to identify biologically relevant molecular interactions between cell groups.This tutorial will use the latent features from CoGAPS to look at pattern interactions in a Visium 10x breast ductal carcinoma spatial transcriptomics dataset
+SpaceMarkers leverages latent feature analysis of the spatial components of transcriptomic data to identify biologically relevant molecular interactions between cell groups.This tutorial will use the latent features from CoGAPS to look at pattern interactions in a Visium 10x breast ductal carcinoma spatial transcriptomics dataset.
 
 
 ## Installation
@@ -53,6 +53,7 @@ cogaps_url <- "https://github.com/atuldeshpande/SpaceMarkers-paper/blob/main/CoG
 
 ```
 
+
 ### Extracting Counts Matrix
 
 Here the counts matrix will be obtained from the h5 object in the Visium site and genes with less than 3 counts are removed from the dataset. 
@@ -71,8 +72,8 @@ counts_matrix <- counts_matrix[goodGenes,]
 In this example the latent features from CoGAPS will be used to identify overlapping genes with SpaceMarkers. Here the featureLoadings (cells) and samplePatterns (genes) for both the expression matrix and CoGAPS matrix need to match.
 
 ```{r}
-system(paste0("wget -q ",cogaps_url))
-cogaps_result <- readRDS(basename(cogaps_url))
+system(paste0("wget -q ",cogaps_url, " -O CogapsResult_5.rds"))
+cogaps_result <- readRDS("CogapsResult_5.rds")
 features <- intersect(rownames(counts_matrix),rownames(cogaps_result@featureLoadings))
 barcodes <- intersect(colnames(counts_matrix),rownames(cogaps_result@sampleFactors))
 counts_matrix <- counts_matrix[features,barcodes]
@@ -122,17 +123,17 @@ SpaceMarkersRefPattern = "Pattern_1"
 ```{r}
 #Takes approximately 12 minutes
 #optParams <- getSpatialParameters(spPatterns)
-devtools::load_all()
-optParams <- optParams_breast_cancer
-head(optParams)
+data("optParams_breast_cancer")
+head(optParams_breast_cancer)
 
 ```
+
 
 getInteractingGenes: This function identifies the regions of influence and interaction as well as the genes associated with these regions. A non-parametric Kruskal-Wallis test is used to identify genes statistically significant genes in any one region of influence and a post hoc Dunn's Test is used for analysis of genes between regions.  If 'residual' mode is selected the user must provide a reconstructed matrix from the latent feature matrix. This is passed to the 'reconstruction' argument and can be left as NULL for 'DE' mode. The 'data' parameter is the original expression matrix. The 'spatialPatterns' argument takes a matrix with the spatial coordinates of each cell as well as the patterns. The spatial coordinate columns must have the labels x and y.
 
 ```{r}
 #Takes approximately 7 minutes
-SpaceMarkers <- getInteractingGenes(data = counts_matrix, reconstruction = cogaps_matrix, optParams = optParams,spatialPatterns = spPatterns, refPattern = SpaceMarkersRefPattern, mode = SpaceMarkersMode)
+SpaceMarkers <- getInteractingGenes(data = counts_matrix, reconstruction = cogaps_matrix, optParams = optParams_breast_cancer,spatialPatterns = spPatterns, refPattern = SpaceMarkersRefPattern, mode = SpaceMarkersMode)
 ```
 
 The output is a list of data frames with information about the interacting genes of the refPattern and each pattern from the CoGAPS matrix (interacting_genes object). There is also a data frame with all of the regions of influence for any two of patterns (the hotspotRegions object). 
@@ -151,7 +152,7 @@ As described previously 'DE' mode only requires the counts matrix and spatial pa
 ```{r}
 
 SpaceMarkersMode = "DE"
-SpaceMarkers_DE <- getInteractingGenes(data = counts_matrix, reconstruction = NULL, optParams = optParams,spatialPatterns = spPatterns, refPattern = SpaceMarkersRefPattern, mode = SpaceMarkersMode)
+SpaceMarkers_DE <- getInteractingGenes(data = counts_matrix, reconstruction = NULL, optParams = optParams_breast_cancer,spatialPatterns = spPatterns, refPattern = SpaceMarkersRefPattern, mode = SpaceMarkersMode)
 
 ```
 The warnings above are due to the nature of the 'sparse' data being used. Comparing two cells from the two patterns with identical information is redundant as SpaceMarkers is identifying statistically different expression for interactions exclusive to either of the two patterns and a region that is due to interaction between the given two patterns. Also, if there are too many zeros in the genes (rows) of those regions, the columns are dropped as there is nothing to compare in the kruskal wallis test.
@@ -223,7 +224,7 @@ The differences between the gene interactions of Pattern_1 (immune cell) and Pat
 
 The following libraries are required to make the plots:
 
-```{r}
+```{r message = FALSE, warning=FALSE}
 
 library(ggplot2)
 library(Matrix)
@@ -236,6 +237,7 @@ library(dplyr)
 library(data.table)
 library(viridis)
 library(hrbrthemes)
+
 
 ```
 
@@ -401,16 +403,16 @@ xlim(0,max(bcs_merge %>%
 myPalette <- function(numLevels) {return(colorRampPalette(c("blue","yellow"))(numLevels))}
 ```
 
-Extracting top 2 genes ...
+Extracting top 3 genes ...
 
 ```{r}
-geneList <- c()
+gene_list <- c()
 interactions <- unique(residual_p1_p2$`Pattern_1 x Pattern_5`)
 for (g in 1:length(interactions)){
   df <- residual_p1_p2 %>% dplyr::filter(residual_p1_p2$`Pattern_1 x Pattern_5` == interactions[g] & abs(residual_p1_p2$Dunn.zP2_P1) > 1 )
-  print(paste0("Top 2 genes for ",interactions[g]))
-  print(df$Gene[1:2])
-  geneList <- c(geneList,df$Gene[1:2])
+  print(paste0("Top 3 genes for ",interactions[g]))
+  print(df$Gene[1:3])
+  gene_list <- c(gene_list,df$Gene[1:3])
   
 }
 
@@ -420,7 +422,7 @@ Visualize expression spatially
 ```{r message = FALSE, warning=FALSE}
 plots <- list()
 # default size = 1.75, stroke = 0.5
-for (g in geneList){
+for (g in gene_list){
   for (i in 1:length(sample_names)) {
   
     plots[[length(plots)+1]] <- bcs_merge %>%
@@ -465,65 +467,123 @@ plist <- list()
 mplot2 <- t(as.matrix(counts_matrix[,!is.na(region)]))
 mplot2 <- as.data.frame(as.matrix(mplot2))
 mplot2 <- cbind(mplot2,region = region[!is.na(region)])
-for (ii in 1:length(geneList)){
+for (ii in 1:length(gene_list)){
  
   
-  plist[[ii]] <- mplot2 %>% ggplot( aes_string(x='region', y=geneList[ii], fill='region')) +
+  plist[[ii]] <- mplot2 %>% ggplot( aes_string(x='region', y=gene_list[ii], fill='region')) +
     geom_boxplot() +
         scale_fill_viridis(discrete = TRUE, alpha=0.6) +
         geom_jitter(color="black", size=0.4, alpha=0.9) +
         theme_ipsum() +
         theme(legend.position="none",plot.title = element_text(size=11),axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-     ggtitle(paste0(geneList[ii]," Expression (Log)")) +
+     ggtitle(paste0(gene_list[ii]," Expression (Log)")) +
     xlab("") 
 }
 ```
 
 
+
 ### Interacting region: Pattern_1 and Pattern_5
+```{r}
+# Table of statistics for this pattern
+```
 
-```{r message = FALSE, warning=FALSE, fig.align = "center", out.width = "70%"}
+
+```{r}
 #fig.height = 3, fig.width = 3, fig.align = "center"
+
 plot_grid(plotlist = list(plist[[1]],plots[[1]]))
-
-
 plot_grid(plotlist = list(plist[[2]],plots[[2]]))
+plot_grid(plotlist = list(plist[[3]],plots[[3]]))
+
+
 ```
 The expression profile from the interacting genes in each pattern (box plots - left), show that the top genes of the interacting Pattern_1 and Pattern_5 regions are expressed towards the bottom left of the spatial map (scatter plot - right). In other words, there is a specific region in the sample where the molecular interactions between immune cells and invasive lesions are especially pronounced. The expression profile implies that there may be an important group invasive carcinoma cells isolated to a specific region in this primary breast cancer sample.  
 
 ### Pattern_1 Only vs Pattern_5
+```{r}
+#Table of Statistics for this Pattern Interaction
 
-```{r fig.align = "center", out.width = "70%"}
-plot_grid(plotlist = list(plist[[3]],plots[[3]]))
+```
+
+
+```{r}
+
 plot_grid(plotlist = list(plist[[4]],plots[[4]]))
+plot_grid(plotlist = list(plist[[5]],plots[[5]]))
+
 ```
 
 ### Pattern_5 Only vs Pattern_1
 
-```{r fig.align = "center", out.width = "70%"}
-plot_grid(plotlist = list(plist[[5]],plots[[5]]))
+```{r}
+#Table of Interaction for this Pattern
+```
+
+
+```{r}
+
 plot_grid(plotlist = list(plist[[6]],plots[[6]]))
+plot_grid(plotlist = list(plist[[7]],plots[[7]]))
+
+
 ```
 When looking at either Pattern_1 or Pattern_5 only vs the other it is difficult to see isolated expression profiles for the genes selected. This implies that there throughout the sample there are many interactions with the immune cells and invasive carcinoma lesion. 
 
 
 ## Enrichment Analysis
-```{r}
+```{r message = FALSE, warning=FALSE}
 library(org.Hs.eg.db)
 library(clusterProfiler)
+library(enrichplot)
+library(DOSE)
 ```
 
 ```{r}
-marker_df <- SpaceMarkers$interacting_genes[[4]]
-marker_df <- marker_df[marker_df$`Pattern_1 x Pattern_5` == "vsBoth",]
-geneList = marker_df[,"KW.pvalue"]
-names(geneList) = marker_df[,"Gene"]
-geneList = sort(geneList, decreasing = TRUE)
-mysymbols <- names(geneList)
-matx <- AnnotationDbi::select(org.Hs.eg.db, keys=mysymbols, columns=c("ENTREZID","GENENAME"), keytype="ALIAS")
-kk <- enrichKEGG(gene = matx$ENTREZID,organism  = 'hsa', pvalueCutoff = 0.05)
-dotplot(kk, showCategory=15, x = 'Count', font.size = 8 )
+# marker_df <- SpaceMarkers$interacting_genes[[3]]
+# marker_df <- marker_df[marker_df$`Pattern_1 x Pattern_5` == "vsBoth",]
+# #marker_df <- marker_df[marker_df$`Pattern_1 x Pattern_5` == "vsBoth",]
+# gene_list = marker_df[,"KW.pvalue"]
+# names(gene_list) = marker_df[,"Gene"]
+# gene_list = sort(gene_list, decreasing = TRUE)
+# mysymbols <- names(gene_list)
+# matx <- AnnotationDbi::select(org.Hs.eg.db, keys=mysymbols, columns=c("ENTREZID","GENENAME"), keytype="ALIAS")
+# kk <- enrichKEGG(gene = matx$ENTREZID,organism  = 'hsa', pvalueCutoff = 0.05)
+# dotplot(kk, showCategory=15, x = 'Count', font.size = 8)
+
 ```
+```{r}
+set.seed(7)
+# Use metric: (1 - p) * (1 - p) * (1 - p) - for KW, Dunn1 and Dun2
+marker_df2 <- SpaceMarkers$interacting_genes[[4]]
+marker_df2$metric <-  (1 - marker_df2$KW.p.adj) * (1 - marker_df2$Dunn.pval_1_Int.adj) * (1 - marker_df2$Dunn.pval_2_Int.adj)
+#marker_df2 <- marker_df2[marker_df2$`Pattern_1 x Pattern_5` == "vsBoth",]
+matx2 <- AnnotationDbi::select(org.Hs.eg.db, keys=marker_df2[,"Gene"], columns=c("ENTREZID","GENENAME"), keytype="ALIAS")
+etz_df <- merge(x=matx2,y=marker_df2, by.x="ALIAS", by.y="Gene",all.x=TRUE)
+etz_list = etz_df[,"metric"]
+names(etz_list) = etz_df[,"ENTREZID"]
+#etz_list <- etz_list[complete.cases(names(etz_list))]
+#etz_list <- -log10(etz_list)
+#etz_list <- (etz_list-mean(etz_list))/sd(etz_list)
+etz_list <- etz_list[order(-etz_list)]
+#etz_list <- etz_list[!duplicated(names(etz_list))]
+#edo2 <- gseDO(etz_list)
+edo2 <- gseDO(etz_list, score = "pos")
+```
+
+
+## Enrichment Plots
+```{r}
+dotplot(edo2, x = 'Count', font.size = 8)
+ridgeplot(edo2) + theme(axis.text.y = element_text(size = 8))
+```
+
+
+## GSEA
+```{r}
+gseaplot2(edo2, geneSetID = 1, pvalue_table = TRUE)
+```
+
 
 ## load10XExpr() Arguments
 ```{r echo=FALSE}

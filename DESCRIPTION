@@ -1,50 +1,60 @@
-Package: SpaceMarkers
 Type: Package
+Package: SpaceMarkers
 Title: Spatial Interaction Markers
 Version: 0.1.0
-Author: Atul Deshpande [aut, cre], 
-	Ludmila Danilova [ctb]
-Maintainer: Ludmila Danilova <ldanilo1@jhmi.edu>
-Description: An R/Bioconductor software tool to identify genes associated with latent space interactions in spatial transcriptomics.
+Authors@R:c(
+    person("Atul", "Deshpande", , "adeshpande@jhu.edu", role = c("aut", "cre")),
+    person("Ludmila", "Danilova", , "ldanilo1@jhmi.ed", role = "ctb")
+  )
+Description:Spatial transcriptomic technologies have helped to resolve the connection
+            between gene expression and the 2D orientation of tissues relative to each other.
+            However, the limited single-cell resolution makes it difficult to highlight the most 
+            important molecular interactions in these tissues. SpaceMarkers, R/Bioconductor software,
+            can help to find molecular interactions, by identifying genes associated with latent space 
+            interactions in spatial transcriptomics.
+License: MIT + file LICENSE
 Depends: 
     matrixStats,
     matrixTests,
     pracma,
-    R (>= 2.10),
+    R (>= 4.3.0),
     rstatix,
     spatstat
+biocViews: SingleCell, GeneExpression, Software, Spatial, Transcriptomics
 Imports: 
+    ape,
+    hdf5r,
+    jsonlite,
     Matrix,
     qvalue,
     spatstat.explore,
     spatstat.geom,
     stats,
-    utils,
-    ape,
-    dplyr,
-    hdf5r,
-    jsonlite
-License: MIT + file LICENSE
-Encoding: UTF-8
-LazyData: true
-Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.2.3
+    utils
 Suggests: 
-    knitr,
-    rmarkdown,
-    devtools,
-    ggplot2,
-    rjson,
-    RColorBrewer,
-    cowplot,
-    data.table,
-    hrbrthemes,
-    readbitmap,
-    viridis,
     AnnotationDbi,
     clusterProfiler,
+    cowplot,
+    data.table,
+    devtools,
+    DOSE,
+    dplyr,
+    enrichplot,
+    ggplot2,
+    hrbrthemes,
+    knitr,
     msigdbr,
     org.Hs.eg.db,
-    testthat (>= 3.0.0)
-VignetteBuilder: knitr
+    RColorBrewer,
+    readbitmap,
+    rjson,
+    rmarkdown,
+    testthat (>= 3.0.0),
+    viridis
+VignetteBuilder: 
+    knitr
 Config/testthat/edition: 3
+Encoding: UTF-8
+LazyData: false
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.3
