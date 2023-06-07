@@ -46,7 +46,7 @@ test_that("load10XExpr loads data correctly", {
   unlink("test.h5")
 })
 
-
+ 
 # Define the test cases
 test_that("load10XCoords loads data correctly", {
   # Create a temporary directory for testing
@@ -59,10 +59,7 @@ test_that("load10XCoords loads data correctly", {
   
   # Write test data to files
   write('{"spot_diameter_fullres": 10, "scalefactors_lowres": 0.2}', scale_json)
-  writeLines("cell_1,0.5,0.5,0,200,600\ncell_2,1.5,1.5,0,300,700", coord_file)
-  #write.table(rbind(c("cell_1",0.5,0.5,0,200,600),c("cell_2",1.5,1.5,0,300,700)),
-              #paste0(temp_dir, "tissue_positions_list.csv"),
-              #sep = ",", row.names = FALSE, col.names = FALSE)
+  writeLines("spot_1,0.5,0.5,0,200,600\nspot_2,1.5,1.5,0,300,700", coord_file)
   
   #Check for expected directories and file names
   expect_equal(dir.exists('spatial'),TRUE,info = "No directory callled 'spatial'")
@@ -75,7 +72,7 @@ test_that("load10XCoords loads data correctly", {
   coord_values <- load10XCoords(visiumDir = ".", resolution = "lowres")
   
   # Perform assertions to check if the data is loaded correctly
-  expect_equal(coord_values$barcode, c("cell_1", "cell_2"), info = "Incorrect barcode values")
+  expect_equal(coord_values$barcode, c("spot_1", "spot_2"), info = "Incorrect barcode values")
   expect_equal(coord_values$y, c(40, 60), info = "Incorrect y coordinates")
   expect_equal(coord_values$x, c(120, 140), info = "Incorrect x coordinates")
   
