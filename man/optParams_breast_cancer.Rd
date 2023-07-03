@@ -8,15 +8,18 @@
 A data frame with 2 rows and 5 columns:
 \describe{
 \item{Pattern_1}{immune cell pattern paramters }
-.
-.
-.
+\item{Pattern_2}{Disp.1 parameters}
+\item{Pattern_3}{intraductal carcinoma (DCIS) parameters }
+\item{Pattern_2}{Disp.2 parameters }
 \item{Pattern_5}{invasive carcinoma lesion pattern paramters }
 
 }
 }
 \usage{
 optParams_breast_cancer
+}
+\value{
+A matrix of optimal parameters for patterns identified by CoGAPS
 }
 \description{
 A dataset with the optimal width of the gaussian distribution (sigmaOpt) and

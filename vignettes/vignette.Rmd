@@ -24,44 +24,49 @@ knitr::opts_chunk$set(out.extra = 'style="display:block; margin:auto;"')  # cent
 
 ```
 
-
 ## Overview
 
 SpaceMarkers leverages latent feature analysis of the spatial components of transcriptomic data to identify biologically relevant molecular interactions between cell groups.This tutorial will use the latent features from CoGAPS to look at pattern interactions in a Visium 10x breast ductal carcinoma spatial transcriptomics dataset.
 
-
 ## Installation
+
 ```{r, eval = FALSE}
 #install.packages("remotes")
 #remotes::install_github("FertigLab/SpaceMarkers", dependencies = TRUE, build_vignettes = TRUE)
 ```
 
 ## Importing Libraries
-```{r message = FALSE, warning=FALSE}
+
+```{r message = FALSE, warning = FALSE}
 library(SpaceMarkers)
 ```
 
-
 ## Obtaining and Formatting the Data
 
-The data that will be used to demonstrate SpaceMarkers capabilities is a human breast cancer spatial transcriptomics dataset that comes from Visium. The CoGAPS patterns as seen in the manuscript [Atul Deshpande, Melanie Loth, et al.](https://doi.org/10.1016/j.cels.2023.03.004) will also be taken from GitHub.
+The data that will be used to demonstrate SpaceMarkers' capabilities is a human breast cancer spatial transcriptomics dataset that comes from Visium. The CoGAPS patterns as seen in the manuscript [Atul Deshpande, Melanie Loth, et al.](https://doi.org/10.1016/j.cels.2023.03.004) will also be taken from GitHub.
 
 ```{r}
-counts_url <- "https://cf.10xgenomics.com/samples/spatial-exp/1.3.0/Visium_Human_Breast_Cancer/Visium_Human_Breast_Cancer_filtered_feature_bc_matrix.h5"
-spatial_url <- "https://cf.10xgenomics.com/samples/spatial-exp/1.3.0/Visium_FFPE_Human_Breast_Cancer/Visium_FFPE_Human_Breast_Cancer_spatial.tar.gz"
-cogaps_url <- "https://github.com/atuldeshpande/SpaceMarkers-paper/blob/main/CoGAPS_Analysis/BreastCancer/182967_1168993F_2_CogapsResult_5.rds?raw=true"
-
+main_10xlink <- "https://cf.10xgenomics.com/samples/spatial-exp/1.3.0"
+counts_folder <- "Visium_Human_Breast_Cancer"
+counts_file <- "Visium_Human_Breast_Cancer_filtered_feature_bc_matrix.h5"
+counts_url<-paste(c(main_10xlink,counts_folder,counts_file), collapse = "/")
+sp_folder <- "Visium_FFPE_Human_Breast_Cancer"
+sp_file <- "Visium_FFPE_Human_Breast_Cancer_spatial.tar.gz"
+sp_url<-paste(c(main_10xlink,sp_folder,sp_file),collapse = "/")
+cg_main <- "https://github.com/atuldeshpande/SpaceMarkers-paper/blob/main"
+cg_folder <- "CoGAPS_Analysis/BreastCancer"
+cg_file <- "182967_1168993F_2_CogapsResult_5.rds?raw=true"
+cogaps_url <- paste(c(cg_main,cg_folder,cg_file), collapse = "/")
+ 
 ```
-
 
 ### Extracting Counts Matrix
 
-Here the counts matrix will be obtained from the h5 object in the Visium site and genes with less than 3 counts are removed from the dataset. 
-
+Here the counts matrix will be obtained from the h5 object in the Visium site and genes with less than 3 counts are removed from the dataset.
 
 ```{r}
-system(paste0("wget -q ",counts_url))
-counts_matrix <- load10XExpr(visiumDir = ".", h5filename = basename(counts_url))
+system2("wget",c("-q",counts_url))
+counts_matrix <- load10XExpr(visiumDir = ".", h5filename = counts_file)
 good_gene_threshold <- 3
 goodGenes <- rownames(counts_matrix)[apply(counts_matrix,1,function(x) sum(x>0)>=good_gene_threshold)]
 counts_matrix <- counts_matrix[goodGenes,]
@@ -72,153 +77,159 @@ counts_matrix <- counts_matrix[goodGenes,]
 In this example the latent features from CoGAPS will be used to identify overlapping genes with SpaceMarkers. Here the featureLoadings (cells) and samplePatterns (genes) for both the expression matrix and CoGAPS matrix need to match.
 
 ```{r}
-system(paste0("wget -q ",cogaps_url, " -O CogapsResult_5.rds"))
+system2("wget",c("-q",cogaps_url,"-O","CogapsResult_5.rds"))
 cogaps_result <- readRDS("CogapsResult_5.rds")
-features <- intersect(rownames(counts_matrix),rownames(cogaps_result@featureLoadings))
-barcodes <- intersect(colnames(counts_matrix),rownames(cogaps_result@sampleFactors))
+features <- intersect(rownames(counts_matrix),rownames(slot(cogaps_result,"featureLoadings")))
+barcodes <- intersect(colnames(counts_matrix),rownames(slot(cogaps_result,"sampleFactors")))
 counts_matrix <- counts_matrix[features,barcodes]
-cogaps_matrix <- cogaps_result@featureLoadings[features,] %*% t(cogaps_result@sampleFactors[barcodes,])
+cogaps_matrix <- slot(cogaps_result,"featureLoadings")[features,] %*% t(slot(cogaps_result,"sampleFactors")[barcodes,])
 ```
 
 ### Obtaining Spatial Coordinates
 
-The spatial coordinates will also be pulled from Visium for this dataset. These are combined with the latent features to demonstrate how cells for each pattern interact in 2D space. 
+The spatial coordinates will also be pulled from Visium for this dataset. These are combined with the latent features to demonstrate how cells for each pattern interact in 2D space.
+
 ```{r}
-download.file(spatial_url, basename(spatial_url))
-untar(basename(spatial_url))
+download.file(sp_url, basename(sp_url))
+untar(basename(sp_url))
 spCoords <- load10XCoords(visiumDir = ".")
 rownames(spCoords) <- spCoords$barcode
 spCoords <- spCoords[barcodes,]
-spPatterns <- cbind(spCoords,cogaps_result@sampleFactors[barcodes,])
+spPatterns <- cbind(spCoords,slot(cogaps_result,"sampleFactors")[barcodes,])
 head(spPatterns)
 ```
 
 ## Executing SpaceMarkers
 
-
 ### SpaceMarker Modes
 
-SpaceMarkers can operate in 'residual' mode or 'DE' (Differential Expression mode). In an ideal world the overlapping patterns identified by SpaceMarkers would be a homogeneous population of cells and the relationship between them would be linear. However, due to confounding effects of variations in cell density and common cell types in any given region, this is not always true. 
+SpaceMarkers can operate in 'residual' mode or 'DE' (Differential Expression mode). In an ideal world the overlapping patterns identified by SpaceMarkers would be a homogeneous population of cells and the relationship between them would be linear. However, due to confounding effects of variations in cell density and common cell types in any given region, this is not always true.
 
-To account for these confounding effects, the 'residual' mode compares the feature interactions between the expression matrix and the reconstructed latent space matrix. The features with the highest residual error are reported. The genes are then classified according to regions of overlapping vs exclusive influence. The default mode is 'residual' mode. 
+To account for these confounding effects, the 'residual' mode compares the feature interactions between the expression matrix and the reconstructed latent space matrix. The features with the highest residual error are reported. The genes are then classified according to regions of overlapping vs exclusive influence. The default mode is 'residual' mode.
 
-Suppose the feature (gene) information is not readily available and only the sample (cells) latent feature patterns with P-values are available? This is the advantage of 'DE' mode. Where residual mode assesses the non-linear effects that may arise from confounding variables, 'DE' mode assesses simple linear interactions between patterns. DE mode also compares genes from regions of overlapping vs exclusive influence but does not consider residuals from the expression matrix as there is no matrix reconstruction with the latent feature matrix.
+Suppose the feature (gene) information is not readily available and only the sample (cells) latent feature patterns with P-values are available? This is the advantage of 'DE' mode. Where residual mode assesses the non-linear effects that may arise from confounding variables, 'DE' mode assesses simple linear interactions between patterns directly from expression. DE mode also compares genes from regions of overlapping vs exclusive influence but does not consider residuals from the expression matrix as there is no matrix reconstruction with the latent feature matrix.
 
 To demonstrate SpaceMarkers we will be looking at Pattern_1 from CoGAPS. Pattern_1 was identified as mainly an immune cell driven pattern. Pattern_1 is the default setting if no Pattern_n preference is given by the user.
 
-
 ### Residual Mode
 
-
-SpaceMarkers identifies regions of influence using a gaussian kernel outlier based model. The reference pattern (Pattern_1 in this case) is used as the prior for this model. SpaceMarkers then identifies where the regions of influence are interacting from each of the other patterns as well as where they are mutually exclusive. 
+SpaceMarkers identifies regions of influence using a gaussian kernel outlier based model. The reference pattern (Pattern_1 in this case) is used as the prior for this model. SpaceMarkers then identifies where the regions of influence are interacting from each of the other patterns as well as where they are mutually exclusive.
 
 getSpatialParameters: This function identifies the optimal width of the gaussian distribution (sigmaOpt) as well as the outlier threshold around the set of spots (thresOpt) for each pattern.These parameters minimize the spatial autocorrelation residuals of the spots in the regions of influence. This function can take a while so the file would be read in from the data folder for this tutorial.
+
+getSpatialParameters took approximately 12 minutes on a MacBook Pro Quad-Intel Core i5 processor with 16 GB of memory. Therefore the saved output would be used
 
 ```{r}
 SpaceMarkersMode = "residual" 
 SpaceMarkersRefPattern = "Pattern_1" 
 ```
 
+```{r eval = FALSE}
+optParams <- getSpatialParameters(spPatterns)
+```
 
 ```{r}
-#Takes approximately 12 minutes
-#optParams <- getSpatialParameters(spPatterns)
 data("optParams_breast_cancer")
-head(optParams_breast_cancer)
-
+optParams <- optParams_breast_cancer
+head(optParams)
 ```
 
+getInteractingGenes: This function identifies the regions of influence and interaction as well as the genes associated with these regions. A non-parametric Kruskal-Wallis test is used to identify statistically significant genes in any one region of influence without discerning which region is more significant. A post hoc Dunn's Test is used for analysis of genes between regions and can distinguish which of two regions is more significant. If 'residual' mode is selected the user must provide a reconstructed matrix from the latent feature matrix. This is passed to the 'reconstruction' argument and can be left as NULL for 'DE' mode. The 'data' parameter is the original expression matrix. The 'spatialPatterns' argument takes a matrix with the spatial coordinates of each cell as well as the patterns. The spatial coordinate columns must have the labels x and y.
 
-getInteractingGenes: This function identifies the regions of influence and interaction as well as the genes associated with these regions. A non-parametric Kruskal-Wallis test is used to identify genes statistically significant genes in any one region of influence and a post hoc Dunn's Test is used for analysis of genes between regions.  If 'residual' mode is selected the user must provide a reconstructed matrix from the latent feature matrix. This is passed to the 'reconstruction' argument and can be left as NULL for 'DE' mode. The 'data' parameter is the original expression matrix. The 'spatialPatterns' argument takes a matrix with the spatial coordinates of each cell as well as the patterns. The spatial coordinate columns must have the labels x and y.
+getInteractingGenes also takes several minutes on a standard MacBook Pro, so for both residual and DE mode, the saved data from a previous run will be used.
+
+```{r eval = FALSE}
+SpaceMarkers <- getInteractingGenes(data = counts_matrix, reconstruction = cogaps_matrix, optParams = optParams,spatialPatterns = spPatterns, refPattern = SpaceMarkersRefPattern, mode = SpaceMarkersMode)
+```
+
+NB: When running getInteractingGenes some warnings may be generated. The warnings are due to the nature of the 'sparse' data being used. Comparing two cells from the two patterns with identical information is redundant as SpaceMarkers is identifying statistically different expression for interactions exclusive to either of the two patterns and a region that is due to interaction between the given two patterns. Also, if there are too many zeros in the genes (rows) of those regions, the columns are dropped as there is nothing to compare in the Kruskal Wallis test.
 
 ```{r}
-#Takes approximately 7 minutes
-SpaceMarkers <- getInteractingGenes(data = counts_matrix, reconstruction = cogaps_matrix, optParams = optParams_breast_cancer,spatialPatterns = spPatterns, refPattern = SpaceMarkersRefPattern, mode = SpaceMarkersMode)
+data("SpaceMarkers_resMode_breast_cancer")
+SpaceMarkers <- SpaceMarkers_resMode_breast_cancer
 ```
-
-The output is a list of data frames with information about the interacting genes of the refPattern and each pattern from the CoGAPS matrix (interacting_genes object). There is also a data frame with all of the regions of influence for any two of patterns (the hotspotRegions object). 
-
-For the 'interacting_genes' data frames, the first column is the list of genes and the second column says whether the genes are statistically significant in the refPattern only, the interacting pattern only, or both. The remaining columns are statistics for the Kruskal-Wallis test and the post hoc Dunn's test. 
 
 ```{r}
 print(head(SpaceMarkers$interacting_genes[[1]]))
 print(head(SpaceMarkers$hotspotRegions))
 ```
 
+The output is a list of data frames with information about the interacting genes of the refPattern and each pattern from the CoGAPS matrix (interacting_genes object). There is also a data frame with all of the regions of influence for any two of patterns (the hotspotRegions object).
+
+For the 'interacting_genes' data frames, the first column is the list of genes and the second column says whether the expression of genes are statistically significant when compared to the refPattern only, the interacting pattern only, or both. The remaining columns are statistics for the Kruskal-Wallis test and the post hoc Dunn's test.
+
 ### DE Mode
 
 As described previously 'DE' mode only requires the counts matrix and spatial patterns and not the reconstructed CoGAPS matrix. It identifies simpler molecular interactions between regions.
 
-```{r}
-
+```{r eval = FALSE}
 SpaceMarkersMode = "DE"
-SpaceMarkers_DE <- getInteractingGenes(data = counts_matrix, reconstruction = NULL, optParams = optParams_breast_cancer,spatialPatterns = spPatterns, refPattern = SpaceMarkersRefPattern, mode = SpaceMarkersMode)
+SpaceMarkers_DE <- getInteractingGenes(data = counts_matrix, reconstruction = NULL, optParams = optParams,spatialPatterns = spPatterns, refPattern = SpaceMarkersRefPattern, mode = SpaceMarkersMode)
 
 ```
-The warnings above are due to the nature of the 'sparse' data being used. Comparing two cells from the two patterns with identical information is redundant as SpaceMarkers is identifying statistically different expression for interactions exclusive to either of the two patterns and a region that is due to interaction between the given two patterns. Also, if there are too many zeros in the genes (rows) of those regions, the columns are dropped as there is nothing to compare in the kruskal wallis test.
+
+```{r}
+data("SpaceMarkers_DEMode_breast_cancer")
+SpaceMarkers_DE <- SpaceMarkers_DEMode_breast_cancer
+```
 
 ### Differences between Residual Mode and DE Mode
 
-To highlight the differences between residual mode and DE mode, the interaction between Pattern_1 (immune cell) and Pattern_5 (invasive carcinoma lesion) will be assessed.
+To highlight the differences between residual mode and DE mode, the interaction between Pattern_1 (immune cell) and Pattern_5 (invasive carcinoma lesion) will be assessed. One of the first things to notice is the difference in the number of genes identified between the two modes.
 
-One of the first things to notice is the difference in the number of genes identified between the two modes.  
 ```{r}
-residual_p1_p2 <- SpaceMarkers$interacting_genes[[4]]
-DE_p1_p2 <- SpaceMarkers_DE$interacting_genes[[4]]
+residual_p1_p2<-SpaceMarkers$interacting_genes[[4]]
+DE_p1_p2<-SpaceMarkers_DE$interacting_genes[[4]]
 ```
 
-```{r, echo=FALSE}
-paste("Residual mode identified",dim(residual_p1_p2)[1],"interacting genes, while DE mode identified", dim(DE_p1_p2)[1],"interacting genes")
+```{r, echo =FALSE}
+paste("Residual mode identified",dim(residual_p1_p2)[1],"interacting genes,while DE mode identified",dim(DE_p1_p2)[1],"interacting genes",collapse = NULL)
 ```
-DE mode identified more genes because it does not consider noise that may be associated with common cell types in the interacting regions while residual mode considers these and other confounding variables by taking the residuals between the counts and reconstructed latent feature matrix.
 
-The next analysis will show where the top genes rank in each mode's list if they are identified at all. A function was created that will take the top 20 genes of a reference list of genes and compares it to the entire list of a second list of genes. The return object is a data frame of the gene, the name of each list and the ranking of each gene as compared to the reference list. If there is no gene identified in the second list compared to the reference it is classified as NA. 
+DE mode identified more genes because it does not consider noise that may be associated with common cell types in the interacting regions while residual mode considers these and other confounding variables by taking the residuals between the counts and reconstructed latent feature matrix. The next analysis will show where the top genes rank in each mode's list if they are identified at all. A function was created that will take the top 20 genes of a reference list of genes and compares it to the entire list of a second list of genes. The return object is a data frame of the gene, the name of each list and the ranking of each gene as compared to the reference list. If there is no gene identified in the second list compared to the reference it is classified as NA.
 
-
-```{r, echo = FALSE}
+```{r}
 compare_genes <- function(ref_list, list2,ref_name = "mode1",list2_name = "mode2"){
-  
-  ref_rank <- seq(1,length(ref_list),1)
-  list2_ref_rank <- which(list2 %in% ref_list)
-  list2_ref_genes <- list2[which(list2 %in% ref_list)]
-  ref_genes_only <- ref_list[ !ref_list  %in% list2_ref_genes ]
-  
-  mode1 <- data.frame("Gene" = ref_list,"Rank" = ref_rank,"mode"= ref_name)
-  
-  mode2 <- data.frame("Gene" = c(list2_ref_genes, ref_genes_only),"Rank" = c(list2_ref_rank,rep(NA,length(ref_genes_only))),"mode"= list2_name)
-  
-  mode1_mode2 <- merge(mode1, mode2, by = "Gene", all = TRUE) 
-  mode1_mode2 <- mode1_mode2[order(mode1_mode2$Rank.x),]
-  mode1_mode2 <- subset(mode1_mode2,select = c("Gene","Rank.x","Rank.y"))
-  colnames(mode1_mode2) <- c("Gene",paste0(ref_name,"_Rank"),paste0(list2_name,"_Rank"))
-  return(mode1_mode2)
+    ref_rank <- seq(1,length(ref_list),1)
+    list2_ref_rank <- which(list2 %in% ref_list)
+    list2_ref_genes <- list2[which(list2 %in% ref_list)]
+    ref_genes_only <- ref_list[ !ref_list  %in% list2_ref_genes ]
+    mode1 <- data.frame("Gene" = ref_list,"Rank" = ref_rank,"mode"= ref_name)
+    mode2 <- data.frame("Gene" = c(list2_ref_genes, ref_genes_only),"Rank" = c(list2_ref_rank,rep(NA,length(ref_genes_only))),"mode"= list2_name)
+    mode1_mode2 <- merge(mode1, mode2, by = "Gene", all = TRUE) 
+    mode1_mode2 <- mode1_mode2[order(mode1_mode2$Rank.x),]
+    mode1_mode2 <- subset(mode1_mode2,select = c("Gene","Rank.x","Rank.y"))
+    colnames(mode1_mode2) <- c("Gene",paste0(ref_name,"_Rank"),paste0(list2_name,"_Rank"))
+    return(mode1_mode2)
 }
 ```
 
-
 ```{r}
 res_to_DE <- compare_genes( head(residual_p1_p2$Gene, n = 20) ,DE_p1_p2$Gene,ref_name = "residual",list2_name = "DE" )
-
 DE_to_res <- compare_genes(head(DE_p1_p2$Gene, n = 20),residual_p1_p2$Gene,ref_name = "DE",list2_name = "residual" )
 ```
 
+#### Comparing residual mode to DE mode
 
 ```{r}
 res_to_DE
 ```
+
 Here we identify the top 20 genes in 'residual' mode and their corresponding ranking in DE mode. IGHE, APOC1,C1QC, TGM2 and HNRNPAB are ranked high in both 'DE' and 'residual' mode. While 14 genes that are ranked high in 'residual' mode are not identified at all in 'DE' mode
 
+#### Comparing DE mode to residual mode
 
 ```{r}
 DE_to_res
 ```
-In addition to IGHE, HNRNPAB, and APOC1, CLU and TYROBP are also ranked high in both methods. There were 11 genes that were interacting in 'DE' mode but not 'residual' mode. 
+
+In addition to IGHE, HNRNPAB, and APOC1, CLU and TYROBP are also ranked high in both methods. There were 11 genes that were interacting in 'DE' mode but not 'residual' mode.
 
 There is some agreement with interacting genes between the two methods but there are also quite a few differences. Therefore, the selected mode can significantly impact the downstream results and should be taken into consideration based on the specific biological question being answered and the data available.
 
 ## Comparing Patterns
 
-The differences between the gene interactions of Pattern_1 (immune cell) and Pattern_5 (invasive carcinoma lesion) can be visualized in various ways to view both the magnitude and location of expression in space. In this analysis the top 2 genes in residual mode from Pattern_1 only, Pattern_5 only and the interacting region will be compared.
+The differences between the gene interactions of Pattern_1 (immune cell) and Pattern_5 (invasive carcinoma lesion) can be visualized in various ways to view both the magnitude and location of expression in space. In this analysis the top 2-3 genes in residual mode from Pattern_5 only vs Pattern_1, Pattern_1 only vs Pattern_5 and the interacting region vs both Pattern_1 and Pattern_5 will be compared.
 
 ### Setting up the Plots:
 
@@ -237,16 +248,11 @@ library(dplyr)
 library(data.table)
 library(viridis)
 library(hrbrthemes)
-
-
 ```
 
 This first function below can visualize the locations of these patterns on a spatial grid. The code has been adopted from [10xgenomics](https://support.10xgenomics.com/spatial-gene-expression/software/pipelines/latest/rkit)
 
-
 ```{r}
-
-
 geom_spatial <-  function(mapping = NULL,
     data = NULL,
     stat = "identity",
@@ -274,18 +280,9 @@ geom_spatial <-  function(mapping = NULL,
         
     )
     
-    layer(
-        geom = GeomCustom,
-        mapping = mapping,
-        data = data,
-        stat = stat,
-        position = position,
-        show.legend = show.legend,
-        inherit.aes = inherit.aes,
-        params = list(na.rm = na.rm, ...)
+    layer(geom = GeomCustom,mapping = mapping,data = data,stat = stat,position = position,show.legend = show.legend,inherit.aes = inherit.aes,params = list(na.rm = na.rm, ...)
     )
 }
-
 ```
 
 Some spatial information for the breast cancer dataset is required.
@@ -299,13 +296,13 @@ tissue_paths <- c("spatial/tissue_positions_list.csv")
 images_cl <- list()
 
 for (i in 1:length(sample_names)) {
-  images_cl[[i]] <- read.bitmap(image_paths[i])
+    images_cl[[i]] <- read.bitmap(image_paths[i])
 }
 
 height <- list()
 
 for (i in 1:length(sample_names)) {
- height[[i]] <-  data.frame(height = nrow(images_cl[[i]]))
+    height[[i]] <-  data.frame(height = nrow(images_cl[[i]]))
 }
 
 height <- bind_rows(height)
@@ -313,14 +310,14 @@ height <- bind_rows(height)
 width <- list()
 
 for (i in 1:length(sample_names)) {
- width[[i]] <- data.frame(width = ncol(images_cl[[i]]))
+    width[[i]] <- data.frame(width = ncol(images_cl[[i]]))
 }
 
 width <- bind_rows(width)
 
 grobs <- list()
 for (i in 1:length(sample_names)) {
-  grobs[[i]] <- rasterGrob(images_cl[[i]], width=unit(1,"npc"), height=unit(1,"npc"))
+    grobs[[i]] <- rasterGrob(images_cl[[i]], width=unit(1,"npc"), height=unit(1,"npc"))
 }
 
 images_tibble <- tibble(sample=factor(sample_names), grob=grobs)
@@ -331,63 +328,49 @@ images_tibble$width <- width$width
 scales <- list()
 
 for (i in 1:length(sample_names)) {
-  scales[[i]] <- rjson::fromJSON(file = scalefactor_paths[i])
+    scales[[i]] <- rjson::fromJSON(file = scalefactor_paths[i])
 }
 
 ```
 
 It is also helpful to adjust spot position by scale factor and format some of the tissue information.
+
 ```{r}
-
-
 bcs <- list()
-
 for (i in 1:length(sample_names)) {
-   bcs[[i]] <- read.csv(tissue_paths[i],col.names=c("barcode","tissue","row","col","imagerow","imagecol"), header = FALSE)
-   bcs[[i]]$imagerow <- bcs[[i]]$imagerow * scales[[i]]$tissue_lowres_scalef    # scale tissue coordinates for lowres image
-   bcs[[i]]$imagecol <- bcs[[i]]$imagecol * scales[[i]]$tissue_lowres_scalef
-   bcs[[i]]$tissue <- as.factor(bcs[[i]]$tissue)
-   bcs[[i]]$height <- height$height[i]
-   bcs[[i]]$width <- width$width[i]
+    bcs[[i]] <- read.csv(tissue_paths[i],col.names=c("barcode","tissue","row","col","imagerow","imagecol"), header = FALSE)
+    bcs[[i]]$imagerow <- bcs[[i]]$imagerow * scales[[i]]$tissue_lowres_scalef# scale tissue coordinates for lowres image
+    bcs[[i]]$imagecol <- bcs[[i]]$imagecol * scales[[i]]$tissue_lowres_scalef
+    bcs[[i]]$tissue <- as.factor(bcs[[i]]$tissue)
+    bcs[[i]]$height <- height$height[i]
+    bcs[[i]]$width <- width$width[i]
 }
-
 names(bcs) <- sample_names
 ```
 
-
 Adding umi per spot, total genes per spot and merging the data
+
 ```{r}
-
 matrix <- list()
-
 for (i in 1:length(sample_names)) {
- matrix[[i]] <- as.data.frame(t(as.matrix(counts_matrix)))
+    matrix[[i]] <- as.data.frame(t(as.matrix(counts_matrix)))
 }
-
-
 umi_sum <- list()
-
 for (i in 1:length(sample_names)) {
-  umi_sum[[i]] <- data.frame(barcode =  row.names(matrix[[i]]),
-                             sum_umi = Matrix::rowSums(matrix[[i]]))
+    umi_sum[[i]] <- data.frame(barcode =  row.names(matrix[[i]]), sum_umi = Matrix::rowSums(matrix[[i]]))
 
 }
 names(umi_sum) <- sample_names
 
 umi_sum <- bind_rows(umi_sum, .id = "sample")
-
-
 gene_sum <- list()
 
 for (i in 1:length(sample_names)) {
-  gene_sum[[i]] <- data.frame(barcode =  row.names(matrix[[i]]),
-                             sum_gene = Matrix::rowSums(matrix[[i]] != 0))
+    gene_sum[[i]] <- data.frame(barcode =  row.names(matrix[[i]]),sum_gene=Matrix::rowSums(matrix[[i]] != 0))
 
 }
 names(gene_sum) <- sample_names
-
 gene_sum <- bind_rows(gene_sum, .id = "sample")
-
 bcs_merge <- bind_rows(bcs, .id = "sample")
 bcs_merge <- merge(bcs_merge,umi_sum, by = c("barcode", "sample"))
 bcs_merge <- merge(bcs_merge,gene_sum, by = c("barcode", "sample"))
@@ -395,10 +378,9 @@ bcs_merge <- merge(bcs_merge,gene_sum, by = c("barcode", "sample"))
 ```
 
 Specifying a continous scale and colors before plotting
+
 ```{r}
-xlim(0,max(bcs_merge %>%
-          dplyr::filter(sample ==sample_names[i]) %>%
-          select(width)))
+xlim(0,max(bcs_merge%>%dplyr::filter(sample ==sample_names[i])%>%select(width)))
 #myPalette <- colorRampPalette(rev(brewer.pal(11, "Spectral")))
 myPalette <- function(numLevels) {return(colorRampPalette(c("blue","yellow"))(numLevels))}
 ```
@@ -408,194 +390,129 @@ Extracting top 3 genes ...
 ```{r}
 gene_list <- c()
 interactions <- unique(residual_p1_p2$`Pattern_1 x Pattern_5`)
+n_genes <- 3
 for (g in 1:length(interactions)){
-  df <- residual_p1_p2 %>% dplyr::filter(residual_p1_p2$`Pattern_1 x Pattern_5` == interactions[g] & abs(residual_p1_p2$Dunn.zP2_P1) > 1 )
-  print(paste0("Top 3 genes for ",interactions[g]))
-  print(df$Gene[1:3])
-  gene_list <- c(gene_list,df$Gene[1:3])
-  
+    df <- residual_p1_p2 %>% dplyr::filter(residual_p1_p2$`Pattern_1 x Pattern_5` == interactions[g] & abs(residual_p1_p2$Dunn.zP2_P1) > 1 )
+    print(paste0("Top ",n_genes," genes for ",interactions[g]))
+    print(df$Gene[1:n_genes])
+    gene_list <- c(gene_list,df$Gene[1:n_genes])
 }
-
 ```
 
 Visualize expression spatially
+
 ```{r message = FALSE, warning=FALSE}
 plots <- list()
 # default size = 1.75, stroke = 0.5
 for (g in gene_list){
-  for (i in 1:length(sample_names)) {
-  
-    plots[[length(plots)+1]] <- bcs_merge %>%
-                      dplyr::filter(sample ==sample_names[i]) %>%
-                      bind_cols(as.data.table(matrix[i])[,g, with=FALSE]) %>%
-      ggplot(aes_string(x='imagecol', y='imagerow', fill=g)) +
-                    geom_spatial(data=images_tibble[i,], aes(grob=grob), x=0.5, y=0.5)+
-                    geom_point(shape = 21, colour = "black", size = 1.1, stroke = 0.2)+
-                    coord_cartesian(expand=FALSE)+
-                    scale_fill_gradientn(colours = myPalette(100))+
-                    xlim(0,max(bcs_merge %>%
-                                dplyr::filter(sample ==sample_names[i]) %>%
-                                select(width)))+
-                    ylim(max(bcs_merge %>%
-                                dplyr::filter(sample ==sample_names[i]) %>%
-                                select(height)),0)+
-                    xlab("") +
-                    ylab("") +
-                    ggtitle(sample_names[i])+
-                    theme_set(theme_bw(base_size = 10))+
-                    theme(panel.grid.major = element_blank(),
-                            panel.grid.minor = element_blank(),
-                            panel.background = element_blank(),
-                            axis.line = element_line(colour = "black"),
-                            axis.text = element_blank(),
-                            axis.ticks = element_blank())
-    
-  }
-  
+    for (i in 1:length(sample_names)) {
+        plots[[length(plots)+1]] <- bcs_merge %>%dplyr::filter(sample ==sample_names[i]) %>% bind_cols(as.data.table(matrix[i])[,g, with=FALSE]) %>% ggplot(aes_string(x='imagecol', y='imagerow', fill=g)) +geom_spatial(data=images_tibble[i,], aes(grob=grob), x=0.5, y=0.5)+ geom_point(shape = 21, colour = "black", size = 1.1, stroke = 0.2)+coord_cartesian(expand=FALSE)+scale_fill_gradientn(colours = myPalette(100))+xlim(0,max(bcs_merge %>%dplyr::filter(sample ==sample_names[i]) %>% select(width)))+ylim(max(bcs_merge %>%dplyr::filter(sample ==sample_names[i]) %>% select(height)),0)+xlab("") +ylab("") + ggtitle(sample_names[i]) + theme_set(theme_bw(base_size = 10)) + theme(panel.grid.major= element_blank(),panel.grid.minor = element_blank(), panel.background = element_blank(),axis.line = element_line(colour = "black"), axis.text = element_blank(),axis.ticks = element_blank())
+    }
 }
-
 ```
 
-
 This next block of code can visualize the genes for each pattern on boxplots
+
 ```{r}
 region <- SpaceMarkers$hotspotRegions[,1]
 region <- ifelse(!is.na(region) & !is.na(SpaceMarkers$hotspotRegions[,5]),"Interacting",ifelse(!is.na(region),region,SpaceMarkers$hotspotRegions[,5]))
 region <- factor(region, levels = c("Pattern_1","Interacting","Pattern_5"))
-
 plist <- list()
 mplot2 <- t(as.matrix(counts_matrix[,!is.na(region)]))
 mplot2 <- as.data.frame(as.matrix(mplot2))
 mplot2 <- cbind(mplot2,region = region[!is.na(region)])
 for (ii in 1:length(gene_list)){
- 
-  
-  plist[[ii]] <- mplot2 %>% ggplot( aes_string(x='region', y=gene_list[ii], fill='region')) +
-    geom_boxplot() +
-        scale_fill_viridis(discrete = TRUE, alpha=0.6) +
-        geom_jitter(color="black", size=0.4, alpha=0.9) +
-        theme_ipsum() +
-        theme(legend.position="none",plot.title = element_text(size=11),axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-     ggtitle(paste0(gene_list[ii]," Expression (Log)")) +
-    xlab("") 
+    plist[[ii]] <- mplot2 %>% ggplot( aes_string(x='region', y=gene_list[ii], fill='region'))+geom_boxplot() +scale_fill_viridis(discrete = TRUE, alpha=0.6) +geom_jitter(color="black", size=0.4, alpha=0.9)+theme_ipsum() +theme(legend.position="none",plot.title = element_text(size=11),axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +ggtitle(paste0(gene_list[ii]," Expression (Log)")) + xlab("") 
 }
 ```
 
+### Interacting region (vsBoth)
 
+This category compares the interacting region to both Pattern_1 and Pattern_5 exclusively
 
-### Interacting region: Pattern_1 and Pattern_5
+Below there are box plots and spatial heatmaps to help visualize the expression of individual genes across different patterns. The two main statistics used to help interpret the expression of genes across the patterns are the KW statistics/pvalue and the Dunn's test. In this context the null hypothesis of the KW test is that the expression of a given gene across all of the spots is equal. The post hoc Dunn's test identifies how statistically significant the difference in expression of the given gene is between two patterns. The Dunn's test considers the differences between specific patterns and the KW test considers differences across all of the spots without considering the specific patterns.
+
+#### Table of statistics
+
 ```{r}
-# Table of statistics for this pattern
+head(residual_p1_p2 %>% dplyr::filter(residual_p1_p2$`Pattern_1 x Pattern_5` == "vsBoth"),n_genes)
 ```
 
+#### Visualizations
 
-```{r}
-#fig.height = 3, fig.width = 3, fig.align = "center"
-
+```{r, message=FALSE, warning=FALSE}
 plot_grid(plotlist = list(plist[[1]],plots[[1]]))
 plot_grid(plotlist = list(plist[[2]],plots[[2]]))
+```
+
+On the spatial heatmap, Pattern_1 takes up most of the top half of the spatial heatmap, followed by the interacting region along the diagonal and finally Pattern_5 in the bottom left corner. CXCL14 and IGHE are expressed more in the interacting region and Pattern_5 both towards the bottom left corner of the spatial heatmap compared to Pattern_1. The box plots also reflect what is seen on the spatial heatmaps where the expression of CXCL14 and IGHE across spots is high in both Pattern_5 and the interacting region but much lower in Pattern_1.
+
+In the case of CXCL14, the Dunn.pval_2_1 metric has a similarly low order of magnitude to the KW.pvalue, i.e less than 10\^-70. This indicates that there is a statistically significant difference between the immune pattern (Pattern_1) and the invasive pattern (Pattern_5) which is reflected by a distinct pattern of high expression in the interacting regoin and Pattern_5 for CXCL14 on the plots. Notice also how the Dunn.pval_2_Int.adj for CXCL14 is particularly high and the Dunn.pval_1_Int.adj metric is several magnitudes lower. This indicates that expression across Pattern_5 is homogeneous and the expression across Pattern_1 is slightly more heterogeneous. For IGHE, the Dunn.pval_1_Int.adj (10\^-48) and Dunn.pval_2_Int.adj (10\^-18) metrics show that there is more heterogeneity in the expression profile of Pattern_1 compared to Pattern_5. In line with these metrics, the expression profile in Pattern_5 on the spatial heatmap for IGHE is not as high and continuous as Pattern_5 on the spatial heatmap for CXCL14.
+
+```{r}
 plot_grid(plotlist = list(plist[[3]],plots[[3]]))
-
-
-```
-The expression profile from the interacting genes in each pattern (box plots - left), show that the top genes of the interacting Pattern_1 and Pattern_5 regions are expressed towards the bottom left of the spatial map (scatter plot - right). In other words, there is a specific region in the sample where the molecular interactions between immune cells and invasive lesions are especially pronounced. The expression profile implies that there may be an important group invasive carcinoma cells isolated to a specific region in this primary breast cancer sample.  
-
-### Pattern_1 Only vs Pattern_5
-```{r}
-#Table of Statistics for this Pattern Interaction
-
 ```
 
+The spatial heatmap for APOC1 shows high expression in the interacting region and pockets of high and low expression in Pattern_1 and Pattern_5. The Dunn_pval_2_1 is high compared to that of the previous two genes indicating APOC1 is expressed to a similar level in both patterns when compared to the interacting region.
+
+### Pattern_1 Only vs Pattern_5 (including Pattern_5 in interacting region)
+
+#### Table of statistics
 
 ```{r}
+head(residual_p1_p2 %>% dplyr::filter(residual_p1_p2$`Pattern_1 x Pattern_5` == "vsPattern_5"),n_genes - 1)
 
+```
+
+#### Visualizations
+
+```{r}
 plot_grid(plotlist = list(plist[[4]],plots[[4]]))
 plot_grid(plotlist = list(plist[[5]],plots[[5]]))
-
 ```
+
+The expression of ERAL1 and S100A9, is fairly low across all of the regions from both the box plots and spatial heatmaps and it is difficult to distinguish any prevalent region. The KW test p-values and the Dunn's test p-values are all fairly high indicating that the difference in expression between Pattern_1 only and Pattern_5 is not very statistically significant.
 
 ### Pattern_5 Only vs Pattern_1
 
+#### Table of statistics
+
 ```{r}
-#Table of Interaction for this Pattern
+head(residual_p1_p2 %>% dplyr::filter(residual_p1_p2$`Pattern_1 x Pattern_5` == "vsPattern_1"),n_genes - 1 )
 ```
 
+#### Visualizations
 
 ```{r}
-
-plot_grid(plotlist = list(plist[[6]],plots[[6]]))
 plot_grid(plotlist = list(plist[[7]],plots[[7]]))
-
-
+plot_grid(plotlist = list(plist[[8]],plots[[8]]))
 ```
-When looking at either Pattern_1 or Pattern_5 only vs the other it is difficult to see isolated expression profiles for the genes selected. This implies that there throughout the sample there are many interactions with the immune cells and invasive carcinoma lesion. 
 
+In this comparison the box plots show high expression of TMEM147 in Pattern_5 and the interacting region compared to Pattern_1. However, the prevalent expression profile for GLB1 is harder to distinguish. Like the Pattern_1 Only vs Pattern_5, the p-values here are relatively high indicating low statistical significance.
 
-## Enrichment Analysis
-```{r message = FALSE, warning=FALSE}
-library(org.Hs.eg.db)
-library(clusterProfiler)
-library(enrichplot)
-library(DOSE)
-```
+In this analysis the genes associated with the interacting pattern vs both Pattern_1 and Pattern_5 showed the highest statistical significance with regards to differences in expression. This fact was reflected by distinct regions of expression observed on the plots for the vsBoth category but not so much for the vsPattern_1 and vsPattern_5 categories. For this breast cancer dataset the genes associated with the interacting immune and invasive patterns are more important than either of the patterns exclusively.
+
+## Removing Directories
 
 ```{r}
-# marker_df <- SpaceMarkers$interacting_genes[[3]]
-# marker_df <- marker_df[marker_df$`Pattern_1 x Pattern_5` == "vsBoth",]
-# #marker_df <- marker_df[marker_df$`Pattern_1 x Pattern_5` == "vsBoth",]
-# gene_list = marker_df[,"KW.pvalue"]
-# names(gene_list) = marker_df[,"Gene"]
-# gene_list = sort(gene_list, decreasing = TRUE)
-# mysymbols <- names(gene_list)
-# matx <- AnnotationDbi::select(org.Hs.eg.db, keys=mysymbols, columns=c("ENTREZID","GENENAME"), keytype="ALIAS")
-# kk <- enrichKEGG(gene = matx$ENTREZID,organism  = 'hsa', pvalueCutoff = 0.05)
-# dotplot(kk, showCategory=15, x = 'Count', font.size = 8)
-
+unlink("Visium_FFPE_Human_Breast_Cancer_spatial.tar.gz")
+unlink(basename(counts_url))
+unlink("CogapsResult_5.rds")
+unlink("spatial", recursive = TRUE)
 ```
-```{r}
-set.seed(7)
-# Use metric: (1 - p) * (1 - p) * (1 - p) - for KW, Dunn1 and Dun2
-marker_df2 <- SpaceMarkers$interacting_genes[[4]]
-marker_df2$metric <-  (1 - marker_df2$KW.p.adj) * (1 - marker_df2$Dunn.pval_1_Int.adj) * (1 - marker_df2$Dunn.pval_2_Int.adj)
-#marker_df2 <- marker_df2[marker_df2$`Pattern_1 x Pattern_5` == "vsBoth",]
-matx2 <- AnnotationDbi::select(org.Hs.eg.db, keys=marker_df2[,"Gene"], columns=c("ENTREZID","GENENAME"), keytype="ALIAS")
-etz_df <- merge(x=matx2,y=marker_df2, by.x="ALIAS", by.y="Gene",all.x=TRUE)
-etz_list = etz_df[,"metric"]
-names(etz_list) = etz_df[,"ENTREZID"]
-#etz_list <- etz_list[complete.cases(names(etz_list))]
-#etz_list <- -log10(etz_list)
-#etz_list <- (etz_list-mean(etz_list))/sd(etz_list)
-etz_list <- etz_list[order(-etz_list)]
-#etz_list <- etz_list[!duplicated(names(etz_list))]
-#edo2 <- gseDO(etz_list)
-edo2 <- gseDO(etz_list, score = "pos")
-```
-
-
-## Enrichment Plots
-```{r}
-dotplot(edo2, x = 'Count', font.size = 8)
-ridgeplot(edo2) + theme(axis.text.y = element_text(size = 8))
-```
-
-
-## GSEA
-```{r}
-gseaplot2(edo2, geneSetID = 1, pvalue_table = TRUE)
-```
-
 
 ## load10XExpr() Arguments
+
 ```{r echo=FALSE}
 parameters = c('visiumDir', 'h5filename')
 paramDescript = c('A string path to the h5 file with expression information', 'A string of the name of the h5 file in the directory')
-
 paramTable = data.frame(parameters, paramDescript)
 knitr::kable(paramTable, col.names = c("Argument","Description"))
 
 ```
 
 ## load10XCoords() Arguments
+
 ```{r echo=FALSE}
 parameters = c('visiumDir', 'resolution')
 paramDescript = c('A string path to the location of the folder containing the spatial coordinates. The folder in your visiumDir must be named \'spatial\' and must contain files \'scalefactors_json.json\' and \'tissue_positions_list.csv\'. ', 'A string specifying which values to look for in the .json object. Can be either lowres or highres.')
@@ -604,8 +521,8 @@ knitr::kable(paramTable, col.names = c("Argument","Description"))
 
 ```
 
-
 ## getSpatialParameters() Arguments
+
 ```{r echo=FALSE}
 parameters = c('spatialPatterns')
 paramDescript = c('A data frame that contains the spatial coordinates for each cell type. The column names must include \'x\' and \'y\' as well as a set of numbered columns named  \'Pattern_1.....N\'.')
@@ -627,10 +544,3 @@ knitr::kable(paramTable, col.names = c("Argument","Description"))
 ```{r}
 sessionInfo()
 ```
-
-
-
-
-
-
-

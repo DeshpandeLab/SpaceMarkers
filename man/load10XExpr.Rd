@@ -12,6 +12,20 @@ load10XExpr(visiumDir = NULL, h5filename = "filtered_feature_bc_matrix.h5")
 
 \item{h5filename}{A string of the name of the h5 file in the directory.}
 }
+\value{
+A matrix of class dgeMatrix or Matrix that contains the expression
+info for each sample (cells) across multiple features (genes)
+}
 \description{
 This log-transformed 10X Visium expression data from standard 10X Visium folder.
+}
+\examples{
+main_10xlink <- "https://cf.10xgenomics.com/samples/spatial-exp/1.3.0"
+counts_folder <- "Visium_Human_Breast_Cancer"
+counts_file <- "Visium_Human_Breast_Cancer_filtered_feature_bc_matrix.h5"
+counts_url<-paste(c(main_10xlink,counts_folder,counts_file), collapse = "/")
+system2("wget",c("-q",counts_url))
+counts_matrix<-load10XExpr(visiumDir = ".",h5filename = basename(counts_url))
+unlink(basename(counts_url))
+
 }
