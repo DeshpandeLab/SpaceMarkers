@@ -4,63 +4,117 @@
 find_pattern_hotspots <- function(spatialPatterns, params = NULL, patternName = "Pattern_1", outlier = "positive")
 {
   if (is.null(params)){
-    sigmaPair = 10
-    kernelthreshold = 2
+    sigmaPair <- 10
+    kernelthreshold <- 2
   }
   else{
-    sigmaPair = params["sigmaOpt"]
-    kernelthreshold = params["threshOpt"]
+    sigmaPair <- params["sigmaOpt"]
+    kernelthreshold <- params["threshOpt"]
   }
   
-  allwin = spatstat.geom::owin(xrange = c(min(spatialPatterns$x),max(spatialPatterns$x)), yrange = c(min(spatialPatterns$y),max(spatialPatterns$y)))
-  patternVector = as.matrix(spatialPatterns[,patternName])
+  allwin <- spatstat.geom::owin(xrange = c(min(spatialPatterns$x),max(spatialPatterns$x)), yrange = c(min(spatialPatterns$y),max(spatialPatterns$y)))
+  patternVector <- as.matrix(spatialPatterns[,patternName])
   X <-spatstat.geom::ppp(x = spatialPatterns$x, y = spatialPatterns$y, window = allwin, marks = patternVector)
-  Kact1 = spatstat.explore::Smooth(X, at = "points", sigma = sigmaPair[1], leaveoneout = T)
-  Karr1 = sapply(seq(1,100), function(i) {Xr = X; spatstat.geom::marks(Xr) = spatstat.geom::marks(X)[pracma::randperm(1:length(spatstat.geom::marks(X)))]; temp = spatstat.explore::Smooth(Xr, at = "points", sigma = sigmaPair[1], leaveoneout = T); return(temp)})
-  Karr1 = unlist(Karr1)
-  mKvec = mean(Karr1)
-  sKvec = sd(Karr1)
-  upthresh = mKvec+kernelthreshold*sKvec
-  lothresh = mKvec-kernelthreshold*sKvec
+  Kact1 <- spatstat.explore::Smooth(X, at = "points", sigma = sigmaPair[1], leaveoneout = T)
+  Karr1 <- vapply(seq(1,100), function(i) {Xr = X; spatstat.geom::marks(Xr) = spatstat.geom::marks(X)[pracma::randperm(1:length(spatstat.geom::marks(X)))]; temp = spatstat.explore::Smooth(Xr, at = "points", sigma = sigmaPair[1], leaveoneout = T); return(temp)}, numeric(length(Kact1)))
+  Karr1 <- unlist(Karr1)
+  mKvec <- mean(Karr1)
+  sKvec <- sd(Karr1)
+  upthresh <- mKvec+kernelthreshold*sKvec
+  lothresh <- mKvec-kernelthreshold*sKvec
   if (outlier == "positive"){
-    ind1 = which(Kact1 > upthresh[1])
+    ind1 <- which(Kact1 > upthresh[1])
   }
   else if (outlier == "two.sided")
   {
-    ind1 = which((Kact1 > upthresh)|(Kact1 < lothresh))
+    ind1 <- which((Kact1 > upthresh)|(Kact1 < lothresh))
   }
-  region = array(NA, length(Kact1))
-  region[ind1] = patternName
+  region <- array(NA, length(Kact1))
+  region[ind1] <- patternName
   return(region)
 }
 #===================
 #' getInteractingGenes
 #' Calculate Interaction Regions and Associated Genes
-#'
 #' This function calculates statistically significant genes using a non-parametric Kruskal-Wallis test for genes in any one region of influence and a post hoc Dunn's test is used for analysis of genes between regions.
-#'
-
 #' @export
+#' @usage
+#' getInteractingGenes(
+#'     data,
+#'     reconstruction = NULL,
+#'     spatialPatterns,
+#'     optParams = NULL,
+#'     refPattern = "Pattern_1",
+#'     mode = c("residual", "DE"),
+#'     minOverlap = 50,
+#'     hotspotRegions = NULL
+#' )
 #'
-#' @param data  original spatial data matrix.
-#' @param reconstruction  reconstruction of the data matrix from latent spaces.
-#' Required for "residual" mode.
-#' @param spatialPatterns A data frame that contains the spatial coordinates for each cell type. The column names must include 'x' and 'y' as well as a set of numbered columns named 'Pattern_1.....N'.
-#' @param optParams  a matrix with dimensions 2 X N, where N is the number of patterns with optimal parameters for outlier
+#' @param    data    original spatial data matrix.
+#' @param    reconstruction    reconstruction of the data matrix from latent spaces. Required for "residual" mode.
+#' @param    spatialPatterns    A data frame that contains the spatial coordinates for each cell type. The column names must include 'x' and 'y' as well as a set of numbered columns named 'Pattern_1.....N'.
+#' @param    optParams    a matrix with dimensions 2 X N, where N is the number of patterns with optimal parameters for outlier
 #' detection calculated from function getSpatialParameters(). The first row contains the kernel width sigmaOpt for each
 #' pattern, and the second row is the threshOpt (outlier threshold) for each pattern. Users can also input their
 #' preferred param values.
 #' The default value is NULL.
-#' @param refPattern	 a character string that specifies the pattern whose "interaction" with every other pattern we want
+#' @param    refPattern     a character string that specifies the pattern whose "interaction" with every other pattern we want
 #' to study. The default value is "Pattern_1".
-#' @param mode  SpaceMarkers mode of operation. Possible values are "residual" (the default) or "DE".
-#' @param minOverlap a number that specifies the minimum overlap between genes in two patterns to be considered for the statistical tests. The default is 50.
-#' @param hotspotRegions a vector that specifies the patterns to compare to the 'refPattern'. The default is NULL which indicates that all patterns would be compared to the 'refPattern'.
-#'
-#'
-#'
+#' @param    mode    SpaceMarkers mode of operation. Possible values are "residual" (the default) or "DE".
+#' @param    minOverlap    a number that specifies the minimum overlap between genes in two patterns to be considered for the statistical tests. The default is 50.
+#' @param    hotspotRegions    a vector that specifies the patterns to compare to the 'refPattern'. The default is NULL which indicates that all patterns would be compared to the 'refPattern'.
 #' @return a list of data frames with information about the interacting genes of the refPattern and each latent feature pattern matrix (interacting_genes object). There is also a data frame with all of the regions of influence for any two of patterns (the hotspotRegions object).
-
+#' @examples 
+#' #Visium data links
+#' main_10xlink <- "https://cf.10xgenomics.com/samples/spatial-exp/1.3.0"
+#' counts_folder <- "Visium_Human_Breast_Cancer"
+#' counts_file <- "Visium_Human_Breast_Cancer_filtered_feature_bc_matrix.h5"
+#' counts_url<-paste(c(main_10xlink,counts_folder,counts_file), collapse = "/")
+#' sp_folder <- "Visium_FFPE_Human_Breast_Cancer"
+#' sp_file <- "Visium_FFPE_Human_Breast_Cancer_spatial.tar.gz"
+#' sp_url<-paste(c(main_10xlink,sp_folder,sp_file),collapse = "/")
+#' cg_main <- "https://github.com/atuldeshpande/SpaceMarkers-paper/blob/main"
+#' cg_folder <- "CoGAPS_Analysis/BreastCancer"
+#' cg_file <- "182967_1168993F_2_CogapsResult_5.rds?raw=true"
+#' cogaps_url <- paste(c(cg_main,cg_folder,cg_file), collapse = "/")
+#' #Counts Matrix
+#' system2("wget",c("-q",counts_url))
+#' counts_matrix<-load10XExpr(visiumDir = ".",h5filename = basename(counts_url))
+#' good_gene_threshold <- 3
+#' goodGenes <- rownames(counts_matrix)[apply(counts_matrix,1,function(x) 
+#'  sum(x>0)>=good_gene_threshold)]
+#' counts_matrix <- counts_matrix[goodGenes,]
+# Latent Feature Space
+#' system2("wget",c("-q",cogaps_url,"-O","CogapsResult_5.rds"))
+#' cogaps_result <- readRDS("CogapsResult_5.rds")
+#' cogaps_features <- slot(cogaps_result,"featureLoadings")
+#' features <- intersect(rownames(counts_matrix),rownames(cogaps_features))
+#' cogaps_barcodes <- slot(cogaps_result,"sampleFactors")
+#' barcodes <- intersect(colnames(counts_matrix),rownames(cogaps_barcodes))
+#' counts_matrix <- counts_matrix[features,barcodes]
+#' cogaps_matrix <- cogaps_features[features,] %*% t(cogaps_barcodes[barcodes,])
+#' # Spatial Coordinates
+#' download.file(sp_url, basename(sp_url))
+#' untar(basename(sp_url))
+#' spCoords <- load10XCoords(visiumDir = ".")
+#' rownames(spCoords) <- spCoords$barcode
+#' spCoords <- spCoords[barcodes,]
+#' spPatterns <- cbind(spCoords,cogaps_result@sampleFactors[barcodes,])
+# Get Breast Cancer data
+#' data("optParams_breast_cancer")
+#' # SpaceMarkers 
+#' SpaceMarkersMode <- "DE"
+#' ref_Pattern <- "Pattern_1"
+#' SpaceMarkers_DE <- getInteractingGenes(data = counts_matrix,
+#' reconstruction = NULL,
+#' optParams = optParams_breast_cancer,
+#' spatialPatterns = spPatterns,
+#' refPattern = ref_Pattern,
+#' mode = SpaceMarkersMode)
+#' unlink(basename(counts_url))
+#' unlink("CogapsResult_5.rds")
+#' unlink("spatial", recursive = TRUE)
+#' 
 
 getInteractingGenes <- function(data, reconstruction=NULL, spatialPatterns, optParams=NULL,
                                 refPattern="Pattern_1", mode=c("residual","DE"), minOverlap = 50, hotspotRegions = NULL){
@@ -69,18 +123,18 @@ getInteractingGenes <- function(data, reconstruction=NULL, spatialPatterns, optP
   if (mode=="residual"&&all(dim(data)!=dim(reconstruction))) stop("Original and reconstructed matrix do not have the same dimensions.")
   patternList <- colnames(spatialPatterns)[startsWith(colnames(spatialPatterns),"Pattern_")]
   if (is.null(optParams)){
-    print("optParams not provided. Calculating optParams.")
+    message("optParams not provided. Calculating optParams.")
     optParams <- getSpatialParameters(spatialPatterns)
   }
   else{
-    print("Using user provided optParams.")
+    message("Using user provided optParams.")
     if (any(colnames(optParams)!=patternList)) stop("Error: colnames of optParams must match Pattern names.")
     if (any(rownames(optParams)!=c("sigmaOpt","threshOpt"))) stop("Error: rownames of optParams must match c(\"sigmaOpt\",\"threshOpt\")")
     if(any(!is.numeric(optParams))) stop("Error: optParams must be numeric.")
   }
   if (is.null(hotspotRegions))
   {
-    hotspotRegions = c()
+    hotspotRegions <- c()
     for (patternName in patternList)
     {
       hotspotRegions <- cbind(hotspotRegions,find_pattern_hotspots(spatialPatterns = spatialPatterns,
@@ -95,7 +149,7 @@ getInteractingGenes <- function(data, reconstruction=NULL, spatialPatterns, optP
     stop("Error: hotspotRegions does not have refPattern column or dimension does not match with data.")
   }
   else
-    print("Using user provided hotspot regions.")
+    message("Using user provided hotspot regions.")
   
   
   interacting.genes <- list();
@@ -107,7 +161,7 @@ getInteractingGenes <- function(data, reconstruction=NULL, spatialPatterns, optP
     region <- factor(region)
     if (length(levels(region))<3||any(table(region)<minOverlap)) #default 50
     {
-      print(paste0(refPattern, " and ", pattern, " do not sufficiently interact. Skipping statistical test for genes."))
+      message(paste0(refPattern, " and ", pattern, " do not sufficiently interact. Skipping statistical test for genes."))
     } else {
       if (mode=="residual"){
         residualMat <- data - reconstruction
@@ -133,10 +187,4 @@ getInteractingGenes <- function(data, reconstruction=NULL, spatialPatterns, optP
   }
   return(list(interacting_genes=interacting_genes,hotspotRegions=hotspotRegions))
 }
-
-
-
-
-
-
 
