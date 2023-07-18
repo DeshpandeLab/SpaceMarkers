@@ -63,7 +63,7 @@ find_pattern_hotspots <- function(spatialPatterns, params = NULL, patternName = 
 
 
 getInteractingGenes <- function(data, reconstruction=NULL, spatialPatterns, optParams=NULL,
-	refPattern="Pattern_1", mode=c("residual","DE"), minOverlap = 50, hotspotRegions = NULL, keep_all_genes = FALSE){
+	refPattern="Pattern_1", mode=c("residual","DE"), minOverlap = 50, hotspotRegions = NULL, analysis = c("enrichment","overlap")){
     
     if (mode=="residual"&&is.null(reconstruction)) stop("Reconstruction matrix not provided for residual mode.")
     if (mode=="residual"&&all(dim(data)!=dim(reconstruction))) stop("Original and reconstructed matrix do not have the same dimensions.")
@@ -111,10 +111,10 @@ getInteractingGenes <- function(data, reconstruction=NULL, spatialPatterns, optP
       } else {
         if (mode=="residual"){
           residualMat <- data - reconstruction
-          interacting.genes <- c(interacting.genes,find_genes_of_interest_nonparametric_fast(testMat = residualMat, goodGenes = NULL, region=region))
+          interacting.genes <- c(interacting.genes,find_genes_of_interest_nonparametric_fast(testMat = residualMat, goodGenes = NULL, region=region, analysis = analysis))
         }
         else if (mode=="DE")
-          interacting.genes <- c(interacting.genes,find_genes_of_interest_nonparametric_fast(testMat = data, goodGenes = NULL, region=region, keep_all_genes = TRUE))
+          interacting.genes <- c(interacting.genes,find_genes_of_interest_nonparametric_fast(testMat = data, goodGenes = NULL, region=region, analysis = analysis))
         else
           stop("Invalid mode.")
       }
