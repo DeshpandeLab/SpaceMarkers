@@ -3,21 +3,24 @@
 \name{find_genes_of_interest_nonparametric_fast}
 \alias{find_genes_of_interest_nonparametric_fast}
 \title{find_genes_of_interest_nonparametric_fast
-Identify genes associated with pattern interaction.}
+Identify genes associated with pattern interaction.
+This function identifies genes exhibiting significantly higher values of testMat in the Interaction region of the two
+patterns compared #' to regions with exclusive influence from either pattern. It uses Kruskal-Wallis test followed by
+posthoc analysis using Dunn's Test to identify the genes.}
 \usage{
 find_genes_of_interest_nonparametric_fast(
-  testMat,
-  goodGenes = NULL,
-  region,
-  fdr.level = 0.05
+    testMat,
+    goodGenes = NULL,
+    region,
+    fdr.level = 0.05
 )
 }
 \arguments{
-\item{testMat}{...}
+\item{testMat}{A matrix of counts with cells as columns and genes as rows}
 
-\item{goodGenes}{...}
+\item{goodGenes}{A vector of user specified genes expected to interact a priori. The default for this is NULL as the function can find these genes itself}
 
-\item{region}{...}
+\item{region}{A data frame of the reference pattern regions that overlap with the other patterns}
 
 \item{fdr.level}{False Discovery Rate. The default value is 0.05.}
 }
@@ -25,6 +28,8 @@ find_genes_of_interest_nonparametric_fast(
 a list of genes exhibiting significantly higher values of testMat in the Interaction region of the two #' patterns compared to regions with exclusive influence from either pattern.
 }
 \description{
+find_genes_of_interest_nonparametric_fast
+Identify genes associated with pattern interaction.
 This function identifies genes exhibiting significantly higher values of testMat in the Interaction region of the two
 patterns compared #' to regions with exclusive influence from either pattern. It uses Kruskal-Wallis test followed by
 posthoc analysis using Dunn's Test to identify the genes.
