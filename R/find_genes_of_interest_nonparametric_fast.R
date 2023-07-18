@@ -66,7 +66,7 @@ row.dunn.test = function(in.data,region){
 #' @return a list of genes exhibiting significantly higher values of testMat in the Interaction region of the two #' patterns compared to regions with exclusive influence from either pattern.
 
 
-find_genes_of_interest_nonparametric_fast <- function(testMat, goodGenes = NULL, region, fdr.level = 0.05, keep_all_genes = FALSE)
+find_genes_of_interest_nonparametric_fast <- function(testMat, goodGenes = NULL, region, fdr.level = 0.05, analysis = c("enrichment","overlap"))
 {
   region = factor(region)
   patnames <- levels(region)[which(levels(region)!="Interacting")]
@@ -100,7 +100,7 @@ find_genes_of_interest_nonparametric_fast <- function(testMat, goodGenes = NULL,
   colnames(residuals.kruskal) <- paste0("KW.",colnames(residuals.kruskal))
   colnames(residuals.dunn.test) <- paste0("Dunn.",colnames(residuals.dunn.test))
   genes_interacting <- cbind(genes_interacting,residuals.kruskal[ind,],residuals.dunn.test)
-  if (keep_all_genes){
+  if (analysis=="enrichment"){
       genes_interacting <- genes_interacting[genes_interacting[,2]!="FALSE",]    
   }
   return(list(genes_interacting))
