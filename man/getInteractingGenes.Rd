@@ -7,14 +7,15 @@ Calculate Interaction Regions and Associated Genes
 This function calculates statistically significant genes using a non-parametric Kruskal-Wallis test for genes in any one region of influence and a post hoc Dunn's test is used for analysis of genes between regions.}
 \usage{
 getInteractingGenes(
-    data,
-    reconstruction = NULL,
-    spatialPatterns,
-    optParams = NULL,
-    refPattern = "Pattern_1",
-    mode = c("residual", "DE"),
-    minOverlap = 50,
-    hotspotRegions = NULL
+  data,
+  reconstruction = NULL,
+  spatialPatterns,
+  optParams = NULL,
+  refPattern = "Pattern_1",
+  mode = c("residual", "DE"),
+  minOverlap = 50,
+  hotspotRegions = NULL,
+  analysis = c("overlap", "enrichment")
 )
 }
 \arguments{
