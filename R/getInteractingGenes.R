@@ -65,7 +65,9 @@ find_pattern_hotspots <- function(spatialPatterns, params = NULL, patternName = 
 #' @param    hotspotRegions    a vector that specifies the patterns to compare to the 'refPattern'. The default is NULL which indicates that all patterns would be compared to the 'refPattern'.
 #' @return a list of data frames with information about the interacting genes of the refPattern and each latent feature pattern matrix (interacting_genes object). There is also a data frame with all of the regions of influence for any two of patterns (the hotspotRegions object).
 #' @examples 
+#' 
 #' #Visium data links
+#' library(SpaceMarkers)
 #' main_10xlink <- "https://cf.10xgenomics.com/samples/spatial-exp/1.3.0"
 #' counts_folder <- "Visium_Human_Breast_Cancer"
 #' counts_file <- "Visium_Human_Breast_Cancer_filtered_feature_bc_matrix.h5"
@@ -81,10 +83,10 @@ find_pattern_hotspots <- function(spatialPatterns, params = NULL, patternName = 
 #' system2("wget",c("-q",counts_url))
 #' counts_matrix<-load10XExpr(visiumDir = ".",h5filename = basename(counts_url))
 #' good_gene_threshold <- 3
-#' goodGenes <- rownames(counts_matrix)[apply(counts_matrix,1,function(x) 
-#'  sum(x>0)>=good_gene_threshold)]
+#' goodGenes <- rownames(counts_matrix)[apply(counts_matrix,1,function(x)
+#' sum(x>0)>=good_gene_threshold)]
 #' counts_matrix <- counts_matrix[goodGenes,]
-# Latent Feature Space
+#' # Latent Feature Space
 #' system2("wget",c("-q",cogaps_url,"-O","CogapsResult_5.rds"))
 #' cogaps_result <- readRDS("CogapsResult_5.rds")
 #' cogaps_features <- slot(cogaps_result,"featureLoadings")
@@ -100,21 +102,33 @@ find_pattern_hotspots <- function(spatialPatterns, params = NULL, patternName = 
 #' rownames(spCoords) <- spCoords$barcode
 #' spCoords <- spCoords[barcodes,]
 #' spPatterns <- cbind(spCoords,cogaps_result@sampleFactors[barcodes,])
-# Get Breast Cancer data
+#' #Get Breast Cancer data
 #' data("optParams_breast_cancer")
-#' # SpaceMarkers 
 #' SpaceMarkersMode <- "DE"
-#' ref_Pattern <- "Pattern_1"
-#' SpaceMarkers_DE <- getInteractingGenes(data = counts_matrix,
-#' reconstruction = NULL,
-#' optParams = optParams_breast_cancer,
-#' spatialPatterns = spPatterns,
-#' refPattern = ref_Pattern,
-#' mode = SpaceMarkersMode)
+#' data("SpaceMarkers_DEMode_breast_cancer")
+#' sm <- SpaceMarkers_DEMode_breast_cancer
+#' hotspots <- sm$hotspotRegions
+#' ref <- "Pattern_1"
+#' opt <- subset(optParams_breast_cancer,
+#'               select = c(Pattern_1,Pattern_5))
+#' hotspots <- subset(hotspots,select = c(Pattern_1,Pattern_5))
+#' spPatterns <- subset(spPatterns, select = c(barcode,y,x,Pattern_1,Pattern_5))
+#' set.seed(42)
+#' rand_rows <- sample(1:nrow(hotspots),1200)
+#' hotspots <- hotspots[rand_rows,]
+#' spPatterns <- spPatterns[rand_rows,]
+#' new_counts <- counts_matrix[,rand_rows]
+#' SpaceMarkers_DE <- getInteractingGenes(data = new_counts,
+#'                                        reconstruction = NULL,
+#'                                      optParams = opt,
+#'                                        spatialPatterns = spPatterns,
+#'                                        mode = SpaceMarkersMode,
+#'                                        refPattern = ref,
+#'                                        hotspotRegions = hotspots, 
+#'                                        minOverlap = 10)
 #' unlink(basename(counts_url))
 #' unlink("CogapsResult_5.rds")
 #' unlink("spatial", recursive = TRUE)
-#' 
 
 getInteractingGenes <- function(data, reconstruction=NULL, spatialPatterns, optParams=NULL,
                                 refPattern="Pattern_1", mode=c("residual","DE"), minOverlap = 50, hotspotRegions = NULL){

@@ -4,8 +4,10 @@
 \alias{find_genes_of_interest_nonparametric_fast}
 \title{find_genes_of_interest_nonparametric_fast
 Identify genes associated with pattern interaction.
-This function identifies genes exhibiting significantly higher values of testMat in the Interaction region of the two
-patterns compared #' to regions with exclusive influence from either pattern. It uses Kruskal-Wallis test followed by
+This function identifies genes exhibiting significantly higher values of
+testMat in the Interaction region of the two
+patterns compared #' to regions with exclusive influence from either pattern.
+It uses Kruskal-Wallis test followed by
 posthoc analysis using Dunn's Test to identify the genes.}
 \usage{
 find_genes_of_interest_nonparametric_fast(
@@ -18,19 +20,26 @@ find_genes_of_interest_nonparametric_fast(
 \arguments{
 \item{testMat}{A matrix of counts with cells as columns and genes as rows}
 
-\item{goodGenes}{A vector of user specified genes expected to interact a priori. The default for this is NULL as the function can find these genes itself}
+\item{goodGenes}{A vector of user specified genes expected to interact
+a priori. The default for this is NULL as the function can find these genes
+itself}
 
-\item{region}{A data frame of the reference pattern regions that overlap with the other patterns}
+\item{region}{A data frame of the reference pattern regions that overlap
+with the other patterns}
 
 \item{fdr.level}{False Discovery Rate. The default value is 0.05.}
 }
 \value{
-a list of genes exhibiting significantly higher values of testMat in the Interaction region of the two #' patterns compared to regions with exclusive influence from either pattern.
+a list of genes exhibiting significantly higher values of testMat in
+the Interaction region of the two #' patterns compared to regions with
+exclusive influence from either pattern.
 }
 \description{
 find_genes_of_interest_nonparametric_fast
 Identify genes associated with pattern interaction.
-This function identifies genes exhibiting significantly higher values of testMat in the Interaction region of the two
-patterns compared #' to regions with exclusive influence from either pattern. It uses Kruskal-Wallis test followed by
+This function identifies genes exhibiting significantly higher values of
+testMat in the Interaction region of the two
+patterns compared #' to regions with exclusive influence from either pattern.
+It uses Kruskal-Wallis test followed by
 posthoc analysis using Dunn's Test to identify the genes.
 }

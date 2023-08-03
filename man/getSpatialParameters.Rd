@@ -8,13 +8,19 @@ Calculate the Optimal Parameters for Interacting Cells}
 getSpatialParameters(spatialPatterns)
 }
 \arguments{
-\item{spatialPatterns}{A data frame that contains the spatial coordinates for each cell type. The column names must include 'x' and 'y' as well as a set of numbered columns named  'Pattern_1.....N'.}
+\item{spatialPatterns}{A data frame that contains the spatial coordinates
+for each cell type. The column names must include 'x' and 'y' as well as a
+set of numbered columns named  'Pattern_1.....N'.}
 }
 \value{
-a numeric matrix of sigmaOpts - the optimal width of the gaussian distribution, and the thresOpt - outlier threshold around the set of spots for each pattern
+a numeric matrix of sigmaOpts - the optimal width of the gaussian
+distribution, and the thresOpt - outlier threshold around the set of spots
+for each pattern
 }
 \description{
-This function calculates the optimal width of the gaussian distribution (sigmaOpt) as well as the outlier threshold around the set of spots (thresOpt) for each pattern from a latent feature space.
+This function calculates the optimal width of the gaussian distribution
+(sigmaOpt) as well as the outlier threshold around the set of spots
+(thresOpt) for each pattern from a latent feature space.
 }
 \examples{
 # Create test data
