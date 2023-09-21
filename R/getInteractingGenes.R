@@ -172,10 +172,10 @@ getInteractingGenes <- function(data, reconstruction=NULL, spatialPatterns, optP
   for (i in seq(1,length(interacting_genes)))
   {
     if (all(dim(interacting_genes[[i]])>1))   {
-        interacting_genes[[i]]$SpaceMarkersMetric <-  interacting_genes[[i]]$KW.statistic * (2 - interacting_genes[[i]]$Dunn.pval_1_Int.adj) * (2 - interacting_genes[[i]]$Dunn.pval_2_Int.adj) * (2*(-1)^(pmin(interacting_genes[[i]]$Dunn.zP1_Int,interacting_genes[[i]]$Dunn.zP2_Int)>0)-1)
-        #interacting_genes[[i]]$SpaceMarkersMetric <- log2(interacting_genes[[i]]$KW.statistic) * log2(1+abs(interacting_genes[[i]]$Dunn.zP1_Int)) * log2(1+abs(interacting_genes[[i]]$Dunn.zP2_Int)) * (2*(-1)^(pmin(interacting_genes[[i]]$Dunn.zP1_Int,interacting_genes[[i]]$Dunn.zP2_Int)>0)-1)
+        interacting_genes[[i]]$SpaceMarkersMetric <-  abs(interacting_genes[[i]]$Dunn.zP1_Int) * abs(interacting_genes[[i]]$Dunn.zP2_Int) * (2*(-1)^(pmin(interacting_genes[[i]]$Dunn.zP1_Int,interacting_genes[[i]]$Dunn.zP2_Int)>=0)-1)
       od <- order(interacting_genes[[i]]$SpaceMarkersMetric, decreasing = T)
       interacting_genes[[i]] <- interacting_genes[[i]][od,]
+      interacting_genes[[i]] <- interacting_genes[[i]][!is.na(interacting_genes[[i]]$SpaceMarkersMetric),]
     }
   }
   return(list(interacting_genes=interacting_genes,hotspotRegions=hotspotRegions))
