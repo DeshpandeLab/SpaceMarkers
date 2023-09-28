@@ -6,7 +6,7 @@
 #' breast cancer sample.
 #' 
 #' 
-#'
+#' @name optParams_breast_cancer
 #' @format A data frame with 2 rows and 5 columns:
 #' \describe{
 #'   \item{Pattern_1}{immune cell pattern paramters }
@@ -17,5 +17,4 @@
 #'
 #' }
 #' @return A matrix of optimal parameters for patterns identified by CoGAPS
-#' 
-"optParams_breast_cancer"
+NULL

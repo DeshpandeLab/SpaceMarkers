@@ -38,17 +38,6 @@ find_pattern_hotspots <- function(spatialPatterns, params = NULL, patternName = 
 #' Calculate Interaction Regions and Associated Genes
 #' This function calculates statistically significant genes using a non-parametric Kruskal-Wallis test for genes in any one region of influence and a post hoc Dunn's test is used for analysis of genes between regions.
 #' @export
-#' @usage
-#' getInteractingGenes(
-#'     data,
-#'     reconstruction = NULL,
-#'     spatialPatterns,
-#'     optParams = NULL,
-#'     refPattern = "Pattern_1",
-#'     mode = c("residual", "DE"),
-#'     minOverlap = 50,
-#'     hotspotRegions = NULL
-#' )
 #'
 #' @param    data    original spatial data matrix.
 #' @param    reconstruction    reconstruction of the data matrix from latent spaces. Required for "residual" mode.
@@ -63,6 +52,7 @@ find_pattern_hotspots <- function(spatialPatterns, params = NULL, patternName = 
 #' @param    mode    SpaceMarkers mode of operation. Possible values are "residual" (the default) or "DE".
 #' @param    minOverlap    a number that specifies the minimum overlap between genes in two patterns to be considered for the statistical tests. The default is 50.
 #' @param    hotspotRegions    a vector that specifies the patterns to compare to the 'refPattern'. The default is NULL which indicates that all patterns would be compared to the 'refPattern'.
+#' @param    analysis a character string that specifies the type of analysis to carry out, whether overlap or enrichment.
 #' @return a list of data frames with information about the interacting genes of the refPattern and each latent feature pattern matrix (interacting_genes object). There is also a data frame with all of the regions of influence for any two of patterns (the hotspotRegions object).
 #' @examples 
 #' #Visium data links
@@ -110,17 +100,26 @@ find_pattern_hotspots <- function(spatialPatterns, params = NULL, patternName = 
 #' optParams = optParams_breast_cancer,
 #' spatialPatterns = spPatterns,
 #' refPattern = ref_Pattern,
-#' mode = SpaceMarkersMode)
+#' mode = SpaceMarkersMode, analysis = "overlap")
 #' unlink(basename(counts_url))
 #' unlink("CogapsResult_5.rds")
 #' unlink("spatial", recursive = TRUE)
 #' 
 
 getInteractingGenes <- function(data, reconstruction=NULL, spatialPatterns, optParams=NULL,
-                                refPattern="Pattern_1", mode=c("residual","DE"), minOverlap = 50, hotspotRegions = NULL){
-  
-  if (mode=="residual"&&is.null(reconstruction)) stop("Reconstruction matrix not provided for residual mode.")
-  if (mode=="residual"&&all(dim(data)!=dim(reconstruction))) stop("Original and reconstructed matrix do not have the same dimensions.")
+                                refPattern="Pattern_1", mode=c("residual","DE"), minOverlap = 50, hotspotRegions = NULL, analysis = c("overlap","enrichment")){
+  if (mode=="residual"){
+      if (is.null(reconstruction))
+          stop("Reconstruction matrix not provided for residual mode.")
+      else if (all(dim(data)!=dim(reconstruction)))
+          stop("Original and reconstructed matrix do not have the same dimensions.")
+      else 
+          testMat <- data - reconstruction
+  }
+  else if (mode=="DE") testMat <- data
+  else
+      stop("Invalid mode.")
+ 
   patternList <- colnames(spatialPatterns)[startsWith(colnames(spatialPatterns),"Pattern_")]
   if (is.null(optParams)){
     message("optParams not provided. Calculating optParams.")
@@ -160,29 +159,24 @@ getInteractingGenes <- function(data, reconstruction=NULL, spatialPatterns, optP
     region <- ifelse(!is.na(region) & !is.na(hotspotRegions[,pattern]),"Interacting",ifelse(!is.na(region),region,hotspotRegions[,pattern]))
     region <- factor(region)
     if (length(levels(region))<3||any(table(region)<minOverlap)) #default 50
-    {
-      message(paste0(refPattern, " and ", pattern, " do not sufficiently interact. Skipping statistical test for genes."))
-    } else {
-      if (mode=="residual"){
-        residualMat <- data - reconstruction
-        interacting.genes <- c(interacting.genes,find_genes_of_interest_nonparametric_fast(testMat = residualMat, goodGenes = NULL, region=region))
-      }
-      else if (mode=="DE")
-        interacting.genes <- c(interacting.genes,find_genes_of_interest_nonparametric_fast(testMat = data, goodGenes = NULL, region=region))
-      else
-        stop("Invalid mode.")
-    }
+        message(paste0(refPattern, " and ", pattern, " do not sufficiently interact. Skipping statistical test for genes."))
+     else
+        interacting.genes <- c(interacting.genes,find_genes_of_interest_nonparametric_fast(testMat = testMat, goodGenes = NULL, region=region, analysis = analysis))
   }
-  
   interacting_genes <- lapply(interacting.genes, as.data.frame)
-  for (i in seq(1,length(interacting_genes)))
-    interacting_genes[[i]]$KW.p.adj <- as.numeric(interacting_genes[[i]]$KW.p.adj)
-  
+  for (i in seq(1,length(interacting_genes))){
+      interacting_genes[[i]]$KW.p.adj <- as.numeric(interacting_genes[[i]]$KW.p.adj)
+      interacting_genes[[i]]$Dunn.pval_1_Int.adj <- as.numeric(interacting_genes[[i]]$Dunn.pval_1_Int.adj)
+      interacting_genes[[i]]$Dunn.pval_2_Int.adj <- as.numeric(interacting_genes[[i]]$Dunn.pval_2_Int.adj)
+  }
+      
   for (i in seq(1,length(interacting_genes)))
   {
     if (all(dim(interacting_genes[[i]])>1))   {
-      od <- order(interacting_genes[[i]]$KW.p.adj)
+        interacting_genes[[i]]$SpaceMarkersMetric <-  abs(interacting_genes[[i]]$Dunn.zP1_Int) * abs(interacting_genes[[i]]$Dunn.zP2_Int) * (2*(-1)^(pmin(interacting_genes[[i]]$Dunn.zP1_Int,interacting_genes[[i]]$Dunn.zP2_Int)>=0)-1)
+      od <- order(interacting_genes[[i]]$SpaceMarkersMetric, decreasing = T)
       interacting_genes[[i]] <- interacting_genes[[i]][od,]
+      interacting_genes[[i]] <- interacting_genes[[i]][!is.na(interacting_genes[[i]]$SpaceMarkersMetric),]
     }
   }
   return(list(interacting_genes=interacting_genes,hotspotRegions=hotspotRegions))
