@@ -52,6 +52,7 @@ find_pattern_hotspots <- function(spatialPatterns, params = NULL, patternName = 
 #' @param    mode    SpaceMarkers mode of operation. Possible values are "residual" (the default) or "DE".
 #' @param    minOverlap    a number that specifies the minimum overlap between genes in two patterns to be considered for the statistical tests. The default is 50.
 #' @param    hotspotRegions    a vector that specifies the patterns to compare to the 'refPattern'. The default is NULL which indicates that all patterns would be compared to the 'refPattern'.
+#' @param    analysis a character string that specifies the type of analysis to carry out, whether overlap or enrichment.
 #' @return a list of data frames with information about the interacting genes of the refPattern and each latent feature pattern matrix (interacting_genes object). There is also a data frame with all of the regions of influence for any two of patterns (the hotspotRegions object).
 #' @examples 
 #' #Visium data links
@@ -99,7 +100,7 @@ find_pattern_hotspots <- function(spatialPatterns, params = NULL, patternName = 
 #' optParams = optParams_breast_cancer,
 #' spatialPatterns = spPatterns,
 #' refPattern = ref_Pattern,
-#' mode = SpaceMarkersMode)
+#' mode = SpaceMarkersMode, analysis = "overlap")
 #' unlink(basename(counts_url))
 #' unlink("CogapsResult_5.rds")
 #' unlink("spatial", recursive = TRUE)

@@ -60,12 +60,14 @@ return(cbind(zVals,pvals))
 #'     testMat,
 #'     goodGenes = NULL,
 #'     region,
-#'     fdr.level = 0.05
+#'     fdr.level = 0.05,
+#'     analysis = c("enrichment", "overlap")
 #' )
 #' @param    testMat A matrix of counts with cells as columns and genes as rows
 #' @param    goodGenes A vector of user specified genes expected to interact a priori. The default for this is NULL as the function can find these genes itself
 #' @param    region A data frame of the reference pattern regions that overlap with the other patterns
 #' @param    fdr.level False Discovery Rate. The default value is 0.05.
+#' @param    analysis a character string that specifies the type of analysis to carry out, whether overlap or enrichment.
 #'
 #' @return a list of genes exhibiting significantly higher values of testMat in the Interaction region of the two #' patterns compared to regions with exclusive influence from either pattern.
 

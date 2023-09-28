@@ -12,7 +12,8 @@ find_genes_of_interest_nonparametric_fast(
     testMat,
     goodGenes = NULL,
     region,
-    fdr.level = 0.05
+    fdr.level = 0.05,
+    analysis = c("enrichment", "overlap")
 )
 }
 \arguments{
@@ -23,6 +24,8 @@ find_genes_of_interest_nonparametric_fast(
 \item{region}{A data frame of the reference pattern regions that overlap with the other patterns}
 
 \item{fdr.level}{False Discovery Rate. The default value is 0.05.}
+
+\item{analysis}{a character string that specifies the type of analysis to carry out, whether overlap or enrichment.}
 }
 \value{
 a list of genes exhibiting significantly higher values of testMat in the Interaction region of the two #' patterns compared to regions with exclusive influence from either pattern.
