@@ -81,6 +81,18 @@ unlink("CogapsResult_5.rds")
 unlink("spatial", recursive = TRUE)
 ```
 
+## Removing Directories
+
+The functions require that some files and directories with the same name be 
+unique. Therefore any downloads from a previous run will be removed.
+```{r}
+unlink(sp_file)
+files <- list.files(".")[grepl(counts_file,list.files("."))]
+unlink(files)
+unlink("CogapsResult_5.rds")
+unlink("spatial", recursive = TRUE)
+```
+
 ### Extracting Counts Matrix
 
 Here the counts matrix will be obtained from the h5 object in the Visium site 
@@ -259,16 +271,19 @@ molecular interactions between regions.
 
 ```{r eval = FALSE}
 SpaceMarkersMode = "DE"
+
 SpaceMarkers_DE <- getInteractingGenes(
     data=counts_matrix,reconstruction=NULL,
     optParams = optParams,
     spPatterns = spPatterns,
     refPattern = SpaceMarkersRefPattern,
     mode=SpaceMarkersMode,analysis="overlap")
-```
 
+```
 ```{r}
+
 data("DE_p1_p5_overlap_df")
+
 ```
 
 ### Differences between Residual Mode and DE Mode
@@ -305,12 +320,14 @@ the second list compared to the reference it is classified as NA.
 
 compare_genes <- function(ref_list, list2,ref_name = "mode1",
                             list2_name = "mode2", sub_slice = NULL){
+
     if (is.null(sub_slice)) {
         ref_rank <- seq(1,length(ref_list),1)
     } else {
         ref_rank <- which(ref_list %in% ref_list[sub_slice])
         ref_list <- ref_list[ref_rank]
     }
+
     list2_ref_rank <- which(list2 %in% ref_list)
     list2_ref_genes <- list2[which(list2 %in% ref_list)]
     ref_genes_only <- ref_list[ !ref_list  %in% list2_ref_genes ]
@@ -339,12 +356,10 @@ DE_to_res <- compare_genes(head(DE_p1_p2$Gene, n = 20),residual_p1_p2$Gene,
 res_to_DE
 ```
 
-
 Here we identify the top 20 genes in 'residual' mode and their corresponding 
 ranking in DE mode. APOC1,IGHE,IFI30,CLU,CST1,CAPG,TGM2,TREM2 and GCHFR  are 
 ranked high in both 'DE' and 'residual' mode. While 2 genes that are ranked 
 high in 'residual' mode are not identified at all in 'DE' mode
-
 
 #### Comparing DE mode to residual mode
 
@@ -352,12 +367,10 @@ high in 'residual' mode are not identified at all in 'DE' mode
 DE_to_res
 ```
 
-
 There were 6 genes that were interacting in 'DE' mode but not 'residual' mode. 
 Recall that DE mode looks at the information encoded in the latent feature space
 and does not filter out genes based on any confounders between the counts matrix
 and latent feature matrix as is done in 'residual' mode.
-
 
 There is some agreement with interacting genes between the two methods but there
 are also quite a few differences. Therefore, the selected mode can significantly
@@ -753,7 +766,6 @@ plot_grid(plotlist = list(plist[[1]],plots[[1]]))
 plot_grid(plotlist = list(plist[[2]],plots[[2]]))
 ```
 
-
 On the spatial heatmap, Pattern_1 takes up most of the top half of the spatial
 heatmap, followed by the interacting region along the diagonal and finally 
 Pattern_5 in the bottom left corner. APOC1 is expressed across all patterns but
@@ -764,15 +776,18 @@ However, the overall SpaceMarkersMetric for APOC1 is higher and so it is
 ranked higher than IGHE.
 
 
-
 ```{r}
 plot_grid(plotlist = list(plist[[3]],plots[[3]]))
 ```
 
+<<<<<<< HEAD
 The spatial heatmap for IFI30 shows fairly high expression in multiple patterns
 but especially in the interacting regions. This is reflected in the box plots 
 as well with fairly high expression in the interacting pattern vs the other 
 two patterns.
+=======
+The spatial heatmap for IFI30 shows fairly high expression in multiple patterns but especially in the interacting regions. This is reflected in the box plots as well with fairly high expression in the interacting pattern vs the other two patterns.
+>>>>>>> main
 
 ### Pattern_1 Only vs Pattern_5 (including Pattern_5 in interacting region)
 
@@ -790,7 +805,6 @@ head(residual_p1_p2 %>% dplyr::filter(
 plot_grid(plotlist = list(plist[[4]],plots[[4]]))
 plot_grid(plotlist = list(plist[[5]],plots[[5]]))
 ```
-
 
 Unlike the previous three genes the KW pvalues and Dunn's pvalues are relatively
 high so the distinction will not appear as pronounced. The ING1 gene shows
@@ -814,7 +828,6 @@ head(residual_p1_p2 %>% dplyr::filter(
 plot_grid(plotlist = list(plist[[7]],plots[[7]]))
 plot_grid(plotlist = list(plist[[8]],plots[[8]]))
 ```
-
 
 In this comparison the box plots show high expression of TMEM147 in Pattern_5 
 and the interacting region compared to Pattern_1. However, the prevalent
