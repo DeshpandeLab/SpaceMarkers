@@ -51,7 +51,7 @@ return(cbind(zVals,pvals))
 }
 
 #===================
-#' find_genes_of_interest_nonparametric_fast
+#' find_genes_of_interest
 #' Identify genes associated with pattern interaction.
 
 #' This function identifies genes exhibiting significantly higher values of 
@@ -61,11 +61,12 @@ return(cbind(zVals,pvals))
 #' posthoc analysis using Dunn's Test to identify the genes.
 #'
 #' @usage
-#' find_genes_of_interest_nonparametric_fast(
+#' find_genes_of_interest(
 #'     testMat,
 #'     goodGenes = NULL,
 #'     region,
-#'     fdr.level = 0.05
+#'     fdr.level = 0.05,
+#'     analysis = c("enrichment", "overlap")
 #' )
 #' @param    testMat A matrix of counts with cells as columns and genes as rows
 #' @param    goodGenes A vector of user specified genes expected to interact 
@@ -74,15 +75,18 @@ return(cbind(zVals,pvals))
 #' @param    region A data frame of the reference pattern regions that overlap 
 #' with the other patterns
 #' @param    fdr.level False Discovery Rate. The default value is 0.05.
+#' @param    analysis a character string that specifies the type of analysis to 
+#' carry out, whether overlap or enrichment.
 #'
 #' @return a list of genes exhibiting significantly higher values of testMat in 
 #' the Interaction region of the two #' patterns compared to regions with 
 #' exclusive influence from either pattern.
 
 
-find_genes_of_interest_nonparametric_fast <- function(testMat, goodGenes = NULL,
-                                                    region, fdr.level = 0.05)
-{
+
+find_genes_of_interest<-function(
+        testMat,goodGenes=NULL,region, fdr.level=0.05,
+        analysis=c("enrichment","overlap")) {
     region <- factor(region)
     patnames <- levels(region)[which(levels(region)!="Interacting")]
     pattern1 <- patnames[1]
@@ -91,39 +95,40 @@ find_genes_of_interest_nonparametric_fast <- function(testMat, goodGenes = NULL,
         subset_goodGenes <- intersect(rownames(testMat),goodGenes)
         testMat <- testMat[subset_goodGenes,]
         }
-    residuals.kruskal <- matrixTests::row_kruskalwallis(x = as.matrix(testMat),
-                                                        g = region)
-    qq <- qvalue::qvalue(residuals.kruskal$pvalue,fdr.level = fdr.level,
+    res_kruskal<- matrixTests::row_kruskalwallis(x=as.matrix(testMat),g=region)
+    qq <- qvalue::qvalue(res_kruskal$pvalue,fdr.level = fdr.level,
                             pfdr = FALSE, pi0 = 1)
-    residuals.kruskal <- cbind(residuals.kruskal,p.adj = qq$qvalues)
-    ind<-rownames(residuals.kruskal[which(residuals.kruskal$p.adj<fdr.level),])
-    res.dunn <- row.dunn.test(as.matrix(testMat[ind,]),region)
-    rownames(res.dunn) <- rownames(res.dunn) <- ind
-    qq <- qvalue::qvalue(res.dunn[,4:6],fdr.level = fdr.level, 
-                            pfdr = FALSE, pi0 = 1)
-    res.dunn <- cbind(res.dunn,qq$qvalues)
-    colnames(res.dunn)[7:9] <- paste0(colnames(res.dunn)[7:9],".adj")
-    interacting_over_pattern1 <- res.dunn[,"pval_1_Int"]<fdr.level
-    interacting_over_pattern2 <- res.dunn[,"pval_2_Int"]<fdr.level
-    interacting_over_both_patterns <- interacting_over_pattern1 & 
-        interacting_over_pattern2
-    not_pattern1_diff_pattern2 <- res.dunn[,"pval_2_1"]>=fdr.level
-    exc_pattern1 <- interacting_over_pattern1 & 
-        not_pattern1_diff_pattern2
-    exc_pattern2 <- interacting_over_pattern2 & 
-        not_pattern1_diff_pattern2
-    names(interacting_over_both_patterns)<-names(exc_pattern1)<-
-        names(exc_pattern2) <- ind
-    inter_genes<-matrix(FALSE,nrow=length(ind),ncol=2,
-                        dimnames=list(ind,c("Gene",
-                                            paste0(pattern1,' x ', pattern2))))
-    inter_genes[,1] <- rownames(inter_genes)
-    inter_genes[ind[which(exc_pattern1)],2]<-paste0("vs",pattern1)
-    inter_genes[ind[which(exc_pattern2)],2]<-paste0("vs",pattern2)
-    inter_genes[ind[which(interacting_over_both_patterns)],2]<-"vsBoth"
-    colnames(residuals.kruskal) <- paste0("KW.",colnames(residuals.kruskal))
-    colnames(res.dunn) <- paste0("Dunn.",colnames(res.dunn))
-    inter_genes <- cbind(inter_genes,residuals.kruskal[ind,],res.dunn)
-    inter_genes <- inter_genes[inter_genes[,2]!="FALSE",]
-    return(list(inter_genes))
+    res_kruskal <- cbind(res_kruskal,p.adj = qq$qvalues)
+    res_dunn_test <- row.dunn.test(as.matrix(testMat),region)
+    rownames(res_dunn_test) <- rownames(res_kruskal)
+    ind <- rownames(res_kruskal[which(res_kruskal$p.adj<fdr.level),])
+    qDunn <- qvalue::qvalue(res_dunn_test[,4:6],
+                            fdr.level = fdr.level, pfdr = FALSE, pi0 = 1)
+    qq<-qvalue::qvalue(
+        res_dunn_test[ind,4:6],fdr.level=fdr.level,pfdr=FALSE,pi0 = 1)
+    qDunn$qvalues[ind,] <- qq$qvalue
+    res_dunn_test <- cbind(res_dunn_test,qDunn$qvalues)
+    colnames(res_dunn_test)[7:9] <- paste0(colnames(res_dunn_test)[7:9],".adj")
+    interact_patt1 <- res_dunn_test[ind,"pval_1_Int"]<fdr.level
+    interact_patt2 <- res_dunn_test[ind,"pval_2_Int"]<fdr.level
+    interacting_over_both_patterns <- interact_patt1 & interact_patt2
+    not_pattern1_diff_pattern2 <- res_dunn_test[ind,"pval_2_1"]>=fdr.level
+    exc_interact_patt1 <- interact_patt1 & not_pattern1_diff_pattern2
+    exc_interact_patt2 <- interact_patt2 & not_pattern1_diff_pattern2
+    names(exc_interact_patt2)<-ind
+    names(exc_interact_patt1)<-names(exc_interact_patt2)
+    names(interacting_over_both_patterns)<-names(exc_interact_patt1)
+    interact_genes<-matrix(FALSE,nrow=nrow(res_dunn_test),ncol=2,dimnames=list(
+        rownames(res_dunn_test),c("Gene",paste0(pattern1,' x ',pattern2))))
+    interact_genes[,1] <- rownames(interact_genes)
+    interact_genes[ind[which(exc_interact_patt1)],2]<-paste0("vs",pattern1)
+    interact_genes[ind[which(exc_interact_patt2)],2]<-paste0("vs",pattern2)
+    interact_genes[ind[which(interacting_over_both_patterns)],2]<-"vsBoth"
+    colnames(res_kruskal) <- paste0("KW.",colnames(res_kruskal))
+    colnames(res_dunn_test) <- paste0("Dunn.",colnames(res_dunn_test))
+    interact_genes <- cbind(interact_genes,res_kruskal,res_dunn_test)
+    if (analysis=="overlap"){
+        interact_genes <- interact_genes[interact_genes[,2]!="FALSE",]    
+    }
+    return(list(interact_genes))
 }

@@ -13,7 +13,7 @@ find_kernel_outliers_for_sensitivity <- function(pattern,locs,
                                                     pattern_threshold=0.15,
                                                 sigma = 10,kernelthreshold = 2,
                                                 method = "Pattern_Threshold",
-                                                outlier = "positive")
+                                                outlier = "positive",...)
 {
     allwin<-spatstat.geom::owin(xrange = c(min(locs$x),max(locs$x)),
                                     yrange=c(min(locs$y),max(locs$y)))
@@ -31,7 +31,7 @@ find_kernel_outliers_for_sensitivity <- function(pattern,locs,
     return(Kact)
 }
 
-getOptimalSigmaThresh <- function(pattern, locs, sigVec, threshVec){
+getOptimalSigmaThresh <- function(pattern, locs, sigVec, threshVec,...){
     visium.dist <- as.matrix(dist(locs))
     visium.dist.inv <-1/visium.dist
     diag(visium.dist.inv) <- 0
@@ -88,6 +88,7 @@ getOptimalSigmaThresh <- function(pattern, locs, sigVec, threshVec){
 #' @param spatialPatterns  A data frame that contains the spatial coordinates 
 #' for each cell type. The column names must include 'x' and 'y' as well as a 
 #' set of numbered columns named  'Pattern_1.....N'.
+#' @param ... Arguments passed to methods
 #' @return a numeric matrix of sigmaOpts - the optimal width of the gaussian 
 #' distribution, and the thresOpt - outlier threshold around the set of spots 
 #' for each pattern
@@ -107,7 +108,7 @@ getOptimalSigmaThresh <- function(pattern, locs, sigVec, threshVec){
 #' optParams <- getSpatialParameters(spPatterns)
 #'
 
-getSpatialParameters <- function(spatialPatterns){
+getSpatialParameters <- function(spatialPatterns,...){
     good_gene_threshold <- 3;
     sigmaRes <- max(floor(min(diff(range(spatialPatterns$x)),
                                 diff(range(spatialPatterns$y)))/250),1)
