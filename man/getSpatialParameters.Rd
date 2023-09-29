@@ -5,12 +5,14 @@
 \title{getSpatialParameters
 Calculate the Optimal Parameters for Interacting Cells}
 \usage{
-getSpatialParameters(spatialPatterns)
+getSpatialParameters(spatialPatterns, ...)
 }
 \arguments{
 \item{spatialPatterns}{A data frame that contains the spatial coordinates
 for each cell type. The column names must include 'x' and 'y' as well as a
 set of numbered columns named  'Pattern_1.....N'.}
+
+\item{...}{Arguments passed to methods}
 }
 \value{
 a numeric matrix of sigmaOpts - the optimal width of the gaussian

@@ -4,48 +4,70 @@
 \alias{getInteractingGenes}
 \title{getInteractingGenes
 Calculate Interaction Regions and Associated Genes
-This function calculates statistically significant genes using a non-parametric Kruskal-Wallis test for genes in any one region of influence and a post hoc Dunn's test is used for analysis of genes between regions.}
+This function calculates statistically significant genes using a
+non-parametric Kruskal-Wallis test for genes in any one region of influence
+and a post hoc Dunn's test is used for analysis of genes between regions.}
 \usage{
 getInteractingGenes(
-    data,
-    reconstruction = NULL,
-    spatialPatterns,
-    optParams = NULL,
-    refPattern = "Pattern_1",
-    mode = c("residual", "DE"),
-    minOverlap = 50,
-    hotspotRegions = NULL
+  data,
+  spPatterns,
+  refPattern = "Pattern_1",
+  mode = c("residual", "DE"),
+  optParams = NULL,
+  reconstruction = NULL,
+  hotspots = NULL,
+  minOverlap = 50,
+  ...
 )
 }
 \arguments{
 \item{data}{original spatial data matrix.}
 
-\item{reconstruction}{reconstruction of the data matrix from latent spaces. Required for "residual" mode.}
+\item{spPatterns}{A data frame that contains the spatial coordinates
+for each cell type. The column names must include 'x' and 'y' as well as a
+set of numbered columns named 'Pattern_1.....N'.}
 
-\item{spatialPatterns}{A data frame that contains the spatial coordinates for each cell type. The column names must include 'x' and 'y' as well as a set of numbered columns named 'Pattern_1.....N'.}
+\item{refPattern}{a character string that specifies the pattern whose
+"interaction" with every other pattern we want
+to study. The default value is "Pattern_1".}
 
-\item{optParams}{a matrix with dimensions 2 X N, where N is the number of patterns with optimal parameters for outlier
-detection calculated from function getSpatialParameters(). The first row contains the kernel width sigmaOpt for each
-pattern, and the second row is the threshOpt (outlier threshold) for each pattern. Users can also input their
+\item{mode}{SpaceMarkers mode of operation. Possible values are
+"residual" (the default) or "DE".}
+
+\item{optParams}{a matrix with dimensions 2 X N, where N is the number
+of patterns with optimal parameters for outlier
+detection calculated from function getSpatialParameters(). The first row
+contains the kernel width sigmaOpt for each
+pattern, and the second row is the threshOpt (outlier threshold) for each
+pattern. Users can also input their
 preferred param values.
 The default value is NULL.}
 
-\item{refPattern}{a character string that specifies the pattern whose "interaction" with every other pattern we want
-to study. The default value is "Pattern_1".}
+\item{reconstruction}{reconstruction of the data matrix from latent
+spaces. Required for "residual" mode.}
 
-\item{mode}{SpaceMarkers mode of operation. Possible values are "residual" (the default) or "DE".}
+\item{hotspots}{a vector that specifies the patterns to compare
+to the 'refPattern'. The default is NULL which indicates that all patterns
+would be compared to the 'refPattern'.}
 
-\item{minOverlap}{a number that specifies the minimum overlap between genes in two patterns to be considered for the statistical tests. The default is 50.}
+\item{minOverlap}{a number that specifies the minimum overlap between
+genes in two patterns to be considered for the statistical tests.
+The default is 50.}
 
-\item{hotspotRegions}{a vector that specifies the patterns to compare to the 'refPattern'. The default is NULL which indicates that all patterns would be compared to the 'refPattern'.}
+\item{...}{Arguments passed to methods}
 }
 \value{
-a list of data frames with information about the interacting genes of the refPattern and each latent feature pattern matrix (interacting_genes object). There is also a data frame with all of the regions of influence for any two of patterns (the hotspotRegions object).
+a list of data frames with information about the interacting genes
+of the refPattern and each latent feature pattern matrix
+(interacting_genes object). There is also a data frame with all of the
+regions of influence for any two of patterns (the hotspots object).
 }
 \description{
 getInteractingGenes
 Calculate Interaction Regions and Associated Genes
-This function calculates statistically significant genes using a non-parametric Kruskal-Wallis test for genes in any one region of influence and a post hoc Dunn's test is used for analysis of genes between regions.
+This function calculates statistically significant genes using a
+non-parametric Kruskal-Wallis test for genes in any one region of influence
+and a post hoc Dunn's test is used for analysis of genes between regions.
 }
 \examples{
 
@@ -64,10 +86,12 @@ cg_file <- "182967_1168993F_2_CogapsResult_5.rds?raw=true"
 cogaps_url <- paste(c(cg_main,cg_folder,cg_file), collapse = "/")
 #Counts Matrix
 system2("wget",c("-q",counts_url))
-counts_matrix<-load10XExpr(visiumDir = ".",h5filename = basename(counts_url))
-good_gene_threshold <- 3
+counts_matrix<-load10XExpr(visiumDir=".",h5filename = basename(counts_url))
+good_gene_threshold <- 300
 goodGenes <- rownames(counts_matrix)[apply(counts_matrix,1,function(x)
 sum(x>0)>=good_gene_threshold)]
+print(length(goodGenes))
+goodGenes <- sample(goodGenes,100)
 counts_matrix <- counts_matrix[goodGenes,]
 # Latent Feature Space
 system2("wget",c("-q",cogaps_url,"-O","CogapsResult_5.rds"))
@@ -84,32 +108,18 @@ untar(basename(sp_url))
 spCoords <- load10XCoords(visiumDir = ".")
 rownames(spCoords) <- spCoords$barcode
 spCoords <- spCoords[barcodes,]
-spPatterns <- cbind(spCoords,cogaps_result@sampleFactors[barcodes,])
+spPatterns <- cbind(spCoords,slot(cogaps_result,"sampleFactors")[barcodes,])
 #Get Breast Cancer data
 data("optParams_breast_cancer")
 SpaceMarkersMode <- "DE"
-data("SpaceMarkers_DEMode_breast_cancer")
-sm <- SpaceMarkers_DEMode_breast_cancer
-hotspots <- sm$hotspotRegions
-ref <- "Pattern_1"
-opt <- subset(optParams_breast_cancer,
-              select = c(Pattern_1,Pattern_5))
-hotspots <- subset(hotspots,select = c(Pattern_1,Pattern_5))
-spPatterns <- subset(spPatterns, select = c(barcode,y,x,Pattern_1,Pattern_5))
-set.seed(42)
-rand_rows <- sample(1:nrow(hotspots),1200)
-hotspots <- hotspots[rand_rows,]
-spPatterns <- spPatterns[rand_rows,]
-new_counts <- counts_matrix[,rand_rows]
-SpaceMarkers_DE <- getInteractingGenes(data = new_counts,
-                                       reconstruction = NULL,
-                                     optParams = opt,
-                                       spatialPatterns = spPatterns,
-                                       mode = SpaceMarkersMode,
-                                       refPattern = ref,
-                                       hotspotRegions = hotspots, 
-                                       minOverlap = 10)
-unlink(basename(counts_url))
+ref_Pattern <- "Pattern_1"
+SpaceMarkers_DE <- getInteractingGenes(data = counts_matrix,
+reconstruction = NULL,optParams = optParams_breast_cancer,
+spPatterns = spPatterns,refPattern = ref_Pattern,mode = SpaceMarkersMode,
+analysis = "enrichment")
+unlink(sp_file)
+files <- list.files(".")[grepl(counts_file,list.files("."))]
+unlink(files)
 unlink("CogapsResult_5.rds")
 unlink("spatial", recursive = TRUE)
 }
