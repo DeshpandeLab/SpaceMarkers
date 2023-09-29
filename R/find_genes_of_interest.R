@@ -4,7 +4,6 @@
 #' @importFrom  stats lag dist pnorm sd
 #' @import utils
 #import description end
-0
 
 
 
