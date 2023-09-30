@@ -780,14 +780,11 @@ ranked higher than IGHE.
 plot_grid(plotlist = list(plist[[3]],plots[[3]]))
 ```
 
-<<<<<<< HEAD
 The spatial heatmap for IFI30 shows fairly high expression in multiple patterns
 but especially in the interacting regions. This is reflected in the box plots 
 as well with fairly high expression in the interacting pattern vs the other 
 two patterns.
-=======
-The spatial heatmap for IFI30 shows fairly high expression in multiple patterns but especially in the interacting regions. This is reflected in the box plots as well with fairly high expression in the interacting pattern vs the other two patterns.
->>>>>>> main
+
 
 ### Pattern_1 Only vs Pattern_5 (including Pattern_5 in interacting region)
 
