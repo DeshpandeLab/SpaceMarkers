@@ -9,15 +9,15 @@ non-parametric Kruskal-Wallis test for genes in any one region of influence
 and a post hoc Dunn's test is used for analysis of genes between regions.}
 \usage{
 getInteractingGenes(
-    data,
-    spPatterns,
-    refPattern = "Pattern_1",
-    mode = c("residual", "DE"),
-    optParams = NULL,
-    reconstruction = NULL,
-    hotspots = NULL,
-    minOverlap = 50,
-    ...
+  data,
+  spPatterns,
+  refPattern = "Pattern_1",
+  mode = c("residual", "DE"),
+  optParams = NULL,
+  reconstruction = NULL,
+  hotspots = NULL,
+  minOverlap = 50,
+  ...
 )
 }
 \arguments{
