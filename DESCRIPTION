@@ -5,7 +5,7 @@ Version: 0.99.1
 Authors@R:c(
     person(given = "Atul", family = "Deshpande", email = "adeshpande@jhu.edu", role = c("aut", "cre"), comment = c(ORCID="0000-0001-5144-6924")),
     person(given = "Ludmila", family = "Danilova", email = "ldanilo1@jhmi.edu", role = "ctb"),
-    person(given = "Dimitris", family = "Lvovs", email = "dlvovs1@jh.edu", role = "ctb")
+    person(given = "Dimitrijs", family = "Lvovs", email = "dlvovs1@jh.edu", role = "ctb")
   )
 Description:Spatial transcriptomic technologies have helped to resolve the connection
             between gene expression and the 2D orientation of tissues relative to each other.
