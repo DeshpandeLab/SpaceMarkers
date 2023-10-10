@@ -62,34 +62,15 @@ counts_url<-paste(c(main_10xlink,counts_folder,counts_file), collapse = "/")
 sp_folder <- "Visium_FFPE_Human_Breast_Cancer"
 sp_file <- "Visium_FFPE_Human_Breast_Cancer_spatial.tar.gz"
 sp_url<-paste(c(main_10xlink,sp_folder,sp_file),collapse = "/")
-cg_main <- "https://github.com/atuldeshpande/SpaceMarkers-paper/blob/main"
-cg_folder <- "CoGAPS_Analysis/BreastCancer"
-cg_file <- "182967_1168993F_2_CogapsResult_5.rds?raw=true"
-cogaps_url <- paste(c(cg_main,cg_folder,cg_file), collapse = "/")
 ```
 
-
 ## Removing Directories
-
 The functions require that some files and directories with the same name be 
 unique. Therefore any downloads from a previous run will be removed.
 ```{r}
 unlink(sp_file)
 files <- list.files(".")[grepl(counts_file,list.files("."))]
 unlink(files)
-unlink("CogapsResult_5.rds")
-unlink("spatial", recursive = TRUE)
-```
-
-## Removing Directories
-
-The functions require that some files and directories with the same name be 
-unique. Therefore any downloads from a previous run will be removed.
-```{r}
-unlink(sp_file)
-files <- list.files(".")[grepl(counts_file,list.files("."))]
-unlink(files)
-unlink("CogapsResult_5.rds")
 unlink("spatial", recursive = TRUE)
 ```
 
@@ -186,7 +167,7 @@ This function can take a while so the file would be read in from the data folder
 for this tutorial.
 
 getSpatialParameters took approximately 12 minutes on a MacBook Pro Quad-Intel 
-Core i5 processor with 16 GB of memory. Therefore the saved output would be used
+Core i5 processor with 16 GB of memory.Therefore the saved output would be used
 
 ```{r}
 SpaceMarkersMode = "residual" 
@@ -235,7 +216,7 @@ The warnings are due to the nature of the 'sparse' data being used.
 Comparing two cells from the two patterns with identical information is 
 redundant as SpaceMarkers is identifying statistically different expression for
 interactions exclusive to either of the two patterns and a region that is due 
-]to interaction between the given two patterns. Also, if there are too many 
+to interaction between the given two patterns. Also, if there are too many 
 zeros in the genes (rows) of those regions, the columns are dropped as there 
 is nothing to compare in the Kruskal Wallis test.
 
@@ -280,9 +261,7 @@ SpaceMarkers_DE <- getInteractingGenes(
 
 ```
 ```{r}
-
 data("DE_p1_p5_overlap_df")
-
 ```
 
 ### Differences between Residual Mode and DE Mode
@@ -413,6 +392,10 @@ The data frames for the Pattern_1 x Pattern_5 will be used to compare the
 results of the enrichment analyses
 
 #### Comparing Enrichment Analyses
+For the purpose of this vignette, only the top20 genes returned from the
+enrichment analysis in DE mode will be compared. All of the genes from the 
+enrichment analysis in residual mode will be used as these are used in the 
+pathway enrichment later. 
 
 ```{r}
 data("residual_p1_p5_enrichment_df")
@@ -423,34 +406,39 @@ DE_p1_p2_enrich <- DE_p1_p5_enrichment_df
 
 ```{r}
 enrich_res_to_de<-compare_genes(
-    head(residual_p1_p2_enrich$Gene, n = 20),
-    DE_p1_p2_enrich$Gene,ref_name="residual_Enrich",list2_name = "DE_Enrich")
+    DE_p1_p2_enrich$Gene,
+    residual_p1_p2_enrich$Gene,ref_name="DE_Enrich",list2_name = "res_Enrich")
 enrich_res_to_de
 ```
 As seen before there are significant differences between DE and residual mode 
-with how the genes are ordered. However, both methods are ranking the few genes
+with how the genes are ordered. However, both methods are ranking a few genes
 highly possibly due to greater biological importance.
 
 ```{r}
 overlap_enrich_de<-compare_genes(
-    head(DE_p1_p2$Gene,n=20),
     DE_p1_p2_enrich$Gene,
+    DE_p1_p2$Gene,
     ref_name="DE_Enrich",
     list2_name="DE_Overlap")
 overlap_enrich_de
 ```
-The enrichment analysis and overlap analysis are in great agreement,
-with only a few small changes. 
+The enrichment and overlap analysis are in great agreement for DE mode,
+with only a few changes which are seen especially among genes lower in the 
+ranking. However, this is not the case with the two analyses in residual mode.
 ```{r}
-overlap_enrich_de_later<-compare_genes(
-    DE_p1_p2$Gene,DE_p1_p2_enrich$Gene,ref_name ="DE_Enrich",
-    list2_name="DE_Overlap", sub_slice = 30:50)
-overlap_enrich_de_later
+overlap_enrich_res<-compare_genes(
+    head(residual_p1_p2$Gene,n=20),
+    residual_p1_p2_enrich$Gene,
+    ref_name ="res_overlap",list2_name="res_enrich")
+overlap_enrich_res
 ```
-Further down the gene list, the ranking begins to shuffle alot more.Since the 
-SpaceMarkersMetric only takes into account the Dunn's test, the genes, genes 
-that may not have passed the correction for the KW test inititally are now 
-taken into account with great differences between any two patterns. 
+Residual mode with the enrichment selection is now including genes that may
+not have passed the KW multi-test correction to begin with. Since the
+SpaceMarkersMetric considers the Dunn's test only, many genes that could not
+be ranked in overlap analysis are now included in the ranking for the 
+enrichment analysis. In DE mode, the additional genes do not impact the initial
+results of the KW test as much and the ranking with the post hoc Dunn's test
+is more consistent among the top genes.
 
 ## Enrichment Analysis
 ```{r message = FALSE, warning=FALSE}
@@ -461,7 +449,7 @@ library(ggplot2)
 ```
 
 In this particular analysis we will use the 'enrichment' genes for residual mode
-as a background and the 'overlap' genes to search for enrichment
+as a background and the 'overlap' genes to search for pathway enrichment.
 ```{r}
 
 matx2<-AnnotationDbi::select(
@@ -637,7 +625,6 @@ umi_sum <- list()
 for (i in 1:length(sample_names)) {
     umi_sum[[i]] <- data.frame(barcode =  row.names(matrix[[i]]),
                                 sum_umi = Matrix::rowSums(matrix[[i]]))
-
 }
 names(umi_sum) <- sample_names
 
@@ -712,7 +699,7 @@ for (g in gene_list){
 }
 ```
 
-This next block of code can visualize the genes for each pattern on boxplots
+This next block of code can visualize the genes for each pattern on box plots
 
 ```{r}
 region <- SpaceMarkers$hotspotRegions[,1]
@@ -837,7 +824,6 @@ significance.
 unlink(sp_file)
 files <- list.files(".")[grepl(counts_file,list.files("."))]
 unlink(files)
-unlink("CogapsResult_5.rds")
 unlink("spatial", recursive = TRUE)
 ```
 

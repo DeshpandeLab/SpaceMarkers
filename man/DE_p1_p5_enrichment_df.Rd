@@ -4,7 +4,7 @@
 \alias{DE_p1_p5_enrichment_df}
 \title{Interacting Genes including the KW-test genes}
 \format{
-A dataframe of 21145 rows and 18 columns:
+A dataframe of 20 rows (the top 20 genes) and 18 columns:
 \describe{
 \item{Gene}{interacting genes}
 \item{Pattern_1 x Pattern_5}{vsBoth,vsPattern_1,vsPattern5,FALSE}
