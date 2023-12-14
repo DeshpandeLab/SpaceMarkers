@@ -71,55 +71,55 @@ and a post hoc Dunn's test is used for analysis of genes between regions.
 }
 \examples{
 
-#Visium data links
-library(SpaceMarkers)
-main_10xlink <- "https://cf.10xgenomics.com/samples/spatial-exp/1.3.0"
-counts_folder <- "Visium_Human_Breast_Cancer"
-counts_file <- "Visium_Human_Breast_Cancer_filtered_feature_bc_matrix.h5"
-counts_url<-paste(c(main_10xlink,counts_folder,counts_file), collapse = "/")
-sp_folder <- "Visium_FFPE_Human_Breast_Cancer"
-sp_file <- "Visium_FFPE_Human_Breast_Cancer_spatial.tar.gz"
-sp_url<-paste(c(main_10xlink,sp_folder,sp_file),collapse = "/")
-cg_main <- "https://github.com/atuldeshpande/SpaceMarkers-paper/blob/main"
-cg_folder <- "CoGAPS_Analysis/BreastCancer"
-cg_file <- "182967_1168993F_2_CogapsResult_5.rds?raw=true"
-cogaps_url <- paste(c(cg_main,cg_folder,cg_file), collapse = "/")
-#Counts Matrix
-system2("wget",c("-q",counts_url))
-counts_matrix<-load10XExpr(visiumDir=".",h5filename = basename(counts_url))
-good_gene_threshold <- 300
-goodGenes <- rownames(counts_matrix)[apply(counts_matrix,1,function(x)
-sum(x>0)>=good_gene_threshold)]
-print(length(goodGenes))
-goodGenes <- sample(goodGenes,100)
-counts_matrix <- counts_matrix[goodGenes,]
-# Latent Feature Space
-system2("wget",c("-q",cogaps_url,"-O","CogapsResult_5.rds"))
-cogaps_result <- readRDS("CogapsResult_5.rds")
-cogaps_features <- slot(cogaps_result,"featureLoadings")
-features <- intersect(rownames(counts_matrix),rownames(cogaps_features))
-cogaps_barcodes <- slot(cogaps_result,"sampleFactors")
-barcodes <- intersect(colnames(counts_matrix),rownames(cogaps_barcodes))
-counts_matrix <- counts_matrix[features,barcodes]
-cogaps_matrix <- cogaps_features[features,] \%*\% t(cogaps_barcodes[barcodes,])
-# Spatial Coordinates
-download.file(sp_url, basename(sp_url))
-untar(basename(sp_url))
-spCoords <- load10XCoords(visiumDir = ".")
-rownames(spCoords) <- spCoords$barcode
-spCoords <- spCoords[barcodes,]
-spPatterns <- cbind(spCoords,slot(cogaps_result,"sampleFactors")[barcodes,])
-#Get Breast Cancer data
-data("optParams_breast_cancer")
-SpaceMarkersMode <- "DE"
-ref_Pattern <- "Pattern_1"
-SpaceMarkers_DE <- getInteractingGenes(data = counts_matrix,
-reconstruction = NULL,optParams = optParams_breast_cancer,
-spPatterns = spPatterns,refPattern = ref_Pattern,mode = SpaceMarkersMode,
-analysis = "enrichment")
-unlink(sp_file)
-files <- list.files(".")[grepl(counts_file,list.files("."))]
-unlink(files)
-unlink("CogapsResult_5.rds")
-unlink("spatial", recursive = TRUE)
+ library(SpaceMarkers)
+ #Visium data links
+ main_10xlink <- "https://cf.10xgenomics.com/samples/spatial-exp/1.3.0"
+ counts_folder <- "Visium_Human_Breast_Cancer"
+ counts_file <- "Visium_Human_Breast_Cancer_filtered_feature_bc_matrix.h5"
+ counts_url<-paste(c(main_10xlink,counts_folder,counts_file), collapse = "/")
+ sp_folder <- "Visium_FFPE_Human_Breast_Cancer"
+ sp_file <- "Visium_FFPE_Human_Breast_Cancer_spatial.tar.gz"
+ sp_url<-paste(c(main_10xlink,sp_folder,sp_file),collapse = "/")
+ #Remove present Directories if any
+ unlink(sp_file)
+ files <- list.files(".")[grepl(counts_file,list.files("."))]
+ unlink(files)
+ unlink("spatial", recursive = TRUE)
+ #Counts Matrix
+ system2("wget",c("-q",counts_url))
+ counts_matrix<-load10XExpr(visiumDir=".",h5filename = basename(counts_url))
+ good_gene_threshold <- 300
+ goodGenes <- rownames(counts_matrix)[apply(counts_matrix,1,function(x)
+     sum(x>0)>=good_gene_threshold)]
+ print(length(goodGenes))
+ goodGenes <- sample(goodGenes,100)
+ counts_matrix <- counts_matrix[goodGenes,]
+ #Latent Feature Space
+ data("cogaps_result")
+ features <- intersect(rownames(counts_matrix),rownames(
+     slot(cogaps_result,"featureLoadings")))
+ barcodes <- intersect(colnames(counts_matrix),rownames(
+     slot(cogaps_result,"sampleFactors")))
+ counts_matrix <- counts_matrix[features,barcodes]
+ cogaps_matrix<-slot(cogaps_result,"featureLoadings")[features,]\%*\%
+     t(slot(cogaps_result,"sampleFactors")[barcodes,])
+ #Spatial Coordinates
+ download.file(sp_url, basename(sp_url))
+ untar(basename(sp_url))
+ spCoords <- load10XCoords(visiumDir = ".")
+ rownames(spCoords) <- spCoords$barcode
+ spCoords <- spCoords[barcodes,]
+ spPatterns <- cbind(spCoords,slot(cogaps_result,"sampleFactors")[barcodes,])
+ #Get Breast Cancer data
+ data("optParams_breast_cancer")
+ SpaceMarkersMode <- "DE"
+ ref_Pattern <- "Pattern_1"
+ SpaceMarkers_DE <- getInteractingGenes(data = counts_matrix,
+                                        reconstruction = NULL,optParams = optParams_breast_cancer,
+                                        spPatterns = spPatterns,refPattern = ref_Pattern,mode = SpaceMarkersMode,
+                                        analysis = "enrichment")
+ unlink(sp_file)
+ files <- list.files(".")[grepl(counts_file,list.files("."))]
+ unlink(files)
+ unlink("spatial", recursive = TRUE)
 }
