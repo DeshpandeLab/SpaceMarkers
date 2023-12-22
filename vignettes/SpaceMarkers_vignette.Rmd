@@ -19,8 +19,7 @@ knitr::opts_knit$set(
     fig.align   = 'center'
 )
 
-knitr::opts_chunk$set(out.extra = 'style="display:block; margin:auto;"')#center
-#knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+knitr::opts_chunk$set(out.extra = 'style="display:block; margin:auto;"')
 
 ```
 
@@ -362,9 +361,6 @@ data("DE_p1_p5_enrichment_genesOnly")
 
 The data frames for the Pattern_1 x Pattern_5 will be used to compare the 
 results of the enrichment analyses
-
-#### Comparing Enrichment Analyses
-
 
 ```{r}
 enrich_res_to_de<-compare_genes(
@@ -752,10 +748,6 @@ Cell Systems 14.4 (2023): 285-301.
 Official 10x Genomics Support, 
 support.10xgenomics.com/spatial-gene-expression/software/pipelines/latest/rkit. 
 Accessed 22 Dec. 2023. 
-
-
-
-
 
 ## load10XExpr() Arguments
 
