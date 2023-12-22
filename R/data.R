@@ -1,72 +1,29 @@
-#' Interacting Genes including the KW-test genes
+#' Interacting Genes
 #'
-#' A dataframe with:
-#' Interactions between Pattern_1 and Pattern_5 from CoGAPS and
-#' statistics about the interacting genes associated with them.
+#' A vector with:
+#' Genes identified between Pattern_1 and Pattern_5 genes from 
+#' getInteractingGenes(...,analysis = "enrichment")
 #'  
-#' @name residual_p1_p5_enrichment_df
-#' @format A dataframe of 21331 rows and 18 columns:
+#' @name residual_p1_p5_enrichment_genesOnly
+#' @format A vector of length 21331
 #' \describe{
-#'   \item{Gene}{interacting genes}
-#'   \item{Pattern_1 x Pattern_5}{vsBoth,vsPattern_1,vsPattern5,FALSE}
-#'   \item{KW stats}{...}
-#'   \item{Dunns stats}{...}
-#'   \item{SpaceMarkersMetric}{|Dunn.zP1|x|Dunn.zP2|x2^-min(Dunn.zP1,Dunn.zP2)}
+#'   \item{...}
 #' }
-#' @return Dataframe summarizing latent feature interactions
-NULL
-
-#' Interacting Genes including the KW-test genes
-#'
-#' A dataframe with:
-#' Interactions between Pattern_1 and Pattern_5 from CoGAPS and
-#' statistics about the interacting genes associated with them.
-#'  
-#' @name DE_p1_p5_enrichment_df
-#' @format A dataframe of 20 rows (the top 20 genes) and 18 columns:
-#' \describe{
-#'   \item{Gene}{interacting genes}
-#'   \item{Pattern_1 x Pattern_5}{vsBoth,vsPattern_1,vsPattern5,FALSE}
-#'   \item{KW stats}{...}
-#'   \item{Dunns stats}{...}
-#'   \item{SpaceMarkersMetric}{|Dunn.zP1|x|Dunn.zP2|x2^-min(Dunn.zP1,Dunn.zP2)}
-#' }
-#' @return Dataframe summarizing latent feature interactions
+#' @return A vector of genes returned from enrichment analysis
 NULL
 
 #' Interacting Genes
 #'
-#' A dataframe with:
-#' Interactions between Pattern_1 and Pattern_5 from CoGAPS and
-#' statistics about the interacting genes associated with them.
+#' A vector with:
+#' Genes identified between Pattern_1 and Pattern_5 genes from 
+#' getInteractingGenes(...,analysis = "enrichment")
 #'  
-#' @name DE_p1_p5_overlap_df
-#' @format A dataframe of 2799 rows and 18 columns:
+#' @name DE_p1_p5_enrichment_genesOnly
+#' @format A vector of length 21142
 #' \describe{
-#'   \item{Gene}{interacting genes}
-#'   \item{Pattern_1 x Pattern_5}{vsBoth,vsPattern_1,vsPattern5,FALSE}
-#'   \item{KW stats}{...}
-#'   \item{Dunns stats}{...}
-#'   \item{SpaceMarkersMetric}{|Dunn.zP1|x|Dunn.zP2|x2^-min(Dunn.zP1,Dunn.zP2)}
+#'   \item{...}
 #' }
-#' @return Dataframe summarizing latent feature interactions
-NULL
-
-#' Interacting Genes for each Pattern.
-#'
-#' A list with:
-#' 1. A list of 4 each containing a data frame of Pattern interactions from 
-#' CoGAPS and statistics about the interacting genes associated with them.
-#' 
-#' 2. A matrix of the hotspot regions from CoGAPS for each spot
-#'  
-#' @name SpaceMarkers_Residualmode_overlap
-#' @format A list of a list of 4 data frames and 1 matrix:
-#' \describe{
-#'   \item{interacting genes list of 4 dfs}{genes,CoGAPS patterns and stats}
-#'   \item{hotspot Regions matrix}{CoGAPS hotspots for each spot}
-#' }
-#' @return List of data frames summarizing latent feature interactions
+#' @return A vector of genes returned from enrichment analysis
 NULL
 
 #' Optimal paramters of 5 patterns from CoGAPS.
@@ -77,7 +34,7 @@ NULL
 #' breast cancer sample.
 #' 
 #' 
-#' @name optParams_breast_cancer
+#' @name optParams
 #' @format A data frame with 2 rows and 5 columns:
 #' \describe{
 #'   \item{Pattern_1}{immune cell pattern paramters }

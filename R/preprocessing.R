@@ -1,5 +1,5 @@
-#' @import hdf5r
-#' @import jsonlite
+#' @importFrom hdf5r h5file
+#' @importFrom jsonlite read_json
 #import description end
 0
 
@@ -21,14 +21,17 @@
 #' @return A matrix of class dgeMatrix or Matrix that contains the expression 
 #' info for each sample (cells) across multiple features (genes)
 #' @examples
-#' main_10xlink <- "https://cf.10xgenomics.com/samples/spatial-exp/1.3.0"
-#' counts_folder <- "Visium_Human_Breast_Cancer"
-#' counts_file <- "Visium_Human_Breast_Cancer_filtered_feature_bc_matrix.h5"
-#' counts_url<-paste(c(main_10xlink,counts_folder,counts_file), collapse = "/")
-#' system2("wget",c("-q",counts_url))
-#' counts_matrix<-load10XExpr(visiumDir = ".",h5filename = basename(counts_url))
-#' unlink(basename(counts_url))
+#' library(SpaceMarkers)
+#' #Visium data links
+#' urls <- read.csv("inst/extdata/visium_data.txt")
+#' counts_url <- urls[1,1]
+#' #Remove present Directories if any
+#' files <- list.files(".")[grepl(basename(counts_url),list.files("."))]
+#' unlink(files)
+#' download.file(counts_url,basename(counts_url))
+#' counts_matrix<-load10XExpr(visiumDir=".",h5filename = basename(counts_url))
 #'
+
 load10XExpr<- function(visiumDir=NULL,
                             h5filename='filtered_feature_bc_matrix.h5'){
     h5FilePath <- dir(path = visiumDir,pattern = h5filename,full.names = TRUE)

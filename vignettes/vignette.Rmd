@@ -2,10 +2,10 @@
 title: "Inferring Immune Interactions in Breast Cancer"
 author: "Orian Stapleton"
 date: "2023-02-15"
-output: html_vignette
-  html_document:
+output:
+    html_document:
     toc: true
-    theme: united
+    toc_depth: 3
 vignette: >
     %\VignetteIndexEntry{Inferring Immune Interactions in Breast Cancer}
     %\VignetteEngine{knitr::rmarkdown}
@@ -164,7 +164,7 @@ interacting from each of the other patterns as well as where they are mutually
 exclusive.
 
 getSpatialParameters: This function identifies the optimal width of the gaussian
-distribution (sigmaOpt) as well as the outlier threshold around the set of spots
+distribution (sigmaOpt) as well as the outlier threshold around the set of spotsx
 (thresOpt) for each pattern.These parameters minimize the spatial 
 autocorrelation residuals of the spots in the regions of influence. 
 This function can take a while so the file would be read in from the data folder
@@ -201,7 +201,7 @@ SpaceMarkers <- getInteractingGenes(data = counts_matrix,
                                     optParams = optParams,
                                     spPatterns = spPatterns,
                                     refPattern = "Pattern_1",
-                                    mode ="residual",analysis="analysis")
+                                    mode ="residual",analysis="overlap")
 ```
 
 NB: When running getInteractingGenes some warnings may be generated. 
@@ -247,20 +247,21 @@ SpaceMarkers_DE <- getInteractingGenes(
 ```
 ### Differences between Residual Mode and DE Mode
 
+
 To highlight the differences between residual mode and DE mode, the interaction 
 between Pattern_1 (immune cell) and Pattern_5 (invasive carcinoma lesion) will
 be assessed. One of the first things to notice is the difference in the number 
 of genes identified between the two modes.
 
 ```{r}
-residual_p1_p2<-SpaceMarkers$interacting_genes[[1]]
-DE_p1_p2 <- SpaceMarkers_DE$interacting_genes[[1]]
+residual_p1_p5<-SpaceMarkers$interacting_genes[[1]]
+DE_p1_p5<-SpaceMarkers_DE$interacting_genes[[1]]
 ```
 
 ```{r}
 paste(
-    "Residual mode identified",dim(residual_p1_p2)[1],
-        "interacting genes,while DE mode identified",dim(DE_p1_p2)[1],
+    "Residual mode identified",dim(residual_p1_p5)[1],
+        "interacting genes,while DE mode identified",dim(DE_p1_p5)[1],
         "interacting genes",collapse = NULL)
 ```
 
@@ -303,9 +304,9 @@ compare_genes <- function(ref_list, list2,ref_name = "mode1",
 ```
 
 ```{r}
-res_to_DE <- compare_genes(head(residual_p1_p2$Gene,n=20),DE_p1_p2$Gene,
+res_to_DE <- compare_genes(head(residual_p1_p5$Gene,n=20),DE_p1_p5$Gene,
                             ref_name="residual",list2_name="DE" )
-DE_to_res <- compare_genes(head(DE_p1_p2$Gene, n = 20),residual_p1_p2$Gene,
+DE_to_res <- compare_genes(head(DE_p1_p5$Gene, n = 20),residual_p1_p5$Gene,
                             ref_name = "DE",list2_name = "residual" )
 ```
 
@@ -316,9 +317,9 @@ res_to_DE
 ```
 
 Here we identify the top 20 genes in 'residual' mode and their corresponding 
-ranking in DE mode. APOC1,IGHE,IFI30,CST1,CLU,and CAPG are 
-ranked high in both 'DE' and 'residual' mode. While 14 genes that are ranked 
-high in 'residual' mode are not identified at all in 'DE' mode
+ranking in DE mode.C1QB and HLA-DRB1 are the only two genes identified in 
+residual mode and not in DE mode. The other genes are ranked relatively high
+in both residual and DE mode.
 
 #### Comparing DE mode to residual mode
 
@@ -326,10 +327,12 @@ high in 'residual' mode are not identified at all in 'DE' mode
 DE_to_res
 ```
 
-There were 6 genes that were interacting in 'DE' mode but not 'residual' mode. 
 Recall that DE mode looks at the information encoded in the latent feature space
 and does not filter out genes based on any confounders between the counts matrix
-and latent feature matrix as is done in 'residual' mode.
+and latent feature matrix as is done in 'residual' mode. Therefore there are
+more genes in DE mode not identified at all in residual mode. Furthermore, genes
+such as SDS and CTSB are ranked high in DE mode but relatively low in residual
+mode.
 
 There is some agreement with interacting genes between the two methods but there
 are also quite a few differences. Therefore, the selected mode can significantly
@@ -341,85 +344,62 @@ the specific biological question being answered and the data available.
 One new feature of the SpaceMarkers package is the type of analysis that can be
 carried out, whether 'overlap' or 'enrichment' mode. The major difference 
 between the two is that enrichment mode includes genes even if they did not 
-pass the multi-test correction for the KW test. These additional genes were 
+pass the multi-test correction for the KW tet. These additional genes were 
 included to enable a more statistically powerful pathway enrichment analysis 
 and understand to a better extent the impact of genes involved each pathway. 
+Changing analysis = 'enrichment' in the getInteractingGenes function will 
+enable this. Pre-created objects will be used to compare the two in 
+residual mode.
+
+```{r}
+data("residual_p1_p5_enrichment_genesOnly")
+data("DE_p1_p5_enrichment_genesOnly")
+
+```
+
 
 ### Residual Mode and DE Mode - Enrichment
-
-```{r eval = FALSE}
-SpaceMarkersMode = "residual"
-SpaceMarkers_DE<-getInteractingGenes(
-    data=counts_matrix,
-    reconstruction=NULL,
-    optParams=optParams,
-    spPatterns=spPatterns,
-    refPattern=SpaceMarkersRefPattern,
-    mode = SpaceMarkersMode,analysis = "enrichment")
-```
-
-```{r eval = FALSE}
-SpaceMarkersMode = "DE"
-SpaceMarkers_DE <- getInteractingGenes(
-    data = counts_matrix,
-    reconstruction = NULL,
-    optParams = optParams,
-    spPatterns = spPatterns,
-    refPattern = SpaceMarkersRefPattern,
-    mode = SpaceMarkersMode,analysis = "enrichment")
-```
 
 The data frames for the Pattern_1 x Pattern_5 will be used to compare the 
 results of the enrichment analyses
 
 #### Comparing Enrichment Analyses
-For the purpose of this vignette, only the top20 genes returned from the
-enrichment analysis in DE mode will be compared. All of the genes from the 
-enrichment analysis in residual mode will be used as these are used in the 
-pathway enrichment later. 
 
-```{r}
-data("residual_p1_p5_enrichment_df")
-data("DE_p1_p5_enrichment_df")
-residual_p1_p2_enrich <- residual_p1_p5_enrichment_df
-DE_p1_p2_enrich <- DE_p1_p5_enrichment_df
-```
 
 ```{r}
 enrich_res_to_de<-compare_genes(
-    DE_p1_p2_enrich$Gene,
-    residual_p1_p2_enrich$Gene,ref_name="DE_Enrich",list2_name = "res_Enrich")
+    DE_p1_p5_enrichment_genesOnly,
+    residual_p1_p5_enrichment_genesOnly,
+    ref_name="DE_Enrich",list2_name = "res_Enrich")
 enrich_res_to_de
 ```
-As seen before there are significant differences between DE and residual mode 
-with how the genes are ordered. However, both methods are ranking a few genes
-highly possibly due to greater biological importance.
+The ranks differ alot more here because now genes that were not previously 
+ranked are assigned a score.
 
 ```{r}
 overlap_enrich_de<-compare_genes(
-    DE_p1_p2_enrich$Gene,
-    DE_p1_p2$Gene,
+    DE_p1_p5_enrichment_genesOnly,
+    DE_p1_p5$Gene,
     ref_name="DE_Enrich",
     list2_name="DE_Overlap")
 overlap_enrich_de
 ```
 The enrichment and overlap analysis are in great agreement for DE mode,
 with only a few changes which are seen especially among genes lower in the 
-ranking. However, this is not the case with the two analyses in residual mode.
+ranking. However, this is not as much the case with the overlap and 
+enrichment analyses in residual mode..
+
 ```{r}
 overlap_enrich_res<-compare_genes(
-    head(residual_p1_p2$Gene,n=20),
-    residual_p1_p2_enrich$Gene,
+    residual_p1_p5$Gene,
+    residual_p1_p5_enrichment_genesOnly,
     ref_name ="res_overlap",list2_name="res_enrich")
 overlap_enrich_res
 ```
 Residual mode with the enrichment selection is now including genes that may
-not have passed the KW multi-test correction to begin with. Since the
-SpaceMarkersMetric considers the Dunn's test only, many genes that could not
-be ranked in overlap analysis are now included in the ranking for the 
-enrichment analysis. In DE mode, the additional genes do not impact the initial
-results of the KW test as much and the ranking with the post hoc Dunn's test
-is more consistent among the top genes.
+not have passed the Dunn's Test for between group variation.However, the
+SpaceMarkersMetric considers the Dunn's test only, so many genes that could not
+be ranked in overlap analysis will now have a score associated with them. 
 
 ## Comparing Patterns Spatially
 
@@ -444,6 +424,7 @@ library(dplyr)
 library(data.table)
 library(viridis)
 library(hrbrthemes)
+library(ggplot2)
 ```
 
 This first function below can visualize the locations of these patterns on a 
@@ -584,8 +565,6 @@ bcs_merge <- merge(bcs_merge,gene_sum, by = c("barcode", "sample"))
 Specifying a continuous scale and colors before plotting
 
 ```{r}
-xlim(0,max(bcs_merge%>%dplyr::filter(sample==sample_names[i])%>%select(width)))
-#myPalette <- colorRampPalette(rev(brewer.pal(11, "Spectral")))
 myPalette <- function(numLevels) {
     return(colorRampPalette(c("blue","yellow"))(numLevels))}
 ```
@@ -594,12 +573,12 @@ Extracting top 3 genes ...
 
 ```{r}
 gene_list <- c()
-interactions <- unique(residual_p1_p2$`Pattern_1 x Pattern_5`)
+interactions <- unique(residual_p1_p5$`Pattern_1 x Pattern_5`)
 n_genes <- 3
 for (g in 1:length(interactions)){
-    df <- residual_p1_p2 %>% dplyr::filter(
-        residual_p1_p2$`Pattern_1 x Pattern_5` == interactions[g] & abs(
-        residual_p1_p2$Dunn.zP2_P1) > 1 )
+    df <- residual_p1_p5 %>% dplyr::filter(
+        residual_p1_p5$`Pattern_1 x Pattern_5` == interactions[g] & abs(
+        residual_p1_p5$Dunn.zP2_P1) > 1 )
     print(paste0("Top ",n_genes," genes for ",interactions[g]))
     print(df$Gene[1:n_genes])
     gene_list <- c(gene_list,df$Gene[1:n_genes])
@@ -639,10 +618,10 @@ for (g in gene_list){
 This next block of code can visualize the genes for each pattern on box plots
 
 ```{r}
-region <- SpaceMarkers$hotspotRegions[,1]
-region <- ifelse(!is.na(region)&!is.na(SpaceMarkers$hotspotRegions[,5]),
+region <- SpaceMarkers$hotspots[,1]
+region <- ifelse(!is.na(region)&!is.na(SpaceMarkers$hotspots[,2]),
                     "Interacting",ifelse(!is.na(region),region,
-                                            SpaceMarkers$hotspotRegions[,5]))
+                                            SpaceMarkers$hotspots[,2]))
 region <- factor(region, levels = c("Pattern_1","Interacting","Pattern_5"))
 plist <- list()
 mplot2 <- t(as.matrix(counts_matrix[,!is.na(region)]))
@@ -678,8 +657,8 @@ patterns.
 #### Table of statistics
 
 ```{r}
-head(residual_p1_p2 %>% dplyr::filter(
-    residual_p1_p2$`Pattern_1 x Pattern_5` == "vsBoth"),n_genes)
+head(residual_p1_p5 %>% dplyr::filter(
+    residual_p1_p5$`Pattern_1 x Pattern_5` == "vsBoth"),n_genes)
 ```
 
 #### Visualizations
@@ -705,7 +684,7 @@ plot_grid(plotlist = list(plist[[3]],plots[[3]]))
 
 The spatial heatmap for IFI30 shows fairly high expression in multiple patterns
 but especially in the interacting regions. This is reflected in the box plots 
-as well with fairly high expression in the interacting pattern vs the other 
+as well with high expression in the interacting pattern vs the other 
 two patterns.
 
 
@@ -714,8 +693,8 @@ two patterns.
 #### Table of statistics
 
 ```{r}
-head(residual_p1_p2 %>% dplyr::filter(
-    residual_p1_p2$`Pattern_1 x Pattern_5`=="vsPattern_5"),n_genes - 1)
+head(residual_p1_p5 %>% dplyr::filter(
+    residual_p1_p5$`Pattern_1 x Pattern_5`=="vsPattern_5"),n_genes - 1)
 
 ```
 
@@ -738,8 +717,8 @@ difference regardless of the direction of the difference between the patterns.
 #### Table of statistics
 
 ```{r}
-head(residual_p1_p2 %>% dplyr::filter(
-    residual_p1_p2$`Pattern_1 x Pattern_5` == "vsPattern_1"),n_genes - 1 )
+head(residual_p1_p5 %>% dplyr::filter(
+    residual_p1_p5$`Pattern_1 x Pattern_5` == "vsPattern_1"),n_genes - 1 )
 ```
 
 #### Visualizations
@@ -763,6 +742,20 @@ files <- list.files(".")[grepl(counts_file,list.files("."))]
 unlink(files)
 unlink("spatial", recursive = TRUE)
 ```
+
+## References
+Deshpande, Atul, et al. "Uncovering the spatial landscape of molecular 
+interactions within the tumor microenvironment through latent spaces." 
+Cell Systems 14.4 (2023): 285-301.
+
+“Space Ranger.” Secondary Analysis in R -Software -Spatial Gene Expression -
+Official 10x Genomics Support, 
+support.10xgenomics.com/spatial-gene-expression/software/pipelines/latest/rkit. 
+Accessed 22 Dec. 2023. 
+
+
+
+
 
 ## load10XExpr() Arguments
 
@@ -813,7 +806,7 @@ paramDescript = c(
         'A data frame of expression information with rows being the 
             features/genes and columns being the samples/cells.',
             'A data frame of features (rows) and samples (columns) constructed 
-            from the information of a latent feature method such as CoGAPsor 
+            from the information of a latent feature method such as CoGAPs or 
             STdeconvolve. NULL if \'DE\' mode is specified','A data frame that 
             for each pattern has the sigmaOpts - the optimal width of the 
             gaussian distribution and the thresOpt- outlierthreshold around the

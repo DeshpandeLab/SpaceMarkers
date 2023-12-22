@@ -1,6 +1,7 @@
-#' @import spatstat
+#' @importFrom spatstat.geom owin ppp marks
+#' @importFrom spatstat.explore Smooth
 #' @importFrom ape where
-#' @import pracma
+#' @importFrom pracma randperm
 #import description end
 0
 
