@@ -5,9 +5,6 @@
 \title{Interacting Genes}
 \format{
 A vector of length 21331
-\describe{
-\item{...}
-}
 }
 \value{
 A vector of genes returned from enrichment analysis

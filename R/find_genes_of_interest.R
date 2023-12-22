@@ -3,7 +3,6 @@
 #' @importFrom matrixStats count
 #' @importFrom stats lag dist pnorm sd
 #' @importFrom qvalue qvalue
-#' @import utils
 #import description end
 
 

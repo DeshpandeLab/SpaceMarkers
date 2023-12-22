@@ -6,9 +6,6 @@
 #'  
 #' @name residual_p1_p5_enrichment_genesOnly
 #' @format A vector of length 21331
-#' \describe{
-#'   \item{...}
-#' }
 #' @return A vector of genes returned from enrichment analysis
 NULL
 
@@ -20,9 +17,6 @@ NULL
 #'  
 #' @name DE_p1_p5_enrichment_genesOnly
 #' @format A vector of length 21142
-#' \describe{
-#'   \item{...}
-#' }
 #' @return A vector of genes returned from enrichment analysis
 NULL
 
