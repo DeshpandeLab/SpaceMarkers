@@ -1,12 +1,12 @@
 
 test_that("load10XExpr loads data correctly", {
+
   # Create a temporary directory for testing
-  
   temp_dir <- "."
   # Generate a test h5 file
   file.create("test.h5")
   h5_file <- file.path( "test.h5")
-  hf <- H5File$new(h5_file , mode = "w")
+  hf <- hdf5r::H5File$new(h5_file , mode = "w")
   
   # Create test data
   counts <- c(1, 2, 3, 4, 5, 6)

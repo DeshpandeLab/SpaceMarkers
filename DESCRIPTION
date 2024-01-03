@@ -22,7 +22,8 @@ Depends:
     pracma,
     R (>= 4.3.1),
     rstatix,
-    spatstat
+    spatstat.explore,
+    spatstat.geom
 biocViews: SingleCell, GeneExpression, Software, Spatial, Transcriptomics
 Imports: 
     ape,
@@ -30,8 +31,6 @@ Imports:
     jsonlite,
     Matrix,
     qvalue,
-    spatstat.explore,
-    spatstat.geom,
     stats,
     utils
 Suggests:  
