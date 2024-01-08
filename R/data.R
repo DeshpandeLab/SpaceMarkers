@@ -1,25 +1,3 @@
-#' Interacting Genes
-#'
-#' A vector with:
-#' Genes identified between Pattern_1 and Pattern_5 genes from 
-#' getInteractingGenes(...,analysis = "enrichment")
-#'  
-#' @name residual_p1_p5_enrichment_genesOnly
-#' @format A vector of length 21331
-#' @return A vector of genes returned from enrichment analysis
-NULL
-
-#' Interacting Genes
-#'
-#' A vector with:
-#' Genes identified between Pattern_1 and Pattern_5 genes from 
-#' getInteractingGenes(...,analysis = "enrichment")
-#'  
-#' @name DE_p1_p5_enrichment_genesOnly
-#' @format A vector of length 21142
-#' @return A vector of genes returned from enrichment analysis
-NULL
-
 #' Optimal paramters of 5 patterns from CoGAPS.
 #'
 #' A dataset with the optimal width of the gaussian distribution (sigmaOpt) and 
@@ -53,6 +31,16 @@ NULL
 #'   \item{sampleFactors}{Data frame of cell barcodes and the 5 patterns}
 #' }
 #' @return A matrix of statistics for each pattern across each barcode
+NULL
+
+#' Curated Genes for example purposes
+#' 
+#' A vector with genes selected based on previous runs of SpaceMarkers on the
+#' Visium 10x breast ductal carcinoma spatial transcriptomics dataset
+#'
+#' @name curated_genes
+#' @format A vector with 114 pre-selected genes
+#' @return a vector of genes
 NULL
 
 
