@@ -76,9 +76,9 @@ getSpaceMarkersMetric <- function(interacting.genes){
                 -interacting_genes[[i]]$Dunn.zP1_Int - 
                 interacting_genes[[i]]$Dunn.zP1_Int - 
                 ((interacting_genes[[i]]$Dunn.zP1_Int>0)&
-                     (interacting_genes[[i]]$Dunn.zP2_Int>0))*100 + 
+                    (interacting_genes[[i]]$Dunn.zP2_Int>0))*100 + 
                 ((interacting_genes[[i]]$Dunn.zP1_Int<0)&
-                     (interacting_genes[[i]]$Dunn.zP2_Int<0))*100
+                    (interacting_genes[[i]]$Dunn.zP2_Int<0))*100
             od<-order(interacting_genes[[i]]$SpaceMarkersMetric,decreasing=TRUE)
             interacting_genes[[i]] <- interacting_genes[[i]][od,]
             interacting_genes[[i]] <- interacting_genes[[i]][!is.na(

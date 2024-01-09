@@ -384,7 +384,9 @@ Typically, you may see slight changes among genes lower in the ranking. This is
 especially important where genes that do not pass the Dunn's test for 
 interactions between any of the other two patterns in the overlap analysis are 
 now ranked in enrichment analysis. The Pattern_1 x Pattern_5 column for these 
-genes is labelled as FALSE. Here is an example of the statistics for such genes. 
+genes is labelled as FALSE. 
+
+Here is an example of the statistics for such genes. 
 ```{r}
 tail(SpaceMarkers_DE_enrich$interacting_genes[[1]])
 ```
@@ -759,7 +761,7 @@ Accessed 22 Dec. 2023.
 ```{r echo=FALSE}
 parameters = c('visiumDir', 'h5filename')
 paramDescript = c('A string path to the h5 file with expression information',
-                  'A string of the name of the h5 file in the directory')
+                    'A string of the name of the h5 file in the directory')
 paramTable = data.frame(parameters, paramDescript)
 knitr::kable(paramTable, col.names = c("Argument","Description"))
 
