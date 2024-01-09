@@ -23,12 +23,15 @@ folder.
 \examples{
 library(SpaceMarkers)
 #Visium data links
-urls <- read.csv("inst/extdata/visium_data.txt")
-counts_url <- urls[1,1]
+urls <- read.csv(system.file("extdata","visium_data.txt",
+package = "SpaceMarkers",mustWork = TRUE))
+counts_url <- urls[["visium_url"]][1]
 #Remove present Directories if any
 files <- list.files(".")[grepl(basename(counts_url),list.files("."))]
 unlink(files)
 download.file(counts_url,basename(counts_url))
 counts_matrix<-load10XExpr(visiumDir=".",h5filename = basename(counts_url))
+files <- list.files(".")[grepl(basename(counts_url),list.files("."))]
+unlink(files)
 
 }

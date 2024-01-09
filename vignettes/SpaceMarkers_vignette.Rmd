@@ -1,9 +1,9 @@
 ---
 title: "Inferring Immune Interactions in Breast Cancer"
 author: "Orian Stapleton"
-date: "2023-02-15"
+date: "2024-01-08"
 output:
-    html_document:
+    BiocStyle::html_document:
         toc: yes
         toc_depth: 3
         number_sections: yes
@@ -65,7 +65,7 @@ sp_url<-paste(c(main_10xlink,sp_folder,sp_file),collapse = "/")
 The functions require that some files and directories with the same name be 
 unique. Therefore any downloads from a previous runs will be removed.
 ```{r}
-unlink(sp_file)
+unlink(basename(sp_url))
 files <- list.files(".")[grepl(counts_file,list.files("."))]
 unlink(files)
 unlink("spatial", recursive = TRUE)
@@ -738,10 +738,10 @@ SpaceMarkers list.
 # Removing Directories
 
 ```{r}
-unlink(sp_file)
-files <- list.files(".")[grepl(counts_file,list.files("."))]
-unlink(files)
+unlink(basename(sp_url))
 unlink("spatial", recursive = TRUE)
+files <- list.files(".")[grepl(basename(counts_url),list.files("."))]
+unlink(files)
 ```
 
 # References
