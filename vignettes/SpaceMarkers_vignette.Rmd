@@ -36,7 +36,7 @@ transcriptomics dataset.
 
 ```{r eval = FALSE}
 install.packages("remotes")
-remotes::install_github("FertigLab/SpaceMarkers",dependencies=TRUE,
+remotes::install_github("DeshpandeLab/SpaceMarkers",dependencies=TRUE,
                         build_vignettes = TRUE)
 ```
 ```{r message = FALSE, warning = FALSE}
