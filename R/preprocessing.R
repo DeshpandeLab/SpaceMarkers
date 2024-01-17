@@ -98,3 +98,67 @@ load10XCoords <- function(visiumDir, resolution = "lowres"){
     return(coord_values)
 }
 
+#===================
+#' getSpatialFeatures
+#' Load spatial features from file containing deconvolution results
+#'
+#' This function loads spatial coordinates for each cell from a 10X Visium 
+#' spatial folder.
+#'
+#' @export
+#'
+#' @param visiumDir A string path to the location of the folder containing the 
+#' spatial coordinates. The folder in your visiumDir must be named 'spatial' and
+#'  must contain files 'scalefactors_json.json' and 'tissue_positions_list.csv.'
+#' @param resolution A string specifying which values to look for in the .json 
+#' object. Can be either lowres or highres.
+#' @return a data frame of the spatial coordinates ( x and y) for each spot/cell
+#' @examples
+#' main_10xlink <- "https://cf.10xgenomics.com/samples/spatial-exp/1.3.0"
+#' sp_folder <- "Visium_FFPE_Human_Breast_Cancer"
+#' sp_file <- "Visium_FFPE_Human_Breast_Cancer_spatial.tar.gz"
+#' sp_url <- paste(c(main_10xlink,sp_folder,sp_file),collapse = "/")
+#' # Spatial Coordinates
+#' download.file(sp_url, basename(sp_url))
+#' untar(basename(sp_url))
+#' spCoords <- load10XCoords(visiumDir = ".")
+#' unlink("spatial", recursive = TRUE)
+#' unlink("Visium_FFPE_Human_Breast_Cancer_spatial.tar.gz")
+#' 
+
+getSpatialFeatures <- function(filePath,method = "CoGAPS",featureNames = NULL){
+    if(method=="CoGAPS"){
+        spFeatures <- readRDS(filePath)
+        spFeatures <- slot(spFeatures,"sampleFactors")
+    } else if(method=="BayesTME"){
+        spFeatures <- t(rhdf5::h5read("dataset_deconvolved_marker_genes.h5ad", "obsm/bayestme_cell_type_counts"))
+        spFeatures <- sampleFactor(spFeatures)
+    } else if(method=="Seurat"){
+        spFeatures <- readRDS(filePath)
+        spFeatures <- spFeatures[[]]
+    } else {
+        stop("Method not supported.")
+    }
+    if(is.null(featureNames)){
+        featureNames <- colnames(spFeatures)
+        warning("No feature names provided. Using all available features.")
+        if(method=="Seurat")
+            featureNames <- grepl(colnames(spFeatures),pattern = "_feature", ignore.case = TRUE)
+    } else{
+        featureNames <- intersect(featureNames,colnames(spFeatures))
+        if(!is.null(featureNames))
+            spFeatures <- spFeatures[,featureNames]
+        else
+            stop("No features found in the spatial data with provided feature names.")
+    }
+    if(method %in% c("CoGAPS", "BayesTME"){
+        featureNames <- intersect(featureNames,colnames(spFeatures))
+        if(!is.null(featureNames)){)
+            spFeatures <- spFeatures[,featureNames]
+        } else if(method=="Seurat"){
+            spFeatures <- spFeatures[,featureNames]
+        }
+        spFeatures <- spFeatures[,featureNames]
+    }
+    return(spFeatures)
+}
