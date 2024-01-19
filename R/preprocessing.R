@@ -116,23 +116,12 @@ load10XCoords <- function(visiumDir, resolution = "lowres"){
 #'
 #' @export
 #'
-#' @param visiumDir A string path to the location of the folder containing the 
-#' spatial coordinates. The folder in your visiumDir must be named 'spatial' and
-#'  must contain files 'scalefactors_json.json' and 'tissue_positions_list.csv.'
-#' @param resolution A string specifying which values to look for in the .json 
-#' object. Can be either lowres or highres.
-#' @return a data frame of the spatial coordinates ( x and y) for each spot/cell
+#' @param filePath A string path to the location of the file containing the 
+#' spatial features. 
+#' @param method A string specifying the method used to obtain spatial features. Can be either "CoGAPS", "Seurat", or "BayesTME".
+#' @param featureNames An array of strings specifying the column names corresponding to the feature names. If input is NULL, in the case of CoGAPS and BayesTME, all features are selected In the case of Seurat, all metadata columns with "_Feature" suffix are selected.
+#' @return a data frame of spatial features for each spot/cell
 #' @examples
-#' main_10xlink <- "https://cf.10xgenomics.com/samples/spatial-exp/1.3.0"
-#' sp_folder <- "Visium_FFPE_Human_Breast_Cancer"
-#' sp_file <- "Visium_FFPE_Human_Breast_Cancer_spatial.tar.gz"
-#' sp_url <- paste(c(main_10xlink,sp_folder,sp_file),collapse = "/")
-#' # Spatial Coordinates
-#' download.file(sp_url, basename(sp_url))
-#' untar(basename(sp_url))
-#' spCoords <- load10XCoords(visiumDir = ".")
-#' unlink("spatial", recursive = TRUE)
-#' unlink("Visium_FFPE_Human_Breast_Cancer_spatial.tar.gz")
 #' 
 
 getSpatialFeatures <- function(filePath,method = "CoGAPS",featureNames = NULL){
