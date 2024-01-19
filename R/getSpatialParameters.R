@@ -1,6 +1,7 @@
-#' @import spatstat
+#' @importFrom spatstat.geom owin ppp marks
+#' @importFrom spatstat.explore Smooth
 #' @importFrom ape where
-#' @import pracma
+#' @importFrom pracma randperm
 #import description end
 0
 
@@ -93,6 +94,7 @@ getOptimalSigmaThresh <- function(pattern, locs, sigVec, threshVec,...){
 #' distribution, and the thresOpt - outlier threshold around the set of spots 
 #' for each pattern
 #' @examples
+#' library(SpaceMarkers)
 #' # Create test data
 #' cells <- c()
 #' test_num <- 500

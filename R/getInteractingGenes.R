@@ -72,11 +72,13 @@ getSpaceMarkersMetric <- function(interacting.genes){
     for (i in seq(1,length(interacting_genes)))
     {
         if (all(dim(interacting_genes[[i]])>1))   {
-            interacting_genes[[i]]$SpaceMarkersMetric <-  abs(
-                interacting_genes[[i]]$Dunn.zP1_Int) * abs(
-                    interacting_genes[[i]]$Dunn.zP2_Int) * (2*(-1)^(pmin(
-                        interacting_genes[[i]]$Dunn.zP1_Int,
-                        interacting_genes[[i]]$Dunn.zP2_Int)>=0)-1)
+            interacting_genes[[i]]$SpaceMarkersMetric <- 
+                -interacting_genes[[i]]$Dunn.zP1_Int - 
+                interacting_genes[[i]]$Dunn.zP1_Int - 
+                ((interacting_genes[[i]]$Dunn.zP1_Int>0)&
+                    (interacting_genes[[i]]$Dunn.zP2_Int>0))*100 + 
+                ((interacting_genes[[i]]$Dunn.zP1_Int<0)&
+                    (interacting_genes[[i]]$Dunn.zP2_Int<0))*100
             od<-order(interacting_genes[[i]]$SpaceMarkersMetric,decreasing=TRUE)
             interacting_genes[[i]] <- interacting_genes[[i]][od,]
             interacting_genes[[i]] <- interacting_genes[[i]][!is.na(
@@ -126,58 +128,54 @@ getSpaceMarkersMetric <- function(interacting.genes){
 #'  (interacting_genes object). There is also a data frame with all of the
 #'   regions of influence for any two of patterns (the hotspots object).
 #' @examples 
-#' 
-#' #Visium data links
 #' library(SpaceMarkers)
-#' main_10xlink <- "https://cf.10xgenomics.com/samples/spatial-exp/1.3.0"
-#' counts_folder <- "Visium_Human_Breast_Cancer"
-#' counts_file <- "Visium_Human_Breast_Cancer_filtered_feature_bc_matrix.h5"
-#' counts_url<-paste(c(main_10xlink,counts_folder,counts_file), collapse = "/")
-#' sp_folder <- "Visium_FFPE_Human_Breast_Cancer"
-#' sp_file <- "Visium_FFPE_Human_Breast_Cancer_spatial.tar.gz"
-#' sp_url<-paste(c(main_10xlink,sp_folder,sp_file),collapse = "/")
-#' cg_main <- "https://github.com/atuldeshpande/SpaceMarkers-paper/blob/main"
-#' cg_folder <- "CoGAPS_Analysis/BreastCancer"
-#' cg_file <- "182967_1168993F_2_CogapsResult_5.rds?raw=true"
-#' cogaps_url <- paste(c(cg_main,cg_folder,cg_file), collapse = "/")
-#' #Counts Matrix
-#' system2("wget",c("-q",counts_url))
+#' #Visium data links
+#' urls <- read.csv(system.file("extdata","visium_data.txt",
+#' package="SpaceMarkers",mustWork = TRUE))
+#' counts_url <- urls[["visium_url"]][1]
+#' sp_url <- urls[["visium_url"]][2]
+#' #Remove present Directories if any
+#' unlink(basename(sp_url))
+#' unlink("spatial", recursive = TRUE)
+#' files <- list.files(".")[grepl(basename(counts_url),list.files("."))]
+#' unlink(files)
+#' download.file(counts_url,basename(counts_url))
 #' counts_matrix<-load10XExpr(visiumDir=".",h5filename = basename(counts_url))
-#' good_gene_threshold <- 300
-#' goodGenes <- rownames(counts_matrix)[apply(counts_matrix,1,function(x)
-#' sum(x>0)>=good_gene_threshold)]
-#' print(length(goodGenes))
-#' goodGenes <- sample(goodGenes,100)
-#' counts_matrix <- counts_matrix[goodGenes,]
-#' # Latent Feature Space
-#' system2("wget",c("-q",cogaps_url,"-O","CogapsResult_5.rds"))
-#' cogaps_result <- readRDS("CogapsResult_5.rds")
-#' cogaps_features <- slot(cogaps_result,"featureLoadings")
-#' features <- intersect(rownames(counts_matrix),rownames(cogaps_features))
-#' cogaps_barcodes <- slot(cogaps_result,"sampleFactors")
-#' barcodes <- intersect(colnames(counts_matrix),rownames(cogaps_barcodes))
+#' #Obtaining CoGAPS Patterns
+#' data("cogaps_result")
+#' features <- intersect(rownames(counts_matrix),rownames(
+#'     slot(cogaps_result,"featureLoadings")))
+#' barcodes <- intersect(colnames(counts_matrix),rownames(
+#'     slot(cogaps_result,"sampleFactors")))
 #' counts_matrix <- counts_matrix[features,barcodes]
-#' cogaps_matrix <- cogaps_features[features,] %*% t(cogaps_barcodes[barcodes,])
-#' # Spatial Coordinates
+#' cogaps_matrix <- slot(cogaps_result,"featureLoadings")[features,]%*%
+#'     t(slot(cogaps_result,"sampleFactors")[barcodes,])
+#' #Obtaining Spatial Coordinates
 #' download.file(sp_url, basename(sp_url))
 #' untar(basename(sp_url))
 #' spCoords <- load10XCoords(visiumDir = ".")
 #' rownames(spCoords) <- spCoords$barcode
 #' spCoords <- spCoords[barcodes,]
 #' spPatterns <- cbind(spCoords,slot(cogaps_result,"sampleFactors")[barcodes,])
-#' #Get Breast Cancer data
-#' data("optParams_breast_cancer")
+#' data("curated_genes")
+#' spPatterns<-spPatterns[c("barcode","y","x","Pattern_1","Pattern_5")]
+#' counts_matrix <- counts_matrix[curated_genes,]
+#' cogaps_matrix <- cogaps_matrix[curated_genes, ]
+#' data("optParams")
 #' SpaceMarkersMode <- "DE"
 #' ref_Pattern <- "Pattern_1"
-#' SpaceMarkers_DE <- getInteractingGenes(data = counts_matrix,
-#' reconstruction = NULL,optParams = optParams_breast_cancer,
-#' spPatterns = spPatterns,refPattern = ref_Pattern,mode = SpaceMarkersMode,
-#' analysis = "enrichment")
-#' unlink(sp_file)
-#' files <- list.files(".")[grepl(counts_file,list.files("."))]
-#' unlink(files)
-#' unlink("CogapsResult_5.rds")
+#' SpaceMarkers_test <- getInteractingGenes(
+#'     data=counts_matrix,reconstruction=NULL,
+#'     optParams = optParams,
+#'     spPatterns = spPatterns,
+#'     refPattern = "Pattern_1",
+#'     mode="DE",analysis="overlap")
+#' #Remove present Directories if any
+#' unlink(basename(sp_url))
 #' unlink("spatial", recursive = TRUE)
+#' files <- list.files(".")[grepl(basename(counts_url),list.files("."))]
+#' unlink(files)
+#' 
 
 getInteractingGenes <- function(data,spPatterns,refPattern="Pattern_1",
                                 mode=c("residual","DE"),optParams=NULL,

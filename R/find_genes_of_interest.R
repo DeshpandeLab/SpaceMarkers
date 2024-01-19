@@ -1,8 +1,8 @@
-#' @import matrixTests
+#' @importFrom matrixTests row_kruskalwallis
 #' @importFrom rstatix filter
 #' @importFrom matrixStats count
-#' @importFrom  stats lag dist pnorm sd
-#' @import utils
+#' @importFrom stats lag dist pnorm sd
+#' @importFrom qvalue qvalue
 #import description end
 
 
@@ -127,7 +127,7 @@ find_genes_of_interest<-function(
     colnames(res_dunn_test) <- paste0("Dunn.",colnames(res_dunn_test))
     interact_genes <- cbind(interact_genes,res_kruskal,res_dunn_test)
     if (analysis=="overlap"){
-        interact_genes <- interact_genes[interact_genes[,2]!="FALSE",]    
+        interact_genes <-interact_genes[interact_genes[,2]!="FALSE",] 
     }
     return(list(interact_genes))
 }
