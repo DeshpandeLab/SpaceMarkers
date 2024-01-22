@@ -129,8 +129,11 @@ getSpatialFeatures <- function(filePath,method = "CoGAPS",featureNames = NULL){
         spFeatures <- readRDS(filePath)
         spFeatures <- slot(spFeatures,"sampleFactors")
     } else if(method=="BayesTME"){
-        spFeatures <- t(rhdf5::h5read("dataset_deconvolved_marker_genes.h5ad", "obsm/bayestme_cell_type_counts"))
-        spFeatures <- sampleFactor(spFeatures)
+        spFeatures <- t(rhdf5::h5read(filePath, "obsm/bayestme_cell_type_counts"))
+        barcodes <- rhdf5::h5read(filePath, "obs/_index")
+        rownames(spFeatures) <- barcodes
+        if (is.null(colnames(spFeatures)))
+            colnames(spFeatures) <- paste0("BayesTME_",1:ncol(spFeatures))
     } else if(method=="Seurat"){
         spFeatures <- readRDS(filePath)
         spFeatures <- spFeatures[[]]
@@ -139,24 +142,16 @@ getSpatialFeatures <- function(filePath,method = "CoGAPS",featureNames = NULL){
     }
     if(is.null(featureNames)){
         featureNames <- colnames(spFeatures)
-        warning("No feature names provided. Using all available features.")
+        message("No feature names provided. Using all available features.")
         if(method=="Seurat")
             featureNames <- grepl(colnames(spFeatures),pattern = "_feature", ignore.case = TRUE)
     } else{
         featureNames <- intersect(featureNames,colnames(spFeatures))
-        if(!is.null(featureNames))
+        if(!is.empty(featureNames))
             spFeatures <- spFeatures[,featureNames]
         else
             stop("No features found in the spatial data with provided feature names.")
     }
-    if(method %in% c("CoGAPS", "BayesTME"){
-        featureNames <- intersect(featureNames,colnames(spFeatures))
-        if(!is.null(featureNames)){)
-            spFeatures <- spFeatures[,featureNames]
-        } else if(method=="Seurat"){
-            spFeatures <- spFeatures[,featureNames]
-        }
         spFeatures <- spFeatures[,featureNames]
-    }
     return(spFeatures)
 }
