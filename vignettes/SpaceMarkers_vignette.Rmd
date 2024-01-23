@@ -671,8 +671,8 @@ head(residual_p1_p5 %>% dplyr::filter(
 #### Visualizations
 
 ```{r, message=FALSE, warning=FALSE}
-plot_grid(plotlist = list(plist[[1]],plots[[1]]), scale = 0.5, rel_heights = c(4,1))
-plot_grid(plotlist = list(plist[[2]],plots[[2]]), scale = 1)
+plot_grid(plotlist = list(plist[[1]],plots[[1]]))
+plot_grid(plotlist = list(plist[[2]],plots[[2]]))
 ```
 
 On the spatial heatmap, Pattern_1 takes up most of the top half of the spatial
@@ -686,7 +686,7 @@ ranked higher than IGHE.
 
 
 ```{r}
-plot_grid(plotlist = list(plist[[3]],plots[[3]]), scale = 0.5)
+plot_grid(plotlist = list(plist[[3]],plots[[3]]))
 ```
 
 The spatial heatmap for TGM2 shows fairly high expression interacting region 
