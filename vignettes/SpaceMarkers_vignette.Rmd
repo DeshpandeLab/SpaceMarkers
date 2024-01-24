@@ -666,7 +666,7 @@ patterns.
 
 ```{r}
 head(residual_p1_p5 %>% dplyr::filter(
-    residual_p1_p5$`Pattern_1 x Pattern_5` == "vsBoth"),n_genes)
+    sp_genes$`Pattern_1 x Pattern_5` == "vsBoth"),n_genes)
 ```
 
 #### Visualizations
@@ -701,8 +701,8 @@ two patterns.
 #### Table of statistics
 
 ```{r}
-head(residual_p1_p5 %>% dplyr::filter(
-    residual_p1_p5$`Pattern_1 x Pattern_5` == "vsPattern_1"),n_genes - 1 )
+head(sp_genes %>% dplyr::filter(
+    sp_genes$`Pattern_1 x Pattern_5` == "vsPattern_1"),n_genes - 1 )
 ```
 
 #### Visualizations
@@ -720,8 +720,8 @@ high so the distinction will not appear as pronounced on the expression map.
 #### Table of statistics
 
 ```{r}
-head(residual_p1_p5 %>% dplyr::filter(
-    residual_p1_p5$`Pattern_1 x Pattern_5`=="vsPattern_5"),n_genes - 1)
+head(sp_genes %>% dplyr::filter(
+    sp_genes$`Pattern_1 x Pattern_5`=="vsPattern_5"),n_genes - 1)
 
 ```
 
@@ -731,6 +731,7 @@ head(residual_p1_p5 %>% dplyr::filter(
 plot_grid(plotlist = list(plist[[7]],plots[[7]]))
 plot_grid(plotlist = list(plist[[8]],plots[[8]]))
 ```
+
 The expression of these genes across interaction is harder to distinguish on
 either plot. Although, they pass the initial KW-test, the post-hoc Dunn's test
 p-values are high. This lack of distinction highlights the fact that 
@@ -739,8 +740,6 @@ individual latent Patterns interacting with each other. In other words, the
 vsBoth genes are ranked highest in the list, while the vsPattern_1 and 
 vsPattern_5 genes, which look at an individual Pattern interaction with another
 already interacting region, are ranked lower in the SpaceMarkers list.
-
-
 
 # Removing Directories
 

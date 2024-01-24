@@ -89,7 +89,7 @@ load10XExpr<- function(visiumDir=NULL,
 #' untar(basename(sp_url))
 #' spCoords <- load10XCoords(visiumDir = ".")
 #' unlink("spatial", recursive = TRUE)
-#' unlink("Visium_FFPE_Human_Breast_Cancer_spatial.tar.gz")
+#' unlink("Visium_Human_Breast_Cancer_spatial.tar.gz")
 #' 
 
 load10XCoords <- function(visiumDir, resolution = "lowres"){

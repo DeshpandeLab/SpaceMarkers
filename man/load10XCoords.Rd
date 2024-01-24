@@ -33,6 +33,6 @@ download.file(sp_url, basename(sp_url))
 untar(basename(sp_url))
 spCoords <- load10XCoords(visiumDir = ".")
 unlink("spatial", recursive = TRUE)
-unlink("Visium_FFPE_Human_Breast_Cancer_spatial.tar.gz")
+unlink("Visium_Human_Breast_Cancer_spatial.tar.gz")
 
 }
