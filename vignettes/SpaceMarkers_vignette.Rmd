@@ -728,8 +728,8 @@ head(sp_genes %>% dplyr::filter(
 #### Visualizations
 
 ```{r, dpi=36, out.width="600px", out.height="600px"}
+plot_grid(plotlist = list(plist[[6]],plots[[6]]))
 plot_grid(plotlist = list(plist[[7]],plots[[7]]))
-plot_grid(plotlist = list(plist[[8]],plots[[8]]))
 ```
 
 The expression of these genes across interaction is harder to distinguish on
