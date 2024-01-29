@@ -35,9 +35,10 @@ transcriptomics dataset.
 # Installation
 
 ```{r eval = FALSE}
-install.packages("remotes")
-remotes::install_github("DeshpandeLab/SpaceMarkers",dependencies=TRUE,
-                        build_vignettes = TRUE)
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("SpaceMarkers")
 ```
 ```{r message = FALSE, warning = FALSE}
 library(SpaceMarkers)
