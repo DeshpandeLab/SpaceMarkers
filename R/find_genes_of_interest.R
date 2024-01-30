@@ -4,8 +4,22 @@
 #' @importFrom stats lag dist pnorm sd
 #' @importFrom qvalue qvalue
 #import description end
+# 
+atac_input <- "results/atac_immune_subset.rds"
+cogaps_output <-  "CoGAPS_atac_lymphoid_subset_3Pat.rds"
+atac <- readRDS(atac_input)
+atac[["treatment"]] <- factor(atac$treatment,levels = unique(atac$treatment))
+x3NR <- unique(atac@meta.data[grepl("PTX_unt_aCSF1R_aPD1N",atac@meta.data$treatment),]$treatment)
+x3R <- unique(atac@meta.data[grepl("PTX_unt_aCSF1R_aPD1R",atac@meta.data$treatment),]$treatment)
+x4 <- unique(atac@meta.data[grepl("PTX_ENT_aCSF1R_aPD1R",atac@meta.data$treatment),]$treatment)
+groups <- unique(c(x3NR,x3R,x4))
+Idents(atac) <- "treatment"
+atac <- subset(x=atac, idents=groups)
+#Get correct cell types
+Idents(atac) <- atac$b3_predict_immuneOnly
 
-
+atac <- subset(x=atac, idents=c("Lymphoid/NK"))
+saveRDS(atac,"results/atac_lymphoid_subset.rds")
 
 ## author: Atul Deshpande
 ## email: adeshpande@jhu.edu

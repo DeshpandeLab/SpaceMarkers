@@ -247,6 +247,7 @@ SpaceMarkers_DE <- getInteractingGenes(
     refPattern = "Pattern_1",
     mode="DE",analysis="overlap")
 ```
+
 ### Differences between Residual Mode and DE Mode
 
 One of the first things to notice is the difference in the number 
@@ -411,6 +412,7 @@ Pattern_5 and the interacting region vs both Pattern_1 and Pattern_5 will be
 compared.
 
 ## Loading Packages
+
 The following libraries are required to make the plots:
 
 ```{r message = FALSE, warning=FALSE}
@@ -672,7 +674,7 @@ head(residual_p1_p5 %>% dplyr::filter(
 
 #### Visualizations
 
-```{r, message=FALSE,warning=FALSE,dpi=36,out.width="600px",out.height="600px"}
+```{r,message=FALSE,warning=FALSE,dpi=36,out.width="600px",out.height="600px"}
 plot_grid(plotlist = list(plist[[1]],plots[[1]]))
 plot_grid(plotlist = list(plist[[2]],plots[[2]]))
 ```
@@ -752,6 +754,7 @@ unlink(files)
 ```
 
 # References
+
 Deshpande, Atul, et al. "Uncovering the spatial landscape of molecular 
 interactions within the tumor microenvironment through latent spaces." 
 Cell Systems 14.4 (2023): 285-301.
