@@ -20,7 +20,8 @@ find_kernel_outliers_for_sensitivity <- function(pattern,locs,
     X<-spatstat.geom::ppp(x=locs$x,y=locs$y,window=allwin,marks=pattern)
     Kact<-spatstat.explore::Smooth(X,at ="points",sigma=sigma,leaveoneout=TRUE)
     Karr<-vapply(seq(1,100), function(i){Xr<-X;
-    spatstat.geom::marks(Xr)<-spatstat.geom::marks(X)[sample(length(spatstat.geom::marks(X)))];
+    spatstat.geom::marks(Xr)<-spatstat.geom::marks(X)[sample(length(
+        spatstat.geom::marks(X)))];
     temp<-spatstat.explore::Smooth(Xr,at="points",sigma=sigma,leaveoneout=TRUE);
         return(temp)}, numeric(length(Kact)))
     Kvec <- unlist(Karr)
