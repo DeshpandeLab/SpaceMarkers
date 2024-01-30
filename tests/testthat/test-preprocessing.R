@@ -1,12 +1,12 @@
 
 test_that("load10XExpr loads data correctly", {
+
   # Create a temporary directory for testing
-  
   temp_dir <- "."
   # Generate a test h5 file
   file.create("test.h5")
-  h5_file <- file.path( "test.h5")
-  hf <- H5File$new(h5_file , mode = "w")
+  h5_file <- file.path("test.h5")
+  hf <- hdf5r::H5File$new(h5_file , mode = "w")
   
   # Create test data
   counts <- c(1, 2, 3, 4, 5, 6)
@@ -46,17 +46,14 @@ test_that("load10XExpr loads data correctly", {
   unlink("test.h5")
 })
 
- 
 # Define the test cases
 test_that("load10XCoords loads data correctly", {
   # Create a temporary directory for testing
   temp_dir <- "spatial"
-  
   # Create test data
   dir.create(temp_dir)
   scale_json <- file.path(temp_dir, "scalefactors_json.json")
   coord_file <- file.path(temp_dir, "tissue_positions_list.csv")
-  
   # Write test data to files
   write('{"spot_diameter_fullres": 10, "scalefactors_lowres": 0.2}', scale_json)
   writeLines("spot_1,0.5,0.5,0,200,600\nspot_2,1.5,1.5,0,300,700", coord_file)

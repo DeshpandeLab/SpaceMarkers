@@ -23,15 +23,16 @@ This function loads spatial coordinates for each cell from a 10X Visium
 spatial folder.
 }
 \examples{
-main_10xlink <- "https://cf.10xgenomics.com/samples/spatial-exp/1.3.0"
-sp_folder <- "Visium_FFPE_Human_Breast_Cancer"
-sp_file <- "Visium_FFPE_Human_Breast_Cancer_spatial.tar.gz"
-sp_url <- paste(c(main_10xlink,sp_folder,sp_file),collapse = "/")
+library(SpaceMarkers)
+#Visium data links
+urls <- read.csv(system.file("extdata","visium_data.txt",
+package = "SpaceMarkers",mustWork = TRUE))
+sp_url <- urls[["visium_url"]][2]
 # Spatial Coordinates
 download.file(sp_url, basename(sp_url))
 untar(basename(sp_url))
 spCoords <- load10XCoords(visiumDir = ".")
 unlink("spatial", recursive = TRUE)
-unlink("Visium_FFPE_Human_Breast_Cancer_spatial.tar.gz")
+unlink("Visium_Human_Breast_Cancer_spatial.tar.gz")
 
 }
