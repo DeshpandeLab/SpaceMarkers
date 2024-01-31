@@ -13,7 +13,7 @@
 #' load10XExpr
 #' load 10X Visium Expression Data
 #'
-#' This log-transformed 10X Visium expression data from standard 10X Visium 
+#' This loads log-transformed 10X Visium expression data from standard 10X Visium 
 #' folder.
 #'
 #' @export
