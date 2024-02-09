@@ -566,7 +566,7 @@ Specifying a continuous scale and colors before plotting
 
 ```{r}
 myPalette <- function(numLevels) {
-    return(colorRampPalette(c("white","blue"))(numLevels))}
+    return(colorRampPalette(c("blue","yellow"))(numLevels))}
 ```
 
 Extracting top 3 genes ...
@@ -593,6 +593,7 @@ for (g in 1:length(interactions)){
 Visualize expression spatially
 
 ```{r message = FALSE, warning=FALSE}
+
 plots <- list()
 # default size = 1.75, stroke = 0.5
 for (g in gene_list){
@@ -600,7 +601,7 @@ for (g in gene_list){
         plots[[length(plots)+1]] <- bcs_merge %>%dplyr::filter(
             sample ==sample_names[i]) %>% bind_cols(as.data.table(
             matrix[i])[,g, with=FALSE]) %>% ggplot(aes_string(
-                x='imagecol', y='imagerow', fill=g)) +geom_spatial(
+                x='imagecol', y='imagerow', fill=g, alpha = g)) +geom_spatial(
                 data=images_tibble[i,], aes(grob=grob), x=0.5, y=0.5)+
             geom_point(shape = 21, colour = "black", size = 1.1, stroke = 0.2)+
             coord_cartesian(expand=FALSE)+scale_fill_gradientn(
@@ -620,7 +621,7 @@ for (g in gene_list){
 }
 ```
 
-This next block of code can visualize the genes for each pattern on box plots
+This next block of code can visualize the gene expression in each region using box plots.
 
 ```{r}
 region <- SpaceMarkers$hotspots[,1]
@@ -670,7 +671,7 @@ head(residual_p1_p5 %>% dplyr::filter(
 
 #### Visualizations
 
-```{r, message=FALSE, warning=FALSE}
+```{r, message=FALSE, warning=FALSE, fig.width=12, fig.height=5}
 plot_grid(plotlist = list(plist[[1]],plots[[1]]))
 plot_grid(plotlist = list(plist[[2]],plots[[2]]))
 ```
@@ -685,7 +686,7 @@ However, the overall SpaceMarkersMetric for APOC1 is higher and so it is
 ranked higher than IGHE.
 
 
-```{r}
+```{r, message=FALSE, warning=FALSE, fig.width=12, fig.height=5}
 plot_grid(plotlist = list(plist[[3]],plots[[3]]))
 ```
 
