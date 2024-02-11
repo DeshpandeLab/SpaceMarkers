@@ -3,10 +3,6 @@
 #' @importFrom matrixStats count
 #' @importFrom stats lag dist pnorm sd
 #' @importFrom qvalue qvalue
-#import description end
-
-
-
 ## author: Atul Deshpande
 ## email: adeshpande@jhu.edu
 

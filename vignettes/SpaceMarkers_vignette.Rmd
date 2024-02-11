@@ -35,9 +35,10 @@ transcriptomics dataset.
 # Installation
 
 ```{r eval = FALSE}
-install.packages("remotes")
-remotes::install_github("DeshpandeLab/SpaceMarkers",dependencies=TRUE,
-                        build_vignettes = TRUE)
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("SpaceMarkers")
 ```
 ```{r message = FALSE, warning = FALSE}
 library(SpaceMarkers)
@@ -246,6 +247,7 @@ SpaceMarkers_DE <- getInteractingGenes(
     refPattern = "Pattern_1",
     mode="DE",analysis="overlap")
 ```
+
 ### Differences between Residual Mode and DE Mode
 
 One of the first things to notice is the difference in the number 
@@ -410,6 +412,7 @@ Pattern_5 and the interacting region vs both Pattern_1 and Pattern_5 will be
 compared.
 
 ## Loading Packages
+
 The following libraries are required to make the plots:
 
 ```{r message = FALSE, warning=FALSE}
@@ -573,13 +576,14 @@ Extracting top 3 genes ...
 
 ```{r}
 gene_list <- c()
-interactions <- unique(residual_p1_p5$`Pattern_1 x Pattern_5`)
+sp_genes <- SpaceMarkers$interacting_genes[[1]]
+interactions <- unique(sp_genes$`Pattern_1 x Pattern_5`)
 n_genes <- 3
 for (g in 1:length(interactions)){
     
-    df <- residual_p1_p5 %>% dplyr::filter(
-        residual_p1_p5$`Pattern_1 x Pattern_5` == interactions[g] & abs(
-        residual_p1_p5$Dunn.zP2_P1) > 1 )
+    df <- sp_genes %>% dplyr::filter(
+        sp_genes$`Pattern_1 x Pattern_5` == interactions[g] & abs(
+        sp_genes$Dunn.zP2_P1) > 1 )
     df <- df[!is.na(df$Gene),]
     valid_genes <- min(nrow(df),n_genes)
     print(paste0("Top ",valid_genes," genes for ",interactions[g]))
@@ -666,12 +670,12 @@ patterns.
 
 ```{r}
 head(residual_p1_p5 %>% dplyr::filter(
-    residual_p1_p5$`Pattern_1 x Pattern_5` == "vsBoth"),n_genes)
+    sp_genes$`Pattern_1 x Pattern_5` == "vsBoth"),n_genes)
 ```
 
 #### Visualizations
 
-```{r, message=FALSE, warning=FALSE, fig.width=12, fig.height=5}
+```{r, message=FALSE, warning=FALSE, dpi=36, fig.width=12, fig.height=5}
 plot_grid(plotlist = list(plist[[1]],plots[[1]]))
 plot_grid(plotlist = list(plist[[2]],plots[[2]]))
 ```
@@ -686,7 +690,7 @@ However, the overall SpaceMarkersMetric for APOC1 is higher and so it is
 ranked higher than IGHE.
 
 
-```{r, message=FALSE, warning=FALSE, fig.width=12, fig.height=5}
+```{r, message=FALSE, dpi, warning=FALSE, fig.width=12, fig.height=5}
 plot_grid(plotlist = list(plist[[3]],plots[[3]]))
 ```
 
@@ -695,6 +699,51 @@ relative to Pattern_1 or Pattern_5 by itself similar but less so than IGHE.
 as well with high expression in the interacting pattern vs the other 
 two patterns.
 
+### Pattern_5 Only vs Pattern_1 (including Pattern_1 in interacting region)
+
+
+#### Table of statistics
+
+```{r}
+head(sp_genes %>% dplyr::filter(
+    sp_genes$`Pattern_1 x Pattern_5` == "vsPattern_1"),n_genes - 1 )
+```
+
+#### Visualizations
+
+```{r, message=FALSE, dpi, warning=FALSE, fig.width=12, fig.height=5}
+plot_grid(plotlist = list(plist[[4]],plots[[4]]))
+plot_grid(plotlist = list(plist[[5]],plots[[5]]))
+```
+
+Unlike the previous three genes the KW pvalues and Dunn's pvalues are relatively
+high so the distinction will not appear as pronounced on the expression map.
+
+### Pattern_1 Only vs Pattern_5 (including Pattern_5 in interacting region)
+
+#### Table of statistics
+
+```{r}
+head(sp_genes %>% dplyr::filter(
+    sp_genes$`Pattern_1 x Pattern_5`=="vsPattern_5"),n_genes - 1)
+
+```
+
+#### Visualizations
+
+```{r, message=FALSE, dpi, warning=FALSE, fig.width=12, fig.height=5}
+plot_grid(plotlist = list(plist[[6]],plots[[6]]))
+plot_grid(plotlist = list(plist[[7]],plots[[7]]))
+```
+
+The expression of these genes across interaction is harder to distinguish on
+either plot. Although, they pass the initial KW-test, the post-hoc Dunn's test
+p-values are high. This lack of distinction highlights the fact that 
+SpaceMarkers performs best for identifying interactions for two latent 
+individual latent Patterns interacting with each other. In other words, the 
+vsBoth genes are ranked highest in the list, while the vsPattern_1 and 
+vsPattern_5 genes, which look at an individual Pattern interaction with another
+already interacting region, are ranked lower in the SpaceMarkers list.
 
 # Removing Directories
 
@@ -706,6 +755,7 @@ unlink(files)
 ```
 
 # References
+
 Deshpande, Atul, et al. "Uncovering the spatial landscape of molecular 
 interactions within the tumor microenvironment through latent spaces." 
 Cell Systems 14.4 (2023): 285-301.
