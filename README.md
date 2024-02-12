@@ -23,5 +23,5 @@ BiocManager::install("SpaceMarkers")
 You can install the development version of SpaceMarkers directly from the Github source.
 ```
 install.packages("remotes")
-remotes::install_github("FertigLab/SpaceMarkers", dependencies = TRUE, build_vignettes = TRUE)
+remotes::install_github("DeshpandeLab/SpaceMarkers", dependencies = TRUE, build_vignettes = TRUE)
 ```
