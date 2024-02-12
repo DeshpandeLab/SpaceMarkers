@@ -1,6 +1,6 @@
 #' @importFrom spatstat.geom owin ppp marks
 #' @importFrom spatstat.explore Smooth
-#' @importFrom ape where
+#' @importFrom ape Moran.I
 #import description end
 0
 
@@ -18,11 +18,10 @@ find_kernel_outliers_for_sensitivity <- function(pattern,locs,
     allwin<-spatstat.geom::owin(xrange = c(min(locs$x),max(locs$x)),
                                     yrange=c(min(locs$y),max(locs$y)))
     X<-spatstat.geom::ppp(x=locs$x,y=locs$y,window=allwin,marks=pattern)
-    Kact<-spatstat.explore::Smooth(X,at ="points",sigma=sigma,leaveoneout=TRUE)
+    Kact<-spatstat.explore::Smooth(X,at ="points",sigma=sigma,...)
     Karr<-vapply(seq(1,100), function(i){Xr<-X;
-    spatstat.geom::marks(Xr)<-spatstat.geom::marks(X)[sample(length(
-        spatstat.geom::marks(X)))];
-    temp<-spatstat.explore::Smooth(Xr,at="points",sigma=sigma,leaveoneout=TRUE);
+    spatstat.geom::marks(Xr)<-sample(spatstat.geom::marks(X));
+    temp<-spatstat.explore::Smooth(Xr,at="points",sigma=sigma,...);
         return(temp)}, numeric(length(Kact)))
     Kvec <- unlist(Karr)
     mKvec <- mean(Kvec)
@@ -39,10 +38,9 @@ getOptimalSigmaThresh <- function(pattern, locs, sigVec, threshVec,...){
                                     yrange=c(min(locs$y),max(locs$y)))
     X<-spatstat.geom::ppp(x=locs$x,y=locs$y,window=allwin,marks=pattern)
     Ks<-vapply(sigVec,function(i) spatstat.explore::Smooth(X,at="points",
-                                                            sigma=i,
-                                                            leaveoneout=TRUE),
+                                                            sigma=i,...),
                                                             numeric(X$n))
-    mor_1<-vapply(seq_len(length(sigVec)),function(i) unlist(ape::Moran.I(
+    mor_1<-vapply(seq(1,length(sigVec)),function(i) unlist(ape::Moran.I(
         spatstat.geom::marks(X)-Ks[,i], visium.dist.inv)),numeric(4))
     sigOpt1_ind <- which.min(abs(unlist(mor_1[1,])-unlist(mor_1[2,])))
     if (sigOpt1_ind>1&&sigOpt1_ind<length(sigVec)){
@@ -56,18 +54,19 @@ getOptimalSigmaThresh <- function(pattern, locs, sigVec, threshVec,...){
                             (sigVec[sigOpt1_ind] - sigVec[sigOpt1_ind-1])/10)
     }
     smallKs<-vapply(smallsigVec,function(i) spatstat.explore::Smooth(
-            X,at="points", sigma = i, leaveoneout = TRUE), numeric(X$n))
-    smallmor_2<-vapply(seq_len(length(smallsigVec)), function(i) unlist(
+            X,at="points", sigma = i, ...), numeric(X$n))
+    smallmor_2<-vapply(seq(1,length(smallsigVec)), function(i) unlist(
             ape::Moran.I(spatstat.geom::marks(X)-smallKs[,i],visium.dist.inv)),
             numeric(4))
-    sigOpt1_ind <- which.min(abs(unlist(smallmor_2[1,])-unlist(smallmor_2[2,])))
+    sigOpt1_ind <- which.min(abs(unlist(smallmor_2[1,])-
+                                unlist(smallmor_2[2,])))
     Kact2<-find_kernel_outliers_for_sensitivity(pattern=pattern,locs=locs,
                                                 sigma=smallsigVec[sigOpt1_ind],
                                                 method="Kernel2",
                                                 kernelthreshold=0,
                                                 outlier="positive")
     inds2<-(kronecker(matrix(1,1,length(threshVec)),Kact2)>threshVec)*1
-    mor_2_ind<-vapply(seq_len(length(threshVec)),function(j){
+    mor_2_ind<-vapply(seq(1,length(threshVec)),function(j){
         visium.dist.inv_1<- visium.dist.inv;visium.dist.inv_1[inds2[,j]==0]<-0;
         unlist(ape::Moran.I(spatstat.geom::marks(X)-smallKs[,sigOpt1_ind],
                             visium.dist.inv_1))}, numeric(4))

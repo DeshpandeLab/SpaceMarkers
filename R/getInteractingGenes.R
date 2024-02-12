@@ -2,9 +2,9 @@
 ## email: adeshpande@jhu.edu
 
 find_pattern_hotspots <- function(
-        spPatterns, params = NULL,
-        patternName = "Pattern_1",
-        outlier = "positive",...){
+        spPatterns, params = NULL, patternName = "Pattern_1",
+        outlier = "positive",
+    nullSamples = 100,...){
     if (is.null(params)){
         sigmaPair <- 10
         kernelthreshold <- 2
@@ -18,15 +18,14 @@ find_pattern_hotspots <- function(
             min(spPatterns$y),max(spPatterns$y)))
     patternVector <- as.matrix(spPatterns[,patternName])
     X <-spatstat.geom::ppp(
-        x=spPatterns$x,y = spPatterns$y,window = allwin,marks = patternVector)
+        x=spPatterns$x,y = spPatterns$y, window = allwin,marks = patternVector)
     Kact1 <- spatstat.explore::Smooth(
-        X, at = "points", sigma = sigmaPair[1],leaveoneout = TRUE)
-    Karr1 <- vapply(seq(1,100),function(i){
+        X, at = "points", sigma = sigmaPair[1], ...)
+    Karr1 <- vapply(seq(1,nullSamples),function(i){
         Xr<-X;
-        spatstat.geom::marks(Xr) <- spatstat.geom::marks(X)[pracma::randperm(
-            seq_len(length(spatstat.geom::marks(
-                X))))];temp <- spatstat.explore::Smooth(
-                    Xr, at="points", sigma = sigmaPair[1],leaveoneout=TRUE); 
+        spatstat.geom::marks(Xr) <- sample(spatstat.geom::marks(X));
+        temp <- spatstat.explore::Smooth(
+                    Xr, at="points", sigma = sigmaPair[1], ...); 
                 return(temp)}, numeric(length(Kact1)))
     Karr1 <- unlist(Karr1)
     mKvec <- mean(Karr1)
@@ -79,7 +78,8 @@ getSpaceMarkersMetric <- function(interacting.genes){
                     (interacting_genes[[i]]$Dunn.zP2_Int>0))*100 + 
                 ((interacting_genes[[i]]$Dunn.zP1_Int<0)&
                     (interacting_genes[[i]]$Dunn.zP2_Int<0))*100
-            od<-order(interacting_genes[[i]]$SpaceMarkersMetric,decreasing=TRUE)
+            od<-order(interacting_genes[[i]]$SpaceMarkersMetric,
+                        decreasing=TRUE)
             interacting_genes[[i]] <- interacting_genes[[i]][od,]
             interacting_genes[[i]] <- interacting_genes[[i]][!is.na(
                 interacting_genes[[i]]$SpaceMarkersMetric),]

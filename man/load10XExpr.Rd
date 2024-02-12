@@ -17,8 +17,8 @@ A matrix of class dgeMatrix or Matrix that contains the expression
 info for each sample (cells) across multiple features (genes)
 }
 \description{
-This log-transformed 10X Visium expression data from standard 10X Visium
-folder.
+This loads log-transformed 10X Visium expression data from standard 10X
+Visium folder.
 }
 \examples{
 library(SpaceMarkers)
