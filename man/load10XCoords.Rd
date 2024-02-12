@@ -9,29 +9,32 @@ load10XCoords(visiumDir, resolution = "lowres")
 }
 \arguments{
 \item{visiumDir}{A string path to the location of the folder containing the
-spatial coordinates. The folder in your visiumDir must be named 'spatial' and
-must contain files 'scalefactors_json.json' and 'tissue_positions_list.csv.'}
+spatial coordinates. The folder in your visiumDir must be named 'spatial'
+and must contain files 'scalefactors_json.json'
+and 'tissue_positions_list.csv.'}
 
 \item{resolution}{A string specifying which values to look for in the .json
 object. Can be either lowres or highres.}
 }
 \value{
-a data frame of the spatial coordinates ( x and y) for each spot/cell
+a data frame of the spatial coordinates
+( x and y) for each spot/cell
 }
 \description{
 This function loads spatial coordinates for each cell from a 10X Visium
 spatial folder.
 }
 \examples{
-main_10xlink <- "https://cf.10xgenomics.com/samples/spatial-exp/1.3.0"
-sp_folder <- "Visium_FFPE_Human_Breast_Cancer"
-sp_file <- "Visium_FFPE_Human_Breast_Cancer_spatial.tar.gz"
-sp_url <- paste(c(main_10xlink,sp_folder,sp_file),collapse = "/")
+library(SpaceMarkers)
+#Visium data links
+urls <- read.csv(system.file("extdata","visium_data.txt",
+package = "SpaceMarkers",mustWork = TRUE))
+sp_url <- urls[["visium_url"]][2]
 # Spatial Coordinates
 download.file(sp_url, basename(sp_url))
 untar(basename(sp_url))
 spCoords <- load10XCoords(visiumDir = ".")
 unlink("spatial", recursive = TRUE)
-unlink("Visium_FFPE_Human_Breast_Cancer_spatial.tar.gz")
+unlink("Visium_Human_Breast_Cancer_spatial.tar.gz")
 
 }

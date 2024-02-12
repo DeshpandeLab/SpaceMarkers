@@ -1,40 +1,38 @@
 Type: Package
 Package: SpaceMarkers
 Title: Spatial Interaction Markers
-Version: 0.99.3
-Authors@R:c(
+Version: 0.99.5
+Authors@R: c(
     person(given = "Atul", family = "Deshpande", email = "adeshpande@jhu.edu", role = c("aut", "cre"), comment = c(ORCID="0000-0001-5144-6924")),
     person(given = "Ludmila", family = "Danilova", email = "ldanilo1@jhmi.edu", role = "ctb"),
     person(given = "Dimitrijs", family = "Lvovs", email = "dlvovs1@jh.edu", role = "ctb")
   )
 BugReports: https://github.com/atuldeshpande/SpaceMarkers/issues
 URL: https://github.com/atuldeshpande/SpaceMarkers
-Description:Spatial transcriptomic technologies have helped to resolve the connection
+Description: Spatial transcriptomic technologies have helped to resolve the connection
             between gene expression and the 2D orientation of tissues relative to each other.
             However, the limited single-cell resolution makes it difficult to highlight the most 
             important molecular interactions in these tissues. SpaceMarkers, R/Bioconductor software,
             can help to find molecular interactions, by identifying genes associated with latent space 
             interactions in spatial transcriptomics.
-License: MIT + file LICENSE
 Depends: 
+    R (>= 4.4.0)
+biocViews: SingleCell, GeneExpression, Software, Spatial, Transcriptomics
+Imports:
     matrixStats,
     matrixTests,
-    pracma,
-    R (>= 4.3.0),
     rstatix,
-    spatstat
-biocViews: SingleCell, GeneExpression, Software, Spatial, Transcriptomics
-Imports: 
+    spatstat.explore,
+    spatstat.geom,
     ape,
     hdf5r,
     jsonlite,
     Matrix,
     qvalue,
-    spatstat.explore,
-    spatstat.geom,
     stats,
-    utils
-Suggests:  
+    utils,
+    methods
+Suggests: 
     data.table,
     devtools,
     dplyr,
@@ -46,12 +44,9 @@ Suggests:
     readbitmap,
     rjson,
     rmarkdown,
+    BiocStyle,
     testthat (>= 3.0.0),
     viridis,
-    AnnotationDbi,
-    clusterProfiler,
-    enrichplot,
-    org.Hs.eg.db,
     CoGAPS
 VignetteBuilder: 
     knitr
@@ -59,4 +54,5 @@ Config/testthat/edition: 3
 Encoding: UTF-8
 LazyData: false
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.1
+License: MIT + file LICENSE

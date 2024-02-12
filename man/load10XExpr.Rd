@@ -17,16 +17,21 @@ A matrix of class dgeMatrix or Matrix that contains the expression
 info for each sample (cells) across multiple features (genes)
 }
 \description{
-This log-transformed 10X Visium expression data from standard 10X Visium
-folder.
+This loads log-transformed 10X Visium expression data from standard 10X
+Visium folder.
 }
 \examples{
-main_10xlink <- "https://cf.10xgenomics.com/samples/spatial-exp/1.3.0"
-counts_folder <- "Visium_Human_Breast_Cancer"
-counts_file <- "Visium_Human_Breast_Cancer_filtered_feature_bc_matrix.h5"
-counts_url<-paste(c(main_10xlink,counts_folder,counts_file), collapse = "/")
-system2("wget",c("-q",counts_url))
-counts_matrix<-load10XExpr(visiumDir = ".",h5filename = basename(counts_url))
-unlink(basename(counts_url))
+library(SpaceMarkers)
+#Visium data links
+urls <- read.csv(system.file("extdata","visium_data.txt",
+package = "SpaceMarkers",mustWork = TRUE))
+counts_url <- urls[["visium_url"]][1]
+#Remove present Directories if any
+files <- list.files(".")[grepl(basename(counts_url),list.files("."))]
+unlink(files)
+download.file(counts_url,basename(counts_url))
+counts_matrix<-load10XExpr(visiumDir=".",h5filename = basename(counts_url))
+files <- list.files(".")[grepl(basename(counts_url),list.files("."))]
+unlink(files)
 
 }
