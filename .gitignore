@@ -42,3 +42,9 @@ vignettes/*.pdf
 tests/testthat/.DS_Store
 tests/testthat/testdata/.DS_Store
 vignettes/.DS_Store
+
+# GitHub directories
+.github/
+
+# Images
+*.png

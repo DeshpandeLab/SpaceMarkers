@@ -25,6 +25,7 @@ This function calculates the optimal width of the gaussian distribution
 (thresOpt) for each pattern from a latent feature space.
 }
 \examples{
+library(SpaceMarkers)
 # Create test data
 cells <- c()
 test_num <- 500
