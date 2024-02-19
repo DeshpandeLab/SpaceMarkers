@@ -148,7 +148,7 @@ getSpatialFeatures <- function(filePath,method = "CoGAPS",featureNames = NULL){
         barcodes <- hf[["obs/_index"]]
         rownames(spFeatures) <- barcodes
         if (is.null(colnames(spFeatures)))
-            colnames(spFeatures) <- paste0("BayesTME_",1:ncol(spFeatures))
+            colnames(spFeatures)<-paste0("BayesTME_",seq_len(ncol(spFeatures)))
     } else if(method=="Seurat"){
         spFeatures <- readRDS(filePath)
         spFeatures <- spFeatures[[]]

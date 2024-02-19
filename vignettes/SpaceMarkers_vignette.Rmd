@@ -625,7 +625,8 @@ for (g in gene_list){
 }
 ```
 
-This next block of code can visualize the gene expression in each region using box plots.
+This next block of code can visualize the gene expression in each region using 
+box plots.
 
 ```{r}
 region <- SpaceMarkers$hotspots[,1]
