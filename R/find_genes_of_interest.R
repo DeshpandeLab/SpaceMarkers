@@ -104,10 +104,10 @@ find_genes_of_interest<-function(
     qDunn$qvalues[ind,] <- qq$qvalue
     res_dunn_test <- cbind(res_dunn_test,qDunn$qvalues)
     colnames(res_dunn_test)[7:9] <- paste0(colnames(res_dunn_test)[7:9],".adj")
-    interact_patt1 <- res_dunn_test[ind,"pval_1_Int"]<fdr.level
-    interact_patt2 <- res_dunn_test[ind,"pval_2_Int"]<fdr.level
+    interact_patt1 <- res_dunn_test[ind,"pval_1_Int.adj"]<fdr.level
+    interact_patt2 <- res_dunn_test[ind,"pval_2_Int.adj"]<fdr.level
     interacting_over_both_patterns <- interact_patt1 & interact_patt2
-    not_pattern1_diff_pattern2 <- res_dunn_test[ind,"pval_2_1"]>=fdr.level
+    not_pattern1_diff_pattern2 <- res_dunn_test[ind,"pval_2_1.adj"]>=fdr.level
     exc_interact_patt1 <- interact_patt1 & not_pattern1_diff_pattern2
     exc_interact_patt2 <- interact_patt2 & not_pattern1_diff_pattern2
     names(exc_interact_patt2)<-ind
