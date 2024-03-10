@@ -181,7 +181,7 @@ getInteractingGenes <- function(data,spPatterns,refPattern="Pattern_1",
                                 reconstruction=NULL,hotspots=NULL,
                                 minOverlap=50,...) {
     testMat <- gettestMat(data,reconstruction,mode)
-    pattList<-colnames(spPatterns)[startsWith(colnames(spPatterns),"Pattern_")]
+    pattList<- setdiff(colnames(spPatterns),c("barcode","x","y"))
     if (is.null(optParams)){
         message("optParams not provided. Calculating optParams.")
         optParams <- getSpatialParameters(spPatterns)

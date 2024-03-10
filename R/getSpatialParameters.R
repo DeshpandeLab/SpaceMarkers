@@ -114,8 +114,7 @@ getSpatialParameters <- function(spatialPatterns,...){
                                 diff(range(spatialPatterns$y)))/250),1)
     sigVec <- seq(2,40*sigmaRes,sigmaRes)
     threshVec <- seq(1,3,0.1)
-    patternList <- colnames(spatialPatterns)[
-        startsWith(colnames(spatialPatterns),"Pattern_")]
+    patternList <- setdiff(colnames(spatialPatterns),c("barcode","x","y"))
     optParams<-vapply(patternList,function(i) unlist(getOptimalSigmaThresh(
         pattern=spatialPatterns[,i],locs=data.frame(
         x=spatialPatterns$x,y=spatialPatterns$y),sigVec,threshVec)),numeric(2))
