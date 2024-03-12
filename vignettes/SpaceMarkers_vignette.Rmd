@@ -87,6 +87,8 @@ good_gene_threshold <- 3
 goodGenes <- rownames(counts_matrix)[
     apply(counts_matrix,1,function(x) sum(x>0)>=good_gene_threshold)]
 counts_matrix <- counts_matrix[goodGenes,]
+files <- list.files(".")[grepl(basename(counts_url),list.files("."))]
+unlink(files)
 ```
 
 ## Obtaining CoGAPS Patterns
@@ -97,7 +99,8 @@ samplePatterns (genes) for both the expression matrix and CoGAPS matrix need to
 match.
 
 ```{r}
-data("cogaps_result")
+cogaps_result <- readRDS(system.file("extdata","CoGAPS_result.rds",
+    package="SpaceMarkers",mustWork = TRUE))
 features <- intersect(rownames(counts_matrix),rownames(
     slot(cogaps_result,"featureLoadings")))
 barcodes <- intersect(colnames(counts_matrix),rownames(
