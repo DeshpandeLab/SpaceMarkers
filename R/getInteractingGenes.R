@@ -60,6 +60,12 @@ gettestMat <- function(data,reconstruction,mode){
 
 getSpaceMarkersMetric <- function(interacting.genes){
     interacting_genes <- lapply(interacting.genes, as.data.frame)
+    if (length(interacting_genes) == 0)
+    {
+        message("No interacting genes found. Returning result with only hotspots.")
+        return(interacting_genes)
+    }
+        
     for (i in seq(1,length(interacting_genes))){
         interacting_genes[[i]]$KW.p.adj <- as.numeric(
             interacting_genes[[i]]$KW.p.adj)
