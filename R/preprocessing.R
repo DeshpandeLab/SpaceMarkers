@@ -144,11 +144,11 @@ getSpatialFeatures <- function(filePath,method = "CoGAPS",featureNames = NULL){
         spFeatures <- slot(spFeatures,"sampleFactors")
     } else if(method=="BayesTME"){
         hf <- hdf5r::h5file(filename = filePath, mode='r')
-        spFeatures <- t(hf[["obsm/bayestme_cell_type_counts"]])
-        barcodes <- hf[["obs/_index"]]
+        spFeatures <- t(hdf5r::readDataSet(hf[["obsm/bayestme_cell_type_counts"]]))
+        barcodes <- hdf5r::readDataSet(hf[["obs/_index"]])
         rownames(spFeatures) <- barcodes
         if (is.null(colnames(spFeatures)))
-            colnames(spFeatures) <- paste0("BayesTME_",1:ncol(spFeatures))
+            colnames(spFeatures)<-paste0("BayesTME_",seq(1,ncol(spFeatures)))
     } else if(method=="Seurat"){
         spFeatures <- readRDS(filePath)
         spFeatures <- spFeatures[[]]
