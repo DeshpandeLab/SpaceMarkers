@@ -1,10 +1,9 @@
 #' Optimal paramters of 5 patterns from CoGAPS.
 #'
-#' A dataset with the optimal width of the gaussian distribution (sigmaOpt) and 
+#' A dataset with the optimal width of the gaussian distribution (sigmaOpt) and
 #' the outlier threshold around the set of spots (thresOpt) for each pattern
 #' obtained from CoGAPS. CoGAPS was ran on spatial transcriptomic data from a 
 #' breast cancer sample.
-#' 
 #' 
 #' @name optParams
 #' @format A data frame with 2 rows and 5 columns:
