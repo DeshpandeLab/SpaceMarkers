@@ -59,32 +59,37 @@ gettestMat <- function(data,reconstruction,mode){
 }
 
 getSpaceMarkersMetric <- function(interacting.genes){
-    interacting_genes <- lapply(interacting.genes, as.data.frame)
-    for (i in seq(1,length(interacting_genes))){
-        interacting_genes[[i]]$KW.p.adj <- as.numeric(
-            interacting_genes[[i]]$KW.p.adj)
-        interacting_genes[[i]]$Dunn.pval_1_Int.adj <- as.numeric(
-            interacting_genes[[i]]$Dunn.pval_1_Int.adj)
-        interacting_genes[[i]]$Dunn.pval_2_Int.adj <- as.numeric(
-            interacting_genes[[i]]$Dunn.pval_2_Int.adj)
-    }
-    for (i in seq(1,length(interacting_genes)))
-    {
-        if (all(dim(interacting_genes[[i]])>1))   {
-            Zsign <- (2*(-1+((interacting_genes[[i]]$Dunn.zP1_Int<0)|
-                        (interacting_genes[[i]]$Dunn.zP2_Int<0))*1)+1)
-            Zmag <- (interacting_genes[[i]]$Dunn.zP1_Int)*
+    if (length(interacting.genes) == 0){
+        message("No SpaceMarkersMetric calculated")
+    } else {
+        interacting_genes <- lapply(interacting.genes, as.data.frame)
+        for (i in seq(1,length(interacting_genes))){
+            interacting_genes[[i]]$KW.p.adj <- as.numeric(
+                interacting_genes[[i]]$KW.p.adj)
+            interacting_genes[[i]]$Dunn.pval_1_Int.adj <- as.numeric(
+                interacting_genes[[i]]$Dunn.pval_1_Int.adj)
+            interacting_genes[[i]]$Dunn.pval_2_Int.adj <- as.numeric(
+                interacting_genes[[i]]$Dunn.pval_2_Int.adj)
+        }
+        for (i in seq(1,length(interacting_genes)))
+        {
+            if (all(dim(interacting_genes[[i]])>1))   {
+                Zsign <-(2*(-1+((
+                    interacting_genes[[i]]$Dunn.zP1_Int<0)|(
+                        interacting_genes[[i]]$Dunn.zP2_Int<0))*1)+1)
+                Zmag <- (interacting_genes[[i]]$Dunn.zP1_Int)*
                     (interacting_genes[[i]]$Dunn.zP2_Int)/
                     (pmax(abs(interacting_genes[[i]]$Dunn.zP2_P1),1))
-            interacting_genes[[i]]$SpaceMarkersMetric <- Zsign*Zmag
-            od<-order(interacting_genes[[i]]$SpaceMarkersMetric,
-                        decreasing=TRUE)
-            interacting_genes[[i]] <- interacting_genes[[i]][od,]
-            interacting_genes[[i]] <- interacting_genes[[i]][!is.na(
-                interacting_genes[[i]]$SpaceMarkersMetric),]
+                interacting_genes[[i]]$SpaceMarkersMetric <- Zsign*Zmag
+                od <- order(
+                    interacting_genes[[i]]$SpaceMarkersMetric,decreasing=TRUE)
+                interacting_genes[[i]] <- interacting_genes[[i]][od,]
+                interacting_genes[[i]] <- interacting_genes[[i]][!is.na(
+                    interacting_genes[[i]]$SpaceMarkersMetric),]
+            }
         }
-    }
         return(interacting_genes)
+    }
 }
 
 
@@ -218,7 +223,7 @@ getInteractingGenes <- function(data,spPatterns,refPattern="Pattern_1",
                 !is.na(region),region,hotspots[,pattern]))
         region <- factor(region)
         if (length(levels(region))<3||any(table(region)<minOverlap))#default 50
-            message(refPattern,"and",pattern,"do not sufficiently interact.
+            message(refPattern," and ",pattern," do not sufficiently interact.
                 Skipping statistical test for genes.")
         else
             interacting_genes<-c(interacting_genes,find_genes_of_interest(

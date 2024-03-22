@@ -13,7 +13,6 @@
 #'   \item{Pattern_3}{intraductal carcinoma (DCIS) parameters }
 #'   \item{Pattern_4}{Disp.2 parameters }
 #'   \item{Pattern_5}{invasive carcinoma lesion pattern paramters }
-#'
 #' }
 #' @return A matrix of optimal parameters for patterns identified by CoGAPS
 NULL
@@ -27,3 +26,4 @@ NULL
 #' @format A vector with 114 pre-selected genes
 #' @return a vector of genes
 NULL
+

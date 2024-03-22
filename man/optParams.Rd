@@ -11,7 +11,6 @@ A data frame with 2 rows and 5 columns:
 \item{Pattern_3}{intraductal carcinoma (DCIS) parameters }
 \item{Pattern_4}{Disp.2 parameters }
 \item{Pattern_5}{invasive carcinoma lesion pattern paramters }
-
 }
 }
 \value{
