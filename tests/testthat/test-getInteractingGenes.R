@@ -1,4 +1,4 @@
-test_that("getInteracting genes returns a list of genes and hotspots", {
+test_that("getInteracting genes return empty interacting_genes object when no interacting genes found", {
   library(testthat)
   # Create some sample data and patterns for testing
   set.seed(123)
