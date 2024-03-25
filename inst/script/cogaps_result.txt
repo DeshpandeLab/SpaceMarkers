@@ -1,8 +1,7 @@
-Cogaps_result.rds is an example of a latent feature space data structure 
+cogaps_result.rds is an example of a latent feature space data structure 
 with 24228 features and 4898 samples. The result contains both the 
 featureLoadings, a matrix of genes/features by (5) latent patterns and the
 sampleFactors, a matrix of barcodes/samples by (5) latent patterns. 
-
 
 An example of how this cogaps object can be generated is as follows. The exact
 parameters will depend on the specs of your machine. 
@@ -17,11 +16,11 @@ counts_url<-paste(c(main_10xlink,counts_folder,counts_file), collapse = "/")
 mtx <- load10XExpr(visiumDir = ".", h5filename = counts_file)
 genes <- rownames(mtx)
 #Run CoGAPS
-params = CogapsParams(nPatterns=5, nIterations=50000, seed=42,
-                      sparseOptimization=TRUE, distributed="genome-wide",
+params = CogapsParams(nPatterns=5, nIterations=50000, seed=123,
+                      sparseOptimization=TRUE, distributed="single-cell",
                       geneNames=genes)
-params = setDistributedParams(params, nSets=8)
-cgResult = CoGAPS(as.data.frame(mtx), params, nThreads = 8)
+params = setDistributedParams(params, nSets=4)
+cgResult = CoGAPS(as.data.frame(mtx), params, nThreads = 4)
 saveRDS(cgResult, "CoGAPS_resullt.rds")
 
 More details about cogaps can be found on bioconductor:

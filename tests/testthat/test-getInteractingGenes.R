@@ -1,4 +1,4 @@
-test_that("getSpatialParameters returns optimal parameters", {
+test_that("getInteracting genes returns a list of genes and hotspots", {
   library(testthat)
   # Create some sample data and patterns for testing
   set.seed(123)
