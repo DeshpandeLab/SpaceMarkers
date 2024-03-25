@@ -59,25 +59,27 @@ gettestMat <- function(data,reconstruction,mode){
 }
 
 getSpaceMarkersMetric <- function(interacting.genes){
-    if (length(interacting.genes) == 0){
-        message("No SpaceMarkersMetric calculated")
-    } else {
-        interacting_genes <- lapply(interacting.genes, as.data.frame)
-        for (i in seq(1,length(interacting_genes))){
-            interacting_genes[[i]]$KW.p.adj <- as.numeric(
-                interacting_genes[[i]]$KW.p.adj)
-            interacting_genes[[i]]$Dunn.pval_1_Int.adj <- as.numeric(
-                interacting_genes[[i]]$Dunn.pval_1_Int.adj)
-            interacting_genes[[i]]$Dunn.pval_2_Int.adj <- as.numeric(
-                interacting_genes[[i]]$Dunn.pval_2_Int.adj)
-        }
-        for (i in seq(1,length(interacting_genes)))
-        {
-            if (all(dim(interacting_genes[[i]])>1))   {
-                Zsign <-(2*(-1+((
-                    interacting_genes[[i]]$Dunn.zP1_Int<0)|(
-                        interacting_genes[[i]]$Dunn.zP2_Int<0))*1)+1)
-                Zmag <- (interacting_genes[[i]]$Dunn.zP1_Int)*
+    interacting_genes <- lapply(interacting.genes, as.data.frame)
+    if (length(interacting_genes) == 0)
+    {
+        message("No interacting genes found. Returning result with only hotspots.")
+        return(interacting_genes)
+    }
+        
+    for (i in seq(1,length(interacting_genes))){
+        interacting_genes[[i]]$KW.p.adj <- as.numeric(
+            interacting_genes[[i]]$KW.p.adj)
+        interacting_genes[[i]]$Dunn.pval_1_Int.adj <- as.numeric(
+            interacting_genes[[i]]$Dunn.pval_1_Int.adj)
+        interacting_genes[[i]]$Dunn.pval_2_Int.adj <- as.numeric(
+            interacting_genes[[i]]$Dunn.pval_2_Int.adj)
+    }
+    for (i in seq(1,length(interacting_genes)))
+    {
+        if (all(dim(interacting_genes[[i]])>1))   {
+            Zsign <- (2*(-1+((interacting_genes[[i]]$Dunn.zP1_Int<0)|
+                        (interacting_genes[[i]]$Dunn.zP2_Int<0))*1)+1)
+            Zmag <- (interacting_genes[[i]]$Dunn.zP1_Int)*
                     (interacting_genes[[i]]$Dunn.zP2_Int)/
                     (pmax(abs(interacting_genes[[i]]$Dunn.zP2_P1),1))
                 interacting_genes[[i]]$SpaceMarkersMetric <- Zsign*Zmag
