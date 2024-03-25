@@ -88,10 +88,9 @@ getSpaceMarkersMetric <- function(interacting.genes){
                 interacting_genes[[i]] <- interacting_genes[[i]][od,]
                 interacting_genes[[i]] <- interacting_genes[[i]][!is.na(
                     interacting_genes[[i]]$SpaceMarkersMetric),]
-            }
         }
-        return(interacting_genes)
     }
+    return(interacting_genes)
 }
 
 
