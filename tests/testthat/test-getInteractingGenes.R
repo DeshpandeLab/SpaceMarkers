@@ -26,7 +26,7 @@ test_that("getInteracting genes return empty interacting_genes object when no in
                                 mode="DE",analysis="overlap")
   # Checkin result if no interacting genes found
   res<-evaluate_promise(output$interacting_genes)
-  expect_equal(res$result, NULL)
+  expect_equal(res$result, list())
   
 })
 
