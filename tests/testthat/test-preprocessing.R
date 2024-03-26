@@ -68,6 +68,7 @@ test_that("load10XCoords loads data correctly", {
   coord_values <- load10XCoords(visiumDir = ".", resolution = "lowres")
   
   # Perform assertions to check if the data is loaded correctly
+  expect_contains(object=colnames(coord_values),expected=c("x","y","barcode"))
   expect_equal(coord_values$barcode, c("spot_1", "spot_2"), info = "Incorrect barcode values")
   expect_equal(coord_values$y, c(40, 60), info = "Incorrect y coordinates")
   expect_equal(coord_values$x, c(120, 140), info = "Incorrect x coordinates")

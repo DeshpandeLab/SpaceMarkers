@@ -1,5 +1,6 @@
 test_that("getSpatialParameters returns optimal parameters", {
   # Create test data
+  set.seed(123)
   cells <- c()
   test_num <- 500
   for(i in 1:test_num){

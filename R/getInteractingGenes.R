@@ -82,15 +82,15 @@ getSpaceMarkersMetric <- function(interacting.genes){
             Zmag <- (interacting_genes[[i]]$Dunn.zP1_Int)*
                     (interacting_genes[[i]]$Dunn.zP2_Int)/
                     (pmax(abs(interacting_genes[[i]]$Dunn.zP2_P1),1))
-            interacting_genes[[i]]$SpaceMarkersMetric <- Zsign*Zmag
-            od<-order(interacting_genes[[i]]$SpaceMarkersMetric,
-                        decreasing=TRUE)
-            interacting_genes[[i]] <- interacting_genes[[i]][od,]
-            interacting_genes[[i]] <- interacting_genes[[i]][!is.na(
-                interacting_genes[[i]]$SpaceMarkersMetric),]
+                interacting_genes[[i]]$SpaceMarkersMetric <- Zsign*Zmag
+                od <- order(
+                    interacting_genes[[i]]$SpaceMarkersMetric,decreasing=TRUE)
+                interacting_genes[[i]] <- interacting_genes[[i]][od,]
+                interacting_genes[[i]] <- interacting_genes[[i]][!is.na(
+                    interacting_genes[[i]]$SpaceMarkersMetric),]
         }
     }
-        return(interacting_genes)
+    return(interacting_genes)
 }
 
 
@@ -144,10 +144,11 @@ getSpaceMarkersMetric <- function(interacting.genes){
 #' unlink("spatial", recursive = TRUE)
 #' files <- list.files(".")[grepl(basename(counts_url),list.files("."))]
 #' unlink(files)
-#' download.file(counts_url,basename(counts_url))
+#' download.file(counts_url,basename(counts_url), mode = "wb")
 #' counts_matrix<-load10XExpr(visiumDir=".",h5filename = basename(counts_url))
 #' #Obtaining CoGAPS Patterns
-#' data("cogaps_result")
+#' cogaps_result <- readRDS(system.file("extdata","CoGAPS_result.rds",
+#' package="SpaceMarkers",mustWork = TRUE))
 #' features <- intersect(rownames(counts_matrix),rownames(
 #'     slot(cogaps_result,"featureLoadings")))
 #' barcodes <- intersect(colnames(counts_matrix),rownames(
@@ -156,7 +157,7 @@ getSpaceMarkersMetric <- function(interacting.genes){
 #' cogaps_matrix <- slot(cogaps_result,"featureLoadings")[features,]%*%
 #'     t(slot(cogaps_result,"sampleFactors")[barcodes,])
 #' #Obtaining Spatial Coordinates
-#' download.file(sp_url, basename(sp_url))
+#' download.file(sp_url, basename(sp_url), mode = "wb")
 #' untar(basename(sp_url))
 #' spCoords <- load10XCoords(visiumDir = ".")
 #' rownames(spCoords) <- spCoords$barcode
@@ -223,7 +224,7 @@ getInteractingGenes <- function(data,spPatterns,refPattern="Pattern_1",
                 !is.na(region),region,hotspots[,pattern]))
         region <- factor(region)
         if (length(levels(region))<3||any(table(region)<minOverlap))#default 50
-            message(refPattern,"and",pattern,"do not sufficiently interact.
+            message(refPattern," and ",pattern," do not sufficiently interact.
                 Skipping statistical test for genes.")
         else
             interacting_genes<-c(interacting_genes,find_genes_of_interest(

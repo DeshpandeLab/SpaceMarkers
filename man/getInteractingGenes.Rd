@@ -81,10 +81,11 @@ unlink(basename(sp_url))
 unlink("spatial", recursive = TRUE)
 files <- list.files(".")[grepl(basename(counts_url),list.files("."))]
 unlink(files)
-download.file(counts_url,basename(counts_url))
+download.file(counts_url,basename(counts_url), mode = "wb")
 counts_matrix<-load10XExpr(visiumDir=".",h5filename = basename(counts_url))
 #Obtaining CoGAPS Patterns
-data("cogaps_result")
+cogaps_result <- readRDS(system.file("extdata","CoGAPS_result.rds",
+package="SpaceMarkers",mustWork = TRUE))
 features <- intersect(rownames(counts_matrix),rownames(
     slot(cogaps_result,"featureLoadings")))
 barcodes <- intersect(colnames(counts_matrix),rownames(
@@ -93,7 +94,7 @@ counts_matrix <- counts_matrix[features,barcodes]
 cogaps_matrix <- slot(cogaps_result,"featureLoadings")[features,]\%*\%
     t(slot(cogaps_result,"sampleFactors")[barcodes,])
 #Obtaining Spatial Coordinates
-download.file(sp_url, basename(sp_url))
+download.file(sp_url, basename(sp_url), mode = "wb")
 untar(basename(sp_url))
 spCoords <- load10XCoords(visiumDir = ".")
 rownames(spCoords) <- spCoords$barcode

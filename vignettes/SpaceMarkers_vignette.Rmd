@@ -81,12 +81,14 @@ and genes with less than 3 counts are removed from the dataset.This can be
 achieved with the load10XExpr function.
 
 ```{r}
-download.file(counts_url,basename(counts_url))
+download.file(counts_url,basename(counts_url), mode = "wb")
 counts_matrix <- load10XExpr(visiumDir = ".", h5filename = counts_file)
 good_gene_threshold <- 3
 goodGenes <- rownames(counts_matrix)[
     apply(counts_matrix,1,function(x) sum(x>0)>=good_gene_threshold)]
 counts_matrix <- counts_matrix[goodGenes,]
+files <- list.files(".")[grepl(basename(counts_url),list.files("."))]
+unlink(files)
 ```
 
 ## Obtaining CoGAPS Patterns
@@ -97,7 +99,8 @@ samplePatterns (genes) for both the expression matrix and CoGAPS matrix need to
 match.
 
 ```{r}
-data("cogaps_result")
+cogaps_result <- readRDS(system.file("extdata","CoGAPS_result.rds",
+    package="SpaceMarkers",mustWork = TRUE))
 features <- intersect(rownames(counts_matrix),rownames(
     slot(cogaps_result,"featureLoadings")))
 barcodes <- intersect(colnames(counts_matrix),rownames(
@@ -116,7 +119,7 @@ pattern interact in 2D space. The data can be extracted with the
 **load10XCoords()** function
 
 ```{r}
-download.file(sp_url, basename(sp_url))
+download.file(sp_url, basename(sp_url), mode = "wb")
 untar(basename(sp_url))
 spCoords <- load10XCoords(visiumDir = ".")
 rownames(spCoords) <- spCoords$barcode

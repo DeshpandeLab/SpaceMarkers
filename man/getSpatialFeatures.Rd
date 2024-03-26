@@ -34,5 +34,4 @@ package = "SpaceMarkers",mustWork = TRUE)
 spFeatures <- getSpatialFeatures(filePath, method = "CoGAPS")
 head(spFeatures)
 
-
 }

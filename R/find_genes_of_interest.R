@@ -51,8 +51,8 @@ return(cbind(zVals,pvals))
 
 #' This function identifies genes exhibiting significantly higher values of 
 #' testMat in the Interaction region of the two 
-#' patterns compared #' to regions with exclusive influence from either pattern.
-#' It uses Kruskal-Wallis test followed by
+#' patterns compared #' to regions with exclusive influence from either 
+#' pattern. It uses Kruskal-Wallis test followed by
 #' posthoc analysis using Dunn's Test to identify the genes.
 #'
 #' @usage

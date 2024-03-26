@@ -32,7 +32,7 @@
 #' #Remove present Directories if any
 #' files <- list.files(".")[grepl(basename(counts_url),list.files("."))]
 #' unlink(files)
-#' download.file(counts_url,basename(counts_url))
+#' download.file(counts_url,basename(counts_url), mode = "wb")
 #' counts_matrix<-load10XExpr(visiumDir=".",h5filename = basename(counts_url))
 #' files <- list.files(".")[grepl(basename(counts_url),list.files("."))]
 #' unlink(files)
@@ -88,7 +88,7 @@ load10XExpr<- function(visiumDir=NULL,
 #' package = "SpaceMarkers",mustWork = TRUE))
 #' sp_url <- urls[["visium_url"]][2]
 #' # Spatial Coordinates
-#' download.file(sp_url, basename(sp_url))
+#' download.file(sp_url, basename(sp_url), mode = "wb")
 #' untar(basename(sp_url))
 #' spCoords <- load10XCoords(visiumDir = ".")
 #' unlink("spatial", recursive = TRUE)
@@ -136,7 +136,6 @@ load10XCoords <- function(visiumDir, resolution = "lowres"){
 #' spFeatures <- getSpatialFeatures(filePath, method = "CoGAPS")
 #' head(spFeatures)
 #' 
-#' 
 
 getSpatialFeatures <- function(filePath,method = "CoGAPS",featureNames = NULL){
     if(method=="CoGAPS"){
@@ -144,7 +143,8 @@ getSpatialFeatures <- function(filePath,method = "CoGAPS",featureNames = NULL){
         spFeatures <- slot(spFeatures,"sampleFactors")
     } else if(method=="BayesTME"){
         hf <- hdf5r::h5file(filename = filePath, mode='r')
-        spFeatures <- t(hdf5r::readDataSet(hf[["obsm/bayestme_cell_type_counts"]]))
+        spFeatures <- t(hdf5r::readDataSet(
+            hf[["obsm/bayestme_cell_type_counts"]]))
         barcodes <- hdf5r::readDataSet(hf[["obs/_index"]])
         rownames(spFeatures) <- barcodes
         if (is.null(colnames(spFeatures)))
@@ -152,9 +152,7 @@ getSpatialFeatures <- function(filePath,method = "CoGAPS",featureNames = NULL){
     } else if(method=="Seurat"){
         spFeatures <- readRDS(filePath)
         spFeatures <- spFeatures[[]]
-    } else {
-        stop("Method not supported.")
-    }
+    } else {stop("Method not supported.")}
     if(is.null(featureNames)){
         featureNames <- colnames(spFeatures)
         message("No feature names provided. Using all available features.")
