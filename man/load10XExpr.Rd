@@ -29,7 +29,7 @@ counts_url <- urls[["visium_url"]][1]
 #Remove present Directories if any
 files <- list.files(".")[grepl(basename(counts_url),list.files("."))]
 unlink(files)
-download.file(counts_url,basename(counts_url))
+download.file(counts_url,basename(counts_url), mode = "wb")
 counts_matrix<-load10XExpr(visiumDir=".",h5filename = basename(counts_url))
 files <- list.files(".")[grepl(basename(counts_url),list.files("."))]
 unlink(files)

@@ -1,13 +1,12 @@
 
 test_that("load10XExpr loads data correctly", {
-
   # Create a temporary directory for testing
   temp_dir <- "."
   # Generate a test h5 file
   file.create("test.h5")
   h5_file <- file.path("test.h5")
   hf <- hdf5r::H5File$new(h5_file , mode = "w")
-  
+
   # Create test data
   counts <- c(1, 2, 3, 4, 5, 6)
   indices <- c(0, 1, 2, 0, 1, 2)
@@ -69,6 +68,7 @@ test_that("load10XCoords loads data correctly", {
   coord_values <- load10XCoords(visiumDir = ".", resolution = "lowres")
   
   # Perform assertions to check if the data is loaded correctly
+  expect_contains(object=colnames(coord_values),expected=c("x","y","barcode"))
   expect_equal(coord_values$barcode, c("spot_1", "spot_2"), info = "Incorrect barcode values")
   expect_equal(coord_values$y, c(40, 60), info = "Incorrect y coordinates")
   expect_equal(coord_values$x, c(120, 140), info = "Incorrect x coordinates")

@@ -45,3 +45,6 @@ vignettes/.DS_Store
 
 # GitHub directories
 .github/
+
+# Images
+*.png

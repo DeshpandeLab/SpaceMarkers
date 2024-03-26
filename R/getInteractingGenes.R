@@ -60,6 +60,12 @@ gettestMat <- function(data,reconstruction,mode){
 
 getSpaceMarkersMetric <- function(interacting.genes){
     interacting_genes <- lapply(interacting.genes, as.data.frame)
+    if (length(interacting_genes) == 0)
+    {
+        message("No interacting genes found. Returning result with only hotspots.")
+        return(interacting_genes)
+    }
+        
     for (i in seq(1,length(interacting_genes))){
         interacting_genes[[i]]$KW.p.adj <- as.numeric(
             interacting_genes[[i]]$KW.p.adj)
@@ -71,21 +77,20 @@ getSpaceMarkersMetric <- function(interacting.genes){
     for (i in seq(1,length(interacting_genes)))
     {
         if (all(dim(interacting_genes[[i]])>1))   {
-            interacting_genes[[i]]$SpaceMarkersMetric <- 
-                -interacting_genes[[i]]$Dunn.zP1_Int - 
-                interacting_genes[[i]]$Dunn.zP1_Int - 
-                ((interacting_genes[[i]]$Dunn.zP1_Int>0)&
-                    (interacting_genes[[i]]$Dunn.zP2_Int>0))*100 + 
-                ((interacting_genes[[i]]$Dunn.zP1_Int<0)&
-                    (interacting_genes[[i]]$Dunn.zP2_Int<0))*100
-            od<-order(interacting_genes[[i]]$SpaceMarkersMetric,
-                        decreasing=TRUE)
-            interacting_genes[[i]] <- interacting_genes[[i]][od,]
-            interacting_genes[[i]] <- interacting_genes[[i]][!is.na(
-                interacting_genes[[i]]$SpaceMarkersMetric),]
+            Zsign <- (2*(-1+((interacting_genes[[i]]$Dunn.zP1_Int<0)|
+                        (interacting_genes[[i]]$Dunn.zP2_Int<0))*1)+1)
+            Zmag <- (interacting_genes[[i]]$Dunn.zP1_Int)*
+                    (interacting_genes[[i]]$Dunn.zP2_Int)/
+                    (pmax(abs(interacting_genes[[i]]$Dunn.zP2_P1),1))
+                interacting_genes[[i]]$SpaceMarkersMetric <- Zsign*Zmag
+                od <- order(
+                    interacting_genes[[i]]$SpaceMarkersMetric,decreasing=TRUE)
+                interacting_genes[[i]] <- interacting_genes[[i]][od,]
+                interacting_genes[[i]] <- interacting_genes[[i]][!is.na(
+                    interacting_genes[[i]]$SpaceMarkersMetric),]
         }
     }
-        return(interacting_genes)
+    return(interacting_genes)
 }
 
 
@@ -139,10 +144,11 @@ getSpaceMarkersMetric <- function(interacting.genes){
 #' unlink("spatial", recursive = TRUE)
 #' files <- list.files(".")[grepl(basename(counts_url),list.files("."))]
 #' unlink(files)
-#' download.file(counts_url,basename(counts_url))
+#' download.file(counts_url,basename(counts_url), mode = "wb")
 #' counts_matrix<-load10XExpr(visiumDir=".",h5filename = basename(counts_url))
 #' #Obtaining CoGAPS Patterns
-#' data("cogaps_result")
+#' cogaps_result <- readRDS(system.file("extdata","CoGAPS_result.rds",
+#' package="SpaceMarkers",mustWork = TRUE))
 #' features <- intersect(rownames(counts_matrix),rownames(
 #'     slot(cogaps_result,"featureLoadings")))
 #' barcodes <- intersect(colnames(counts_matrix),rownames(
@@ -151,7 +157,7 @@ getSpaceMarkersMetric <- function(interacting.genes){
 #' cogaps_matrix <- slot(cogaps_result,"featureLoadings")[features,]%*%
 #'     t(slot(cogaps_result,"sampleFactors")[barcodes,])
 #' #Obtaining Spatial Coordinates
-#' download.file(sp_url, basename(sp_url))
+#' download.file(sp_url, basename(sp_url), mode = "wb")
 #' untar(basename(sp_url))
 #' spCoords <- load10XCoords(visiumDir = ".")
 #' rownames(spCoords) <- spCoords$barcode
@@ -182,7 +188,7 @@ getInteractingGenes <- function(data,spPatterns,refPattern="Pattern_1",
                                 reconstruction=NULL,hotspots=NULL,
                                 minOverlap=50,...) {
     testMat <- gettestMat(data,reconstruction,mode)
-    pattList<-colnames(spPatterns)[startsWith(colnames(spPatterns),"Pattern_")]
+    pattList<- setdiff(colnames(spPatterns),c("barcode","x","y"))
     if (is.null(optParams)){
         message("optParams not provided. Calculating optParams.")
         optParams <- getSpatialParameters(spPatterns)
@@ -218,7 +224,7 @@ getInteractingGenes <- function(data,spPatterns,refPattern="Pattern_1",
                 !is.na(region),region,hotspots[,pattern]))
         region <- factor(region)
         if (length(levels(region))<3||any(table(region)<minOverlap))#default 50
-            message(refPattern,"and",pattern,"do not sufficiently interact.
+            message(refPattern," and ",pattern," do not sufficiently interact.
                 Skipping statistical test for genes.")
         else
             interacting_genes<-c(interacting_genes,find_genes_of_interest(
