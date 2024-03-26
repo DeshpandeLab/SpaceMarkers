@@ -31,7 +31,7 @@ urls <- read.csv(system.file("extdata","visium_data.txt",
 package = "SpaceMarkers",mustWork = TRUE))
 sp_url <- urls[["visium_url"]][2]
 # Spatial Coordinates
-download.file(sp_url, basename(sp_url))
+download.file(sp_url, basename(sp_url), mode = "wb")
 untar(basename(sp_url))
 spCoords <- load10XCoords(visiumDir = ".")
 unlink("spatial", recursive = TRUE)
