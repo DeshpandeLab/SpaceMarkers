@@ -1,0 +1,259 @@
+---
+title: "Module - SpaceMarkers"
+author: "BTC Spatial Pipeline"
+date: "`r Sys.time()`"
+output:
+  html_document: 
+    toc: TRUE
+    toc_float: TRUE
+    toc_depth: 4
+    code_folding: show
+    theme: united
+    df_print: paged
+    self_contained: TRUE
+params:
+    deconvResult = "${cogapsResult}",
+    dataDir = "${data}",
+    sampleName = "${prefix}",
+    n_threads = 8,
+    n_memory = 16,
+    workdir = !r here::here()
+    timestamp: !r Sys.Date()
+    auto_save: TRUE
+---
+
+```{r setup, include=FALSE}
+library(SpaceMarkers)
+library(patchwork)#wrap_plots
+library(ggplot2)
+library(dplyr)
+library(DT)
+library(Matrix)
+library(jsonlite)
+library(pheatmap)
+library(RColorBrewer)
+```
+
+```{r set params}
+dataDir <- params$dataDir
+spatialDir <- paste0(dataDir,"/spatial")
+deconvResult <- params$deconvResult
+prefix <- params$sampleName
+```
+
+```{r function definitions, echo=FALSE}
+#' @importFrom Seurat Load10X_Spatial
+#' @importFrom Seurat Read10X_Image
+#===================
+#' visiumToseurat
+#' load 10X Visium data as seurat object
+#'
+#'
+#' @export
+#'
+#' @param visiumDir  A string path to the h5 file with expression information.
+#' @param spPath A string path to the location of the file containing the 
+#' spatial features.
+#' 
+visiumToseurat <- function(visiumDir,spPath,
+                           filename = "filtered_feature_bc_matrix.h5",
+                           slice = "slice1"){
+  image1 <- Read10X_Image(spPath,filter.matrix = TRUE)
+  object <- Load10X_Spatial(visiumDir, filename = filename, slice = slice,
+                            image = image1,assay = "Spatial")
+  return(object)
+}
+getSpatialParametersFromJson <- function(dataDir = dataDir,...,resolution="hires"){
+  json <- fromJSON(paste0(dataDir, "/spatial/scalefactors_json.json"));
+  sigma <- json$spot_diameter_fullres
+  if (resolution=="lowres"){
+      sigma <-  sigma*json$tissue_lowres_scalef
+  } else if (resolution=="hires"){
+      sigma <-  sigma*json$tissue_hires_scalef
+  } else 
+    message("resolution not recognized. Returning full resolution sigma.")
+  return(data.frame(sigmaOpt = sigma,threshOpt = 2))
+} 
+
+getInfluence <- function(spPatterns,patternName,...,lvo = TRUE,
+                           includeSelf = TRUE) {
+  allwin <- spatstat.geom::owin(
+    xrange = c(min(spPatterns$x),max(spPatterns$x)),yrange =c(
+      min(spPatterns$y),max(spPatterns$y)))
+  patternVector <- as.matrix(spPatterns[,patternName])
+  X <-spatstat.geom::ppp(
+    x=spPatterns$x,y = spPatterns$y, window = allwin,marks = patternVector)
+  Kact1 <- spatstat.explore::Smooth(X, at = "points", sigma = optParams["sigmaOpt"],
+                                    leaveoneout = lvo)
+  if (includeSelf == TRUE){
+    smooth_sum <- spPatterns[,patternName] + Kact1
+    return(smooth_sum)
+  } else {
+    return(Kact1)
+  }
+}
+
+getHotSpotBin<- function(spPatterns,module_names){
+  pats <- spPatterns[,module_names]
+  patnames <- colnames(pats)
+  for (i in patnames) pats[which(pats[,i]>0.5),i] <- 1
+  for (i in patnames) pats[which(pats[,i]<=0.5),i] <- 0
+  hs <- as.matrix(pats)
+  row.names(hs) <- NULL
+  return(hs)
+}
+
+findInteractingPatterns <- function(spHotspots,patts = featurenames, color = 'Oranges', title="Jaccard Matrix of Spatial Interactions", lower.threshold = 0.1, upper.threshold = 0.9){
+    bP <- (!is.na(spHotspots[,patts]))*1
+    Jaccard <- (t(bP) %*% bP)/sapply(colnames(bP),function(c) colSums((bP[,c] + bP)>0))
+    Jaccard[lower.tri(Jaccard)] <- 0
+    diag(Jaccard) <- 0
+    n_hotspots <- colSums(bP)
+    pattern1 <- t(t(n_hotspots)) %*% array(1, 5)
+    pattern2 <- t(pattern1)
+    bestJaccard <- pmin(pattern1,pattern2)/pmax(pattern1,pattern2)
+    bestJaccard[lower.tri(bestJaccard)] <- 1
+    normJaccard <- Jaccard/bestJaccard
+    print(pheatmap(Jaccard,color = brewer.pal(5,color),
+    main = "Jaccard index", cluster_cols = FALSE,cluster_rows = FALSE, display_numbers = TRUE))
+    print(pheatmap(Jaccard/bestJaccard,color = brewer.pal(5,color),
+    main = "Normalized Jaccard index (accounting for differing hotspot regions)", cluster_cols = FALSE,cluster_rows = FALSE, display_numbers = TRUE))
+    dfJacc <- reshape2::melt(normJaccard)
+    colnames(dfJacc) <- c("pattern1","pattern2","overlapScore")
+    dfJacc <- dfJacc[dfJacc$interactionScore > lower.threshold & dfJacc$interactionScore < upper.threshold,]
+    return(dfJacc)
+}
+
+getSpatialPatterns <- function(object,module_names,image_key ="slice1"){
+  coords <- slot(slot(object,"images")[[image_key]],"coordinates")
+  coords$barcode <- rownames(coords)
+  coords <- dplyr::select(coords,c(barcode,imagerow,imagecol))
+  colnames(coords)[c(2,3)] <- c("y","x")
+  spPatterns <- merge(coords,slot(object,"meta.data"),by.x = "barcode",
+                      by.y = 0)[,c(colnames(coords),module_names)]
+  rownames(spPatterns) <- spPatterns$barcode
+  highres <- slot(slot(object,"images")[[image_key]],"scale.factors")$hires
+  #spPatterns$x <- spPatterns$x * highres
+  #spPatterns$y <- spPatterns$y * highres
+  return(spPatterns)
+}
+
+updateMeta <- function(seuratObj,fullmeta,sample,module_names = names(modules)) {
+  #Add Normalized MetaData to each metadata
+  slot(seuratObj,"meta.data") <- dplyr::filter(fullmeta,subject_id == sample)
+  rownames(slot(seuratObj,"meta.data")) <- slot(seuratObj,"meta.data")$barcode
+  # #Add normalized meta data as an assay
+  # mds_assay <- slot(seuratObj,"meta.data")[,module_names]
+  # mds_assay <- CreateAssayObject(counts = Matrix(t(mds_assay),sparse = FALSE))
+  # seuratObj[["ModuleScores"]] <- mds_assay
+  # slot(seuratObj,"assays")$ModuleScores$data <- slot(
+  #   seuratObj,"assays")$ModuleScores$counts 
+  # return(mds_assay)
+  return(seuratObj)
+}
+
+plotModules <- function(seuratObj,module_names){
+  meta <- slot(seuratObj,"meta.data")
+  meta <- meta[,module_names]
+  print(summary(meta))
+  for (i in colnames(meta)){
+    print(hist(meta[,i], main = paste(i,"Module Score"),
+               xlab = "MinMax Counts"))
+  }
+  for (i in module_names){
+    print(SpatialFeaturePlot(seuratObj, features = i) + scale_fill_gradientn(colours = c("blue","white","red")))
+  }
+}
+
+findInfluenceHotspots <- function(
+        spPatterns, params = NULL, patternName = "Pattern_1",
+        outlier = "positive",
+    nullSamples = 100,...){
+    if (is.null(params)){
+        sigmaPair <- 10
+        kernelthreshold <- 2
+    } else {
+        sigmaPair <- params["sigmaOpt"]
+        kernelthreshold <- params["threshOpt"]
+    }
+    
+    Influence <- getInfluence(spPatterns,patternName)
+    names(Influence) <- rownames(spPatterns)
+    Karr1 <- vapply(seq(1,nullSamples), function(i) {
+        spX <- spPatterns[,c("x","y",patternName)];
+        spX[[patternName]] <- sample(spX[[patternName]]);
+        Kx <- getInfluence(spX, patternName = patternName,includeSelf=FALSE);
+        return(Kx)},
+        FUN.VALUE = numeric(length(Kact1)))
+    mKvec <- mean(Karr1)
+    sKvec <- sd(Karr1)
+    upthresh <- mKvec+kernelthreshold*sKvec
+    lothresh <- mKvec-kernelthreshold*sKvec
+    if (outlier == "positive"){
+        ind1 <- which(Influence > upthresh[1])
+    }
+    else if (outlier == "two.sided")
+    {
+        ind1 <- which((Influence > upthresh)|(Influence < lothresh))
+    }
+    hotspots <- array(NA, length(Influence))
+    names(hotspots) <- rownames(spPatterns)
+    hotspots[ind1] <- patternName
+    return(list(influence=Influence,hotspots=hotspots))
+}
+
+```
+
+```{r load data}
+object <- visiumToseurat(visiumDir = dataDir,spPath = spatialDir,file="Visium_Human_Breast_Cancer_filtered_feature_bc_matrix.h5")
+coords <- load10XCoords(dataDir);
+rownames(coords) <- coords$barcode
+cg <- readRDS(deconvResult)
+features <- cg@sampleFactors
+featurenames <- colnames(features)
+object <- AddMetaData(object,features);
+#temp fix to remove barcodes with no spatial data
+spPatterns <- getSpatialPatterns(object = object, module_names = featurenames)
+
+saveRDS(spPatterns, file = paste0(prefix,"/spPatterns.rds"));
+```
+
+```{r get spatial parameters}
+optParams <- getSpatialParametersFromJson(dataDir);
+```
+
+```{r get spatial influence}
+spInfluence <- spPatterns
+spHotspots <- spPatterns
+spInfluence[,featurenames]
+InfluenceHotspots <- sapply(colnames(features), function(pat) {findInfluenceHotspots(spPatterns,patternName=pat,params=optParams)})
+spInfluence[,featurenames] <- as.data.frame(InfluenceHotspots["influence",])
+spHotspots[,featurenames] <- as.data.frame(InfluenceHotspots["hotspots",])
+saveRDS(spInfluence, file = paste0(prefix,"/spInfluence.rds"));
+saveRDS(spHotspots, file = paste0(prefix,"/spHotspots.rds"));
+object@meta.data[,featurenames] <- spInfluence[,featurenames];
+plots <- VlnPlot(object, features = featurenames, pt.size = 0.1, combine = TRUE)
+ggsave(filename = paste0("analysis_outputs/ModuleInfluence_.png"),bg = "white")
+print(plots)
+saveRDS(object, file = paste0(prefix,"/seuratSpatialInfluence.rds"));
+```
+
+```{r get influence hotspots}
+mR <- findInteractingPatterns(spHotspots)
+```
+
+
+```{r get SpaceMarkers}
+spaceMarkers <- list()
+for (refPattern in as.character(unique(mR$pattern1))) {
+  allPatterns <- c(refPattern, as.character(mR$pattern2[mR$pattern1 == refPattern]))
+  doNotUse <- setdiff(featurenames, allPatterns)
+  spaceMarkers[[length(spaceMarkers)+1]] <- getInteractingGenes(data = dataMatrix[1:100,], 
+                    spPatterns = spPatterns[,allPatterns],
+                    hotspots = spHotspots[,allPatterns],
+                    optParams = optParams,
+                    refPattern = refPattern,                  
+                    mode = "DE", analysis="enrichment", minOverlap = 0);
+}
+saveRDS(spaceMarkers, file = paste0(prefix,"/spaceMarkers.rds"));
+```
