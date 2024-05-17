@@ -12,12 +12,12 @@ output:
     df_print: paged
     self_contained: TRUE
 params:
-    deconvResult = "${cogapsResult}",
-    dataDir = "${data}",
-    sampleName = "${prefix}",
-    n_threads = 8,
-    n_memory = 16,
-    workdir = !r here::here()
+    deconvResult: "${cogapsResult}"
+    dataDir: "${data}"
+    sampleName: "${prefix}"
+    n_threads: 8
+    n_memory: 16
+    workdir: !r here::here()
     timestamp: !r Sys.Date()
     auto_save: TRUE
 ---
