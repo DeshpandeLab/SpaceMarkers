@@ -96,14 +96,16 @@ load10XExpr<- function(visiumDir=NULL,
 #' 
 
 load10XCoords <- function(visiumDir, resolution = "lowres"){
-    scale_json <- dir(paste0(visiumDir,'/spatial'),
+    spatial_dir <- paste0(visiumDir,'/spatial')
+    scale_json <- dir(spatial_dir,
                         pattern = "scalefactors_json.json",full.names = TRUE)
     scale_values <- jsonlite::read_json(scale_json)
-    scale_dia <- scale_values$spot_diameter_fullres
     scale_factor <- scale_values[grepl(resolution, names(scale_values))][[1]]
-    coord_file <- dir(paste0(visiumDir,'/spatial'),
+    coord_file <- dir(spatial_dir,
                         pattern="tissue_positions_list.csv",full.names = TRUE)
-    coord_values <- read.csv(coord_file,header = FALSE)
+    #check if the first couple of chars resemble header
+    has_header <- grepl("barcode", readChar(coord_file, 10))
+    coord_values <- read.csv(coord_file, header = has_header)
     coord_values <- coord_values[,c(1,5,6)]
     coord_values[,2:3] <- coord_values[,2:3]*scale_factor
     names(coord_values) <- c("barcode","y","x")
