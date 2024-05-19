@@ -95,16 +95,29 @@ load10XExpr<- function(visiumDir=NULL,
 #' unlink("Visium_Human_Breast_Cancer_spatial.tar.gz")
 #' 
 
-load10XCoords <- function(visiumDir, resolution = "lowres"){
+load10XCoords <- function(visiumDir, resolution = "lowres", version = NULL){
+    #determine spacerager version
+    if(is.null(version)){
+        message("Version not provided. Inferring from probe_set.csv.")
+        config_line <- readLines(paste0(visiumDir,"/probe_set.csv"), 1)
+        version <- strsplit(config_line, "=")[[1]][2]
+    }
+    #account for different versions of visium data
+    if(version == "1.0"){
+        has_header <- FALSE
+        tissue_pos_name <- "tissue_positions_list.csv"
+    } else if (version == "2.0") {
+        has_header <- TRUE
+        tissue_pos_name <- "tissue_positions.csv"
+  }
     spatial_dir <- paste0(visiumDir,'/spatial')
     scale_json <- dir(spatial_dir,
                         pattern = "scalefactors_json.json",full.names = TRUE)
     scale_values <- jsonlite::read_json(scale_json)
     scale_factor <- scale_values[grepl(resolution, names(scale_values))][[1]]
     coord_file <- dir(spatial_dir,
-                        pattern="tissue_positions_list.csv",full.names = TRUE)
-    #check if the first couple of chars resemble header
-    has_header <- grepl("barcode", readChar(coord_file, 10))
+                        pattern = tissue_pos_name, full.names = TRUE)
+
     coord_values <- read.csv(coord_file, header = has_header)
     coord_values <- coord_values[,c(1,5,6)]
     coord_values[,2:3] <- coord_values[,2:3]*scale_factor
