@@ -99,9 +99,14 @@ load10XExpr<- function(visiumDir=NULL,
 load10XCoords <- function(visiumDir, resolution = "lowres", version = NULL){
     #determine spacerager version
     if(is.null(version)){
-        message("Version not provided. Inferring from probe_set.csv.")
-        config_line <- readLines(paste0(visiumDir,"/probe_set.csv"), 1)
-        version <- strsplit(config_line, "=")[[1]][2]
+        message("Version not provided. Trying to infer.")
+        if("probe_set.csv" %in% dir(visiumDir)){
+            config_line <- readLines(paste0(visiumDir,"/probe_set.csv"), 1)
+            version <- strsplit(config_line, "=")[[1]][2]
+        } else {
+            message("probe_set.csv not found. Assuming version 1.0.")
+            version <- "1.0"
+        }
     }
     #account for different versions of visium data
     if(version == "1.0"){

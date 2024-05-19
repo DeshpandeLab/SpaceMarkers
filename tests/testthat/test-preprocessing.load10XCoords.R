@@ -1,6 +1,6 @@
 #a mock function for the header/non header cases, can be extended
 #to other cases (above) as well
-create_visium_mock <- function(version = "1.0") {
+create_visium_mock <- function(version = "1.0", probe_set = TRUE) {
   stopifnot(version %in% c("1.0", "2.0"))
   if (version == "1.0") {
     header <- FALSE
@@ -13,13 +13,16 @@ create_visium_mock <- function(version = "1.0") {
   dir.create("mock_visiumDir/spatial", recursive = TRUE)
 
   #Create probe_set file
-  writeLines(c(sprintf("#probe_set_file_version=%s", version),
-               "#panel_name=TEST",
-               "gene_id",
-               "ENSMUSG00000000001",
-               "ENSMUSG00000000003",
-               "ENSMUSG00000000028"),
-             "mock_visiumDir/probe_set.csv")
+  if (probe_set) {
+    writeLines(c(sprintf("#probe_set_file_version=%s", version),
+                 "#panel_name=TEST",
+                 "gene_id",
+                 "ENSMUSG00000000001",
+                 "ENSMUSG00000000003",
+                 "ENSMUSG00000000028"),
+               "mock_visiumDir/probe_set.csv")
+  }
+
 
   # Create mock scalefactors_json.json
   scalefactors_json <- list(
@@ -68,6 +71,13 @@ test_that("load10XCoords returns the expected output for spaceranger v1.0", {
 test_that("load10XCoords returns the expected output for spaceranger v2.0", {
   expected_output <- create_visium_mock(version = "2.0")
   output <- load10XCoords("mock_visiumDir", version = "2.0")
+  expect_equal(output, expected_output)
+  unlink("mock_visiumDir", recursive = TRUE)
+})
+
+test_that("load10XCoords returns the expected output without probe_set file", {
+  expected_output <- create_visium_mock(version = "1.0", probe_set = FALSE)
+  output <- load10XCoords("mock_visiumDir")
   expect_equal(output, expected_output)
   unlink("mock_visiumDir", recursive = TRUE)
 })
