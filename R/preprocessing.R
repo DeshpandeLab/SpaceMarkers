@@ -79,6 +79,7 @@ load10XExpr<- function(visiumDir=NULL,
 #' and 'tissue_positions_list.csv.'
 #' @param resolution A string specifying which values to look for in the .json 
 #' object. Can be either lowres or highres.
+#' @param version A string specifying the version of the spaceranger data.
 #' @return a data frame of the spatial coordinates 
 #' ( x and y) for each spot/cell
 #' @examples
@@ -90,7 +91,7 @@ load10XExpr<- function(visiumDir=NULL,
 #' # Spatial Coordinates
 #' download.file(sp_url, basename(sp_url), mode = "wb")
 #' untar(basename(sp_url))
-#' spCoords <- load10XCoords(visiumDir = ".")
+#' spCoords <- load10XCoords(visiumDir = ".", version = "1.0")
 #' unlink("spatial", recursive = TRUE)
 #' unlink("Visium_Human_Breast_Cancer_spatial.tar.gz")
 #' 
