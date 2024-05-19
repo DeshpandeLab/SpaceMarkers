@@ -43,3 +43,10 @@ test_that("load10XCoords returns the expected output with header = FALSE", {
   expect_equal(output, expected_output)
   unlink("mock_visiumDir", recursive = TRUE)
 })
+
+test_that("load10XCoords returns the expected output with header = TRUE", {
+  expected_output <- create_mocks(header = TRUE)
+  output <- load10XCoords("mock_visiumDir")
+  expect_equal(output, expected_output)
+  unlink("mock_visiumDir", recursive = TRUE)
+})
