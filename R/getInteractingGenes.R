@@ -159,7 +159,7 @@ getSpaceMarkersMetric <- function(interacting.genes){
 #' #Obtaining Spatial Coordinates
 #' download.file(sp_url, basename(sp_url), mode = "wb")
 #' untar(basename(sp_url))
-#' spCoords <- load10XCoords(visiumDir = ".")
+#' spCoords <- load10XCoords(visiumDir = ".", version = "1.0")
 #' rownames(spCoords) <- spCoords$barcode
 #' spCoords <- spCoords[barcodes,]
 #' spPatterns <- cbind(spCoords,slot(cogaps_result,"sampleFactors")[barcodes,])

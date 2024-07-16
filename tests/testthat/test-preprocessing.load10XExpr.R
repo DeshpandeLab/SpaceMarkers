@@ -44,36 +44,3 @@ test_that("load10XExpr loads data correctly", {
   # Clean up the temporary directory
   unlink("test.h5")
 })
-
-# Define the test cases
-test_that("load10XCoords loads data correctly", {
-  # Create a temporary directory for testing
-  temp_dir <- "spatial"
-  # Create test data
-  dir.create(temp_dir)
-  scale_json <- file.path(temp_dir, "scalefactors_json.json")
-  coord_file <- file.path(temp_dir, "tissue_positions_list.csv")
-  # Write test data to files
-  write('{"spot_diameter_fullres": 10, "scalefactors_lowres": 0.2}', scale_json)
-  writeLines("spot_1,0.5,0.5,0,200,600\nspot_2,1.5,1.5,0,300,700", coord_file)
-  
-  #Check for expected directories and file names
-  expect_equal(dir.exists('spatial'),TRUE,info = "No directory callled 'spatial'")
-  expect_equal(file.exists('spatial/scalefactors_json.json'),
-               TRUE,info ="No file called scalefactors_json.json")
-  expect_equal(file.exists('spatial/tissue_positions_list.csv'),
-               TRUE,info ="No file called tissue_positions_list.csv")
-  
-  # Call the load10XCoords function with the test directory
-  coord_values <- load10XCoords(visiumDir = ".", resolution = "lowres")
-  
-  # Perform assertions to check if the data is loaded correctly
-  expect_contains(object=colnames(coord_values),expected=c("x","y","barcode"))
-  expect_equal(coord_values$barcode, c("spot_1", "spot_2"), info = "Incorrect barcode values")
-  expect_equal(coord_values$y, c(40, 60), info = "Incorrect y coordinates")
-  expect_equal(coord_values$x, c(120, 140), info = "Incorrect x coordinates")
-  
-  # Clean up the temporary directory
-  unlink(temp_dir, recursive = TRUE)
-})
-

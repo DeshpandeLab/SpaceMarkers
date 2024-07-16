@@ -79,6 +79,7 @@ load10XExpr<- function(visiumDir=NULL,
 #' and 'tissue_positions_list.csv.'
 #' @param resolution A string specifying which values to look for in the .json 
 #' object. Can be either lowres or highres.
+#' @param version A string specifying the version of the spaceranger data.
 #' @return a data frame of the spatial coordinates 
 #' ( x and y) for each spot/cell
 #' @examples
@@ -90,20 +91,40 @@ load10XExpr<- function(visiumDir=NULL,
 #' # Spatial Coordinates
 #' download.file(sp_url, basename(sp_url), mode = "wb")
 #' untar(basename(sp_url))
-#' spCoords <- load10XCoords(visiumDir = ".")
+#' spCoords <- load10XCoords(visiumDir = ".", version = "1.0")
 #' unlink("spatial", recursive = TRUE)
 #' unlink("Visium_Human_Breast_Cancer_spatial.tar.gz")
 #' 
 
-load10XCoords <- function(visiumDir, resolution = "lowres"){
-    scale_json <- dir(paste0(visiumDir,'/spatial'),
+load10XCoords <- function(visiumDir, resolution = "lowres", version = NULL){
+    #determine spacerager version
+    if(is.null(version)){
+        message("Version not provided. Trying to infer.")
+        if("probe_set.csv" %in% dir(visiumDir)){
+            config_line <- readLines(paste0(visiumDir,"/probe_set.csv"), 1)
+            version <- strsplit(config_line, "=")[[1]][2]
+        } else {
+            message("probe_set.csv not found. Assuming version 1.0.")
+            version <- "1.0"
+        }
+    }
+    #account for different versions of visium data
+    if(version == "1.0"){
+        has_header <- FALSE
+        tissue_pos_name <- "tissue_positions_list.csv"
+    } else if (version == "2.0") {
+        has_header <- TRUE
+        tissue_pos_name <- "tissue_positions.csv"
+  }
+    spatial_dir <- paste0(visiumDir,'/spatial')
+    scale_json <- dir(spatial_dir,
                         pattern = "scalefactors_json.json",full.names = TRUE)
     scale_values <- jsonlite::read_json(scale_json)
-    scale_dia <- scale_values$spot_diameter_fullres
     scale_factor <- scale_values[grepl(resolution, names(scale_values))][[1]]
-    coord_file <- dir(paste0(visiumDir,'/spatial'),
-                        pattern="tissue_positions_list.csv",full.names = TRUE)
-    coord_values <- read.csv(coord_file,header = FALSE)
+    coord_file <- dir(spatial_dir,
+                        pattern = tissue_pos_name, full.names = TRUE)
+
+    coord_values <- read.csv(coord_file, header = has_header)
     coord_values <- coord_values[,c(1,5,6)]
     coord_values[,2:3] <- coord_values[,2:3]*scale_factor
     names(coord_values) <- c("barcode","y","x")
