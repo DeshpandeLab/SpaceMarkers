@@ -1,0 +1,23 @@
+---
+title: "test-args"
+date: "`r Sys.time()`"
+output:
+  html_document: 
+    toc: TRUE
+    toc_float: TRUE
+    toc_depth: 4
+    code_folding: show
+    theme: united
+    df_print: paged
+    self_contained: TRUE
+params:
+    deconvResult:
+    dataDir:
+    workdir: 'text'
+    timestamp: !r Sys.Date()
+    auto_save: TRUE
+---
+
+```{r}
+print(params)
+```

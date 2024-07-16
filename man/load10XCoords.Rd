@@ -3,15 +3,40 @@
 \name{load10XCoords}
 \alias{load10XCoords}
 \title{load10XCoords
-Load ...}
+Load 10x Visium Spatial Coordinates}
 \usage{
-load10XCoords(visiumDir, resolution = "lowres")
+load10XCoords(visiumDir, resolution = "lowres", version = NULL)
 }
 \arguments{
-\item{visiumDir}{...}
+\item{visiumDir}{A string path to the location of the folder containing the
+spatial coordinates. The folder in your visiumDir must be named 'spatial'
+and must contain files 'scalefactors_json.json'
+and 'tissue_positions_list.csv.'}
 
-\item{resolution}{...}
+\item{resolution}{A string specifying which values to look for in the .json
+object. Can be either lowres or highres.}
+
+\item{version}{A string specifying the version of the spaceranger data.}
+}
+\value{
+a data frame of the spatial coordinates
+( x and y) for each spot/cell
 }
 \description{
-This function loads ...
+This function loads spatial coordinates for each cell from a 10X Visium
+spatial folder.
+}
+\examples{
+library(SpaceMarkers)
+#Visium data links
+urls <- read.csv(system.file("extdata","visium_data.txt",
+package = "SpaceMarkers",mustWork = TRUE))
+sp_url <- urls[["visium_url"]][2]
+# Spatial Coordinates
+download.file(sp_url, basename(sp_url), mode = "wb")
+untar(basename(sp_url))
+spCoords <- load10XCoords(visiumDir = ".", version = "1.0")
+unlink("spatial", recursive = TRUE)
+unlink("Visium_Human_Breast_Cancer_spatial.tar.gz")
+
 }

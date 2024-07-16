@@ -3,15 +3,35 @@
 \name{load10XExpr}
 \alias{load10XExpr}
 \title{load10XExpr
-load log-transformed 10X Visium expression data from standard 10X Visium folder}
+load 10X Visium Expression Data}
 \usage{
 load10XExpr(visiumDir = NULL, h5filename = "filtered_feature_bc_matrix.h5")
 }
 \arguments{
-\item{visiumDir}{...}
+\item{visiumDir}{A string path to the h5 file with expression information.}
 
-\item{h5filename}{...}
+\item{h5filename}{A string of the name of the h5 file in the directory.}
+}
+\value{
+A matrix of class dgeMatrix or Matrix that contains the expression
+info for each sample (cells) across multiple features (genes)
 }
 \description{
-This function loads ...
+This loads log-transformed 10X Visium expression data from standard 10X
+Visium folder.
+}
+\examples{
+library(SpaceMarkers)
+#Visium data links
+urls <- read.csv(system.file("extdata","visium_data.txt",
+package = "SpaceMarkers",mustWork = TRUE))
+counts_url <- urls[["visium_url"]][1]
+#Remove present Directories if any
+files <- list.files(".")[grepl(basename(counts_url),list.files("."))]
+unlink(files)
+download.file(counts_url,basename(counts_url), mode = "wb")
+counts_matrix<-load10XExpr(visiumDir=".",h5filename = basename(counts_url))
+files <- list.files(".")[grepl(basename(counts_url),list.files("."))]
+unlink(files)
+
 }

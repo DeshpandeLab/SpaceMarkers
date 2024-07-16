@@ -1,0 +1,2 @@
+
+The links are references to a filtered .h5df file and spatial image files for a human fresh frozen breast cancer sample. The data, corresponding urls and descriptions can be directly downloaded from 10x genomics: https://www.10xgenomics.com/datasets/human-breast-cancer-visium-fresh-frozen-whole-transcriptome-1-standard

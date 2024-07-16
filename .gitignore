@@ -19,6 +19,7 @@
 
 # RStudio files
 .Rproj.user/
+SpaceMarkers.Rproj
 
 # produced vignettes
 vignettes/*.html
@@ -37,3 +38,16 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+.DS_Store
+tests/testthat/.DS_Store
+tests/testthat/testdata/.DS_Store
+vignettes/.DS_Store
+
+# GitHub directories
+.github/
+
+# Images
+*.png
+
+# GH token
+pat.txt
