@@ -158,31 +158,6 @@ load10XCoords <- function(visiumDir, resolution = "lowres", version = NULL){
 #' 
 
 getSpatialFeatures <- function(filePath,method = "CoGAPS",featureNames = "."){
-    getCogaps <- function(path){
-        spFeatures <- readRDS(filePath)
-        spFeatures <- slot(spFeatures,"sampleFactors")
-        return(spFeatures)
-    }
-
-    getBtme <- function(path){
-        hf <- hdf5r::h5file(filename = filePath, mode='r')
-        feat_loc <- "obsm/bayestme_cell_type_counts"
-        barc_loc <- "obs/_index"
-        spFeatures <- t(hdf5r::readDataSet(hf[[feat_loc]]))
-        barcodes <- hdf5r::readDataSet(hf[[barc_loc]])
-        rownames(spFeatures) <- barcodes
-        if (is.null(colnames(spFeatures))) {
-            colnames(spFeatures)<-paste0("BayesTME_",seq(1,ncol(spFeatures)))
-        }
-
-        return(spFeatures)
-    }
-
-    getSeurat <- function(path){
-        spFeatures <- readRDS(filePath)
-        spFeatures <- spFeatures[[]]
-        return(spFeatures)
-    }
 
     if(method == "CoGAPS") {
         spFeatures <- getCogaps(filePath)
@@ -222,5 +197,43 @@ getSpatialFeatures <- function(filePath,method = "CoGAPS",featureNames = "."){
     }
     spFeatures <- spFeatures[,featureNames]
 
+    return(spFeatures)
+}
+
+#' getCogaps
+#' @keywords internal
+#' 
+
+getCogaps <- function(path){
+    spFeatures <- readRDS(path)
+    spFeatures <- slot(spFeatures,"sampleFactors")
+    return(spFeatures)
+}
+
+#' getBtme
+#' @keywords internal
+#' 
+
+getBtme <- function(path){
+    hf <- hdf5r::h5file(filename = path, mode='r')
+    feat_loc <- "obsm/bayestme_cell_type_counts"
+    barc_loc <- "obs/_index"
+    spFeatures <- t(hdf5r::readDataSet(hf[[feat_loc]]))
+    barcodes <- hdf5r::readDataSet(hf[[barc_loc]])
+    rownames(spFeatures) <- barcodes
+    if (is.null(colnames(spFeatures))) {
+        colnames(spFeatures)<-paste0("BayesTME_",seq(1,ncol(spFeatures)))
+    }
+
+    return(spFeatures)
+}
+
+#' getSeurat
+#' @keywords internal
+#' 
+
+getSeurat <- function(path){
+    spFeatures <- readRDS(path)
+    spFeatures <- spFeatures[[]]
     return(spFeatures)
 }
