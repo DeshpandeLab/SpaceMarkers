@@ -144,9 +144,8 @@ load10XCoords <- function(visiumDir, resolution = "lowres", version = NULL){
 #' @param method A string specifying the method used to obtain spatial 
 #' features. e.g., "CoGAPS", "Seurat", or "BayesTME".
 #' @param featureNames An array of strings specifying the column names 
-#' corresponding to the feature names. If input is NULL, in the case of CoGAPS 
-#' and BayesTME, all features are selected In the case of Seurat, all metadata 
-#' columns with "_Feature" suffix are selected.
+#' corresponding to the feature names or a regex string. In the case of Seurat,
+#' all metadata columns with "_Feature" suffix are selected.
 #' @return a matrix of spatial features with barcodes associated 
 #' with individual coordinates
 #' @examples
@@ -158,52 +157,70 @@ load10XCoords <- function(visiumDir, resolution = "lowres", version = NULL){
 #' head(spFeatures)
 #' 
 
-getSpatialFeatures <- function(filePath,method = "CoGAPS",featureNames = NULL){
-    if(method=="CoGAPS"){
+getSpatialFeatures <- function(filePath,method = "CoGAPS",featureNames = "."){
+    getCogaps <- function(path){
         spFeatures <- readRDS(filePath)
         spFeatures <- slot(spFeatures,"sampleFactors")
-    } else if(method=="BayesTME"){
+        return(spFeatures)
+    }
+
+    getBtme <- function(path){
         hf <- hdf5r::h5file(filename = filePath, mode='r')
-        spFeatures <- t(hdf5r::readDataSet(
-            hf[["obsm/bayestme_cell_type_counts"]]))
-        barcodes <- hdf5r::readDataSet(hf[["obs/_index"]])
+        feat_loc <- "obsm/bayestme_cell_type_counts"
+        barc_loc <- "obs/_index"
+        spFeatures <- t(hdf5r::readDataSet(hf[[feat_loc]]))
+        barcodes <- hdf5r::readDataSet(hf[[barc_loc]])
         rownames(spFeatures) <- barcodes
-        if (is.null(colnames(spFeatures)))
+        if (is.null(colnames(spFeatures))) {
             colnames(spFeatures)<-paste0("BayesTME_",seq(1,ncol(spFeatures)))
-    } else if(method=="Seurat"){
+        }
+
+        return(spFeatures)
+    }
+
+    getSeurat <- function(path){
         spFeatures <- readRDS(filePath)
         spFeatures <- spFeatures[[]]
-    } else {stop("Method not supported.")}
-    if(is.null(featureNames)){
-        featureNames <- colnames(spFeatures)
-        message("No feature names provided. Using all available features.")
-        if(method=="Seurat") {
-            featureNames <- grepl(colnames(spFeatures),pattern = "_feature", 
-                                    ignore.case = TRUE)
-            message("Using all metadata columns with '_Feature' suffix.")
+        return(spFeatures)
+    }
+
+    if(method == "CoGAPS") {
+        spFeatures <- getCogaps(filePath)
+    } else if(method == "BayesTME") {
+        spFeatures <- getBtme(filePath)
+    } else if(method == "Seurat") {
+        spFeatures <- getSeurat(filePath)
+    } else {
+        stop("Method not supported.")
+    }
+
+
+    if (method=="Seurat") {
+        namePattern <- "_Feature"
+    } else {
+        namePattern <- featureNames
+    }
+
+    if (length(featureNames) == 1) {
+        featureNames <- colnames(spFeatures)[grepl(pattern=namePattern,
+                                                    colnames(spFeatures),
+                                                    ignore.case = TRUE)]
+        if (length(featureNames) == 0) {
+            stop("No features matching regular expression: ", namePattern)
+        } else {
+            message("Found ",length(featureNames),
+                    " features matching the regular expression.")
         }
-    } else{
-        if (length(featureNames) == 1){
-            featureNames <- colnames(spFeatures)[grepl(pattern=featureNames,
-                                                        colnames(spFeatures),
-                                                        ignore.case = TRUE)]
-            message("Only one featureName provided.
-                    Assuming input is regular expression.")
-            if (length(featureNames) == 0)
-                stop("No features found with matching regular expression.
-                        Please check your input.")
-            else
-                message("Found ",length(featureNames),
-                        " features matching the regular expression.")
-        }
-        else
-            featureNames <- intersect(featureNames,colnames(spFeatures))
-        if(!is.null(featureNames))
-            spFeatures <- spFeatures[,featureNames]
-        else
-            stop("No features found in the spatial
-                    data with provided feature names.")
+    }
+
+    featureNames <- intersect(featureNames,colnames(spFeatures))
+
+    if(!is.null(featureNames)) {
+        spFeatures <- spFeatures[,featureNames]
+    } else {
+        stop("No features matching the provided feature names found.")
     }
     spFeatures <- spFeatures[,featureNames]
+
     return(spFeatures)
 }
