@@ -169,32 +169,27 @@ getSpatialFeatures <- function(filePath,method = "CoGAPS",featureNames = "."){
         stop("Method not supported.")
     }
 
-
-    if (method=="Seurat") {
+    if (method == "Seurat") {
         namePattern <- "_Feature"
     } else {
         namePattern <- featureNames
     }
 
     if (length(featureNames) == 1) {
-        featureNames <- colnames(spFeatures)[grepl(pattern=namePattern,
-                                                    colnames(spFeatures),
-                                                    ignore.case = TRUE)]
-        if (length(featureNames) == 0) {
-            stop("No features matching regular expression: ", namePattern)
-        } else {
-            message("Found ",length(featureNames),
-                    " features matching the regular expression.")
-        }
+        dataNames <- colnames(spFeatures)
+        featureNames <- dataNames[grepl(pattern = namePattern,
+                                        dataNames, ignore.case = TRUE)]
+
+        message(sprintf("%d features matching regular expression: '%s'",
+                        length(featureNames), namePattern))
     }
 
     featureNames <- intersect(featureNames,colnames(spFeatures))
 
     if(!is.null(featureNames)) {
         spFeatures <- spFeatures[,featureNames]
-    } else {
-        stop("No features matching the provided feature names found.")
-    }
+    } else {stop("No features matching the provided feature names found.")}
+
     spFeatures <- spFeatures[,featureNames]
 
     return(spFeatures)
