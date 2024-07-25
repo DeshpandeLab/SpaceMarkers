@@ -179,23 +179,21 @@ getSpatialFeatures <- function(filePath,method = "CoGAPS",featureNames = "."){
         dataNames <- colnames(spFeatures)
         featureNames <- dataNames[grepl(pattern = namePattern,
                                         dataNames, ignore.case = TRUE)]
-
-        message(sprintf("%d features matching regular expression: '%s'",
+        message(sprintf("%d features match expression '%s'.",
                         length(featureNames), namePattern))
     }
 
     featureNames <- intersect(featureNames,colnames(spFeatures))
 
-    if(!is.null(featureNames)) {
-        spFeatures <- spFeatures[,featureNames]
-    } else {stop("No features matching the provided feature names found.")}
-
-    spFeatures <- spFeatures[,featureNames]
+    if(length(featureNames)>0) {
+        spFeatures <- spFeatures[,featureNames,drop = FALSE]
+    } else {stop("No features match provided feature names. Check your input.")}
 
     return(spFeatures)
 }
 
 #' getCogaps
+#' Load features CoGAPS object
 #' @keywords internal
 #' 
 
@@ -206,6 +204,8 @@ getCogaps <- function(path){
 }
 
 #' getBtme
+#' Load features BayesTME object
+#' 
 #' @keywords internal
 #' 
 
@@ -224,6 +224,7 @@ getBtme <- function(path){
 }
 
 #' getSeurat
+#' Load features Seurat object
 #' @keywords internal
 #' 
 
