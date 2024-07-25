@@ -5,7 +5,7 @@
 \title{getSpatialFeatures
 Load spatial features}
 \usage{
-getSpatialFeatures(filePath, method = "CoGAPS", featureNames = NULL)
+getSpatialFeatures(filePath, method = "CoGAPS", featureNames = ".")
 }
 \arguments{
 \item{filePath}{A string path to the location of the file containing the
@@ -15,9 +15,8 @@ spatial features.}
 features. e.g., "CoGAPS", "Seurat", or "BayesTME".}
 
 \item{featureNames}{An array of strings specifying the column names
-corresponding to the feature names. If input is NULL, in the case of CoGAPS
-and BayesTME, all features are selected In the case of Seurat, all metadata
-columns with "_Feature" suffix are selected.}
+corresponding to the feature names or a regex string. In the case of Seurat,
+all metadata columns with "_Feature" suffix are selected.}
 }
 \value{
 a matrix of spatial features with barcodes associated
