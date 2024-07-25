@@ -159,37 +159,35 @@ load10XCoords <- function(visiumDir, resolution = "lowres", version = NULL){
 
 getSpatialFeatures <- function(filePath,method = "CoGAPS",featureNames = "."){
 
+    namePattern <- featureNames
+
     if(method == "CoGAPS") {
         spFeatures <- getCogaps(filePath)
     } else if(method == "BayesTME") {
         spFeatures <- getBtme(filePath)
     } else if(method == "Seurat") {
         spFeatures <- getSeurat(filePath)
+        namePattern <- "_Feature"
     } else {
         stop("Method not supported.")
     }
 
-    if (method == "Seurat") {
-        namePattern <- "_Feature"
-    } else {
-        namePattern <- featureNames
-    }
-
     dataNames <- colnames(spFeatures)
 
-    if (length(featureNames) == 1) {
+    if(length(featureNames) == 1) {
+        #assume regex is provided
         featureNames <- dataNames[grepl(pattern = namePattern,
                                         dataNames, ignore.case = TRUE)]
-        if(length(featureNames) == 0){
-            stop(sprintf("Regex %s does not match any feature.", namePattern))
+        if(length(featureNames) == 0) {
+           stop(sprintf("Regex %s does not match any feature.", namePattern))
         }
-    } else if(!all(featureNames %in% dataNames)){
-        stop("Some of the features were not found:", 
-                sprintf(" %s", setdiff(featureNames,dataNames)))
+    } else if(!all(featureNames %in% dataNames)) {
+    stop("Some of the features were not found:",
+         sprintf(" %s", setdiff(featureNames, dataNames)))
     }
 
-    featureNames <- intersect(featureNames,dataNames)
-    spFeatures <- spFeatures[,featureNames, drop=FALSE]
+    featureNames <- intersect(featureNames, dataNames)
+    spFeatures <- spFeatures[,featureNames, drop = FALSE]
 
     return(spFeatures)
 }
