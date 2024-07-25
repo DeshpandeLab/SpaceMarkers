@@ -13,7 +13,8 @@ test_that("getSpatialFeatures fails with unsupported method",{
 })
 
 test_that("getSpatialFeatures fails with no matching feature names",{
-    expect_error(getSpatialFeatures("assets/cogaps.rds", method = "CoGAPS", featureNames = "no_match"))
+    expect_error(getSpatialFeatures("assets/cogaps.rds", method = "CoGAPS", featureNames = "no_match"),
+                 "Regex no_match does not match any feature.")
 })
 
 test_that("getSpatialFeatures work with custom regex", {
@@ -21,7 +22,19 @@ test_that("getSpatialFeatures work with custom regex", {
     expect_equal(ncol(sf), 1)
 })
 
-test_that("getSpatialFeatures work with a feature name set", {
+test_that("getSpatialFeatures works with a feature name set", {
     sf <- getSpatialFeatures("assets/cogaps.rds", method = "CoGAPS", featureNames = c("Pattern_1", "Pattern_2"))
     expect_equal(ncol(sf), 2)
+})
+
+test_that("getSpatialFeatures warns if some of the features are not found", {
+    expect_error(getSpatialFeatures("assets/cogaps.rds", method = "CoGAPS", 
+                                    featureNames = c("Pattern_1", "Pattern_2", "Pattern_4")),
+                                    "Some of the features were not found: Pattern_4")
+})
+
+test_that("getSpatialFeatures warns if some of the features are not found", {
+    expect_error(getSpatialFeatures("assets/cogaps.rds", method = "CoGAPS",
+                                    featureNames = c("Pattern_1", "Pattern_2", "Pattern_3", "qq", "ww")),
+                                    "Some of the features were not found: qq ww")
 })

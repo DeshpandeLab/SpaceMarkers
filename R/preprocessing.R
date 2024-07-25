@@ -175,19 +175,21 @@ getSpatialFeatures <- function(filePath,method = "CoGAPS",featureNames = "."){
         namePattern <- featureNames
     }
 
+    dataNames <- colnames(spFeatures)
+
     if (length(featureNames) == 1) {
-        dataNames <- colnames(spFeatures)
         featureNames <- dataNames[grepl(pattern = namePattern,
                                         dataNames, ignore.case = TRUE)]
-        message(sprintf("%d features match expression '%s'.",
-                        length(featureNames), namePattern))
+        if(length(featureNames) == 0){
+            stop(sprintf("Regex %s does not match any feature.", namePattern))
+        }
+    } else if(!all(featureNames %in% dataNames)){
+        stop("Some of the features were not found:", 
+                sprintf(" %s", setdiff(featureNames,dataNames)))
     }
 
-    featureNames <- intersect(featureNames,colnames(spFeatures))
-
-    if(length(featureNames)>0) {
-        spFeatures <- spFeatures[,featureNames,drop = FALSE]
-    } else {stop("No features match provided feature names. Check your input.")}
+    featureNames <- intersect(featureNames,dataNames)
+    spFeatures <- spFeatures[,featureNames, drop=FALSE]
 
     return(spFeatures)
 }
