@@ -5,14 +5,15 @@
 \title{getSpatialFeatures
 Load spatial features}
 \usage{
-getSpatialFeatures(filePath, method = "CoGAPS", featureNames = ".")
+getSpatialFeatures(filePath, method = NULL, featureNames = ".")
 }
 \arguments{
 \item{filePath}{A string path to the location of the file containing the
 spatial features.}
 
-\item{method}{A string specifying the method used to obtain spatial
-features. e.g., "CoGAPS", "Seurat", or "BayesTME".}
+\item{method}{A string specifying the type of object to obtain spatial
+feature from. Default NULL, where the method is inferred based on object
+type. Other methods are: "CoGAPS", "Seurat", or "BayesTME".}
 
 \item{featureNames}{An array of strings specifying the column names
 corresponding to the feature names or a regex string. In the case of Seurat,
