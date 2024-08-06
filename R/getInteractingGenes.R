@@ -44,17 +44,21 @@ find_pattern_hotspots <- function(
     return(region)
 }
 gettestMat <- function(data,reconstruction,mode){
-    if (mode=="residual"){
+    if ("DE" %in% mode)
+        testMat <- data
+    else if ("residual" %in% mode)
         if (is.null(reconstruction))
             stop("Reconstruction matrix not provided for residual mode.")
         else if (all(dim(data)!=dim(reconstruction)))
             stop("Original and reconstruction have mismatched dimensions.")
+        else if (any(dimnames(data)[[1]]!=dimnames(reconstruction)[[1]]))
+            stop("Original and reconstruction have mismatched row names.")
+        else if (any(dimnames(data)[[2]]!=dimnames(reconstruction)[[2]]))
+            stop("Original and reconstruction have mismatched column names.")
         else 
             testMat <- data - reconstruction
-    }
-    else if (mode=="DE") testMat <- data
     else
-        stop("Invalid mode.")
+        stop("Invalid mode. mode must be either DE or residual.")
     return(testMat)
 }
 
@@ -183,10 +187,11 @@ getSpaceMarkersMetric <- function(interacting.genes){
 #' unlink(files)
 #' 
 
-getInteractingGenes <- function(data,spPatterns,refPattern="Pattern_1",
-                                mode=c("residual","DE"),optParams=NULL,
-                                reconstruction=NULL,hotspots=NULL,
+getInteractingGenes <- function(data, spPatterns, refPattern="Pattern_1",
+                                mode=c("DE","residuals"), optParams=NULL,
+                                reconstruction=NULL, hotspots=NULL,
                                 minOverlap=50,...) {
+
     testMat <- gettestMat(data,reconstruction,mode)
     pattList<- setdiff(colnames(spPatterns),c("barcode","x","y"))
     if (is.null(optParams)){
@@ -232,4 +237,171 @@ getInteractingGenes <- function(data,spPatterns,refPattern="Pattern_1",
     }
     interacting_genes <- getSpaceMarkersMetric(interacting_genes)
     return(list(interacting_genes=interacting_genes,hotspots=hotspots))
+}
+
+#' ================
+#' @title getPairwiseInteractingGenes
+#' @description Performs pairwise analysis to find genes associated with 
+#' spatial interaction between pairs of spatially varying patterns. 
+#' @export
+#' @param data A matrix of gene expression data with genes as rows and 
+#' spots as columns
+#' @param spPatterns A matrix of spatial patterns with barcodes as rows 
+#' and patterns as columns
+#' @param mode The mode for SpaceMarkers analysis. Default is "DE" for 
+#' differential expression analysis. "residuals" mode is used if reconstruction
+#' matrix is provided 
+#' @param analysis The type of analysis to be performed. Default is "enrichment"
+#' @param optParams A matrix of optimal parameters for each pattern
+#' @param reconstruction A matrix of reconstructed gene expression data
+#' @param hotspots A matrix of hotspot regions for each pattern
+#' @param patternPairs A matrix of pattern pairs to be analyzed. Default is
+#' @param minOverlap Minimum number of overlapping spots between patterns 
+#' to consider them as interacting. Default is 50
+#' @param workers (optional) Number of workers to 
+#' be used for parallel processing.
+#' @param ... Additional arguments to be passed to the SpaceMarkers function
+#' @rdname getPairwiseInteractingGenes
+#' @examples
+#' library(SpaceMarkers)
+#' #Visium data links
+#' urls <- read.csv(system.file("extdata","visium_data.txt",
+#' package="SpaceMarkers",mustWork = TRUE))
+#' counts_url <- urls[["visium_url"]][1]
+#' sp_url <- urls[["visium_url"]][2]
+#' #Remove present Directories if any
+#' unlink(basename(sp_url))
+#' unlink("spatial", recursive = TRUE)
+#' files <- list.files(".")[grepl(basename(counts_url),list.files("."))]
+#' unlink(files)
+#' download.file(counts_url,basename(counts_url), mode = "wb")
+#' counts_matrix<-load10XExpr(visiumDir=".",h5filename = basename(counts_url))
+#' #Obtaining CoGAPS Patterns
+#' cogaps_result <- readRDS(system.file("extdata","CoGAPS_result.rds",
+#' package="SpaceMarkers",mustWork = TRUE))
+#' features <- intersect(rownames(counts_matrix),rownames(
+#'     slot(cogaps_result,"featureLoadings")))
+#' barcodes <- intersect(colnames(counts_matrix),rownames(
+#'     slot(cogaps_result,"sampleFactors")))
+#' counts_matrix <- counts_matrix[features,barcodes]
+#' cogaps_matrix <- slot(cogaps_result,"featureLoadings")[features,]%*%
+#'     t(slot(cogaps_result,"sampleFactors")[barcodes,])
+#' #Obtaining Spatial Coordinates
+#' download.file(sp_url, basename(sp_url), mode = "wb")
+#' untar(basename(sp_url))
+#' spCoords <- load10XCoords(visiumDir = ".", version = "1.0")
+#' rownames(spCoords) <- spCoords$barcode
+#' spCoords <- spCoords[barcodes,]
+#' spPatterns <- cbind(spCoords,slot(cogaps_result,"sampleFactors")[barcodes,])
+#' data("curated_genes")
+#' spPatterns<-spPatterns[c("barcode","y","x","Pattern_1",
+#' "Pattern_3","Pattern_5")]
+#' counts_matrix <- counts_matrix[curated_genes,]
+#' cogaps_matrix <- cogaps_matrix[curated_genes, ]
+#' optParams <- matrix(c(6, 2, 6, 2, 6, 2), nrow = 2)
+#' rownames(optParams) <- c("sigmaOpt","threshOpt")
+#' colnames(optParams) <- c("Pattern_1","Pattern_3","Pattern_5")
+#' SpaceMarkersMode <- "DE"
+#' patternPairs <- matrix(c("Pattern_1", "Pattern_1", 
+#'            "Pattern_3", "Pattern_5"), nrow=2)
+#' SpaceMarkers_test <- getPairwiseInteractingGenes(
+#'     data=counts_matrix,reconstruction=NULL,
+#'     optParams = optParams,
+#'     spPatterns = spPatterns,
+#'     mode="DE",analysis="enrichment", patternPairs=patternPairs)
+#' #Remove present Directories if any
+#' unlink(basename(sp_url))
+#' unlink("spatial", recursive = TRUE)
+#' files <- list.files(".")[grepl(basename(counts_url),list.files("."))]
+#' unlink(files)
+#' 
+
+getPairwiseInteractingGenes <- function(data, spPatterns, mode=c("DE","residuals"), 
+                                    optParams=NULL, reconstruction=NULL, 
+                                    hotspots=NULL, minOverlap=50,
+                                    analysis=c("enrichment","overlap"),
+                                    patternPairs=NULL ,..., workers=NULL) {
+    # save params in a list for easy passing
+    argsParams <- list(spPatterns=spPatterns, mode=mode, 
+                        optParams=optParams, hotspots=hotspots, 
+                        analysis=analysis, minOverlap=minOverlap, ...)
+    patternNames <- setdiff(colnames(spPatterns), c("x","y","barcode"))
+    # check if patternPairs is provided
+    if (is.null(patternPairs)){
+        message("patternPairs not provided. Calculating all possible pairs.")
+        patternPairs <- t(utils::combn(patternNames,2,simplify = TRUE))
+    } else {
+        if (is.list(patternPairs)) {
+            if (!all(sapply(patternPairs,length)==2)) 
+                stop("Each item in the patternPairs list 
+                    must be a vector of 2 patterns.")
+            patternPairs <- do.call(rbind, patternPairs)
+        } else if (is.matrix(patternPairs)) {
+                if (ncol(patternPairs) != 2) 
+                    stop("patternPairs matrix must have 2 columns.")
+        } else if(is.character(patternPairs))
+            patternPairs <- matrix(patternPairs, ncol=2)
+        else
+            stop("patternPairs must either be a 2-column matrix 
+                or a list of vectors.")
+        
+        if (!all(patternPairs %in% patternNames)) 
+            stop("patternPairs must be consistent 
+                    with column names of spPatterns matrix.")
+    }
+    
+    input_list <- apply(patternPairs,1, pairArgsList, argsParams)
+    
+    # Check if BiocParallel is installed
+    use_biocparallel <- requireNamespace("BiocParallel", quietly = TRUE) &&
+                            (length(input_list)>1)
+    
+    if (use_biocparallel) {
+        
+        # Determine the number of workers to use
+        if (is.null(workers)) {
+            workers <- BiocParallel::multicoreWorkers()  # Use default 
+        } else if (workers <= 0) {
+            stop("Invalid number of workers. 
+                Please provide a positive integer.")
+        }
+        
+        # Register parallel backend
+        bpparam <- BiocParallel::MulticoreParam(workers = workers)
+        
+        # Run the loop with BiocParallel
+        results <- BiocParallel::bplapply(input_list, function(args) {
+            # call getInteractingGenes for a pair 
+            result <- do.call(getInteractingGenes, c(list(data = data), 
+                list(reconstruction=reconstruction), args))
+            return(result)  # Return only the first element
+        }, BPPARAM = bpparam)  # Use the specified parallel backend
+    } else {
+        # Use a regular for loop with input_list
+        results <- vector("list", length = length(input_list))
+        
+        for (ii in seq(1,length(input_list))){
+            result <- do.call(getInteractingGenes, c(list(data = data), 
+                list(reconstruction=reconstruction), input_list[[ii]]))
+            results[[ii]] <- result
+        }
+    }
+    for (ii in seq(1,length(results)))
+        results[[ii]]$patterns <- patternPairs[ii,]
+    names(results) <- apply(patternPairs,1,paste,collapse="_")
+    return(results)
+}
+
+# Create a list of arguments for passing two patterns to getInteractingGenes
+pairArgsList <- function(patternPair, argsParams) {
+    patcols <- c("x","y", "barcode",patternPair)
+    argList <- list(
+        spPatterns = argsParams$spPatterns[, patcols],
+        hotspots = argsParams$hotspots[, patcols],
+        optParams = argsParams$optParams[, patternPair],
+        refPattern = patternPair[1],
+        mode = argsParams$mode,
+        analysis = argsParams$analysis,
+        minOverlap = argsParams$minOverlap)
+    return(argList)
 }

@@ -12,7 +12,7 @@ getInteractingGenes(
   data,
   spPatterns,
   refPattern = "Pattern_1",
-  mode = c("residual", "DE"),
+  mode = c("DE", "residuals"),
   optParams = NULL,
   reconstruction = NULL,
   hotspots = NULL,
