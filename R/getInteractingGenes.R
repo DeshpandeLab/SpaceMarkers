@@ -108,7 +108,7 @@ getSpaceMarkersMetric <- function(interacting.genes){
 #' of influence and a post hoc Dunn's test is used for analysis of 
 #' genes between regions.
 #' @export
-#'
+#' @family getIntGenes
 #' @param    data    original spatial data matrix.
 #' @param    reconstruction    reconstruction of the data matrix from latent 
 #' spaces. Required for "residual" mode.
@@ -193,7 +193,7 @@ getSpaceMarkersMetric <- function(interacting.genes){
 #' 
 
 getInteractingGenes <- function(data, spPatterns, refPattern="Pattern_1",
-                                mode=c("DE","residuals"), optParams=NULL,
+                                mode=c("DE","residual"), optParams=NULL,
                                 reconstruction=NULL, hotspots=NULL,
                                 minOverlap=50,...) {
 
@@ -249,24 +249,11 @@ getInteractingGenes <- function(data, spPatterns, refPattern="Pattern_1",
 #' @description Performs pairwise analysis to find genes associated with 
 #' spatial interaction between pairs of spatially varying patterns. 
 #' @export
-#' @param data A matrix of gene expression data with genes as rows and 
-#' spots as columns
-#' @param spPatterns A matrix of spatial patterns with barcodes as rows 
-#' and patterns as columns
-#' @param mode The mode for SpaceMarkers analysis. Default is "DE" for 
-#' differential expression analysis. "residuals" mode is used if 
-#' reconstruction matrix is provided 
-#' @param analysis The type of analysis to be performed. 
-#' Default is "enrichment"
-#' @param optParams A matrix of optimal parameters for each pattern
-#' @param reconstruction A matrix of reconstructed gene expression data
-#' @param hotspots A matrix of hotspot regions for each pattern
+#' @family getIntGenes
+#' @inheritParams getInteractingGenes
 #' @param patternPairs A matrix of pattern pairs to be analyzed. Default is
-#' @param minOverlap Minimum number of overlapping spots between patterns 
-#' to consider them as interacting. Default is 50
 #' @param workers (optional) Number of workers to 
 #' be used for parallel processing.
-#' @param ... Additional arguments to be passed to the SpaceMarkers function
 #' @return a list of data frames for each pattern with 1) names of the patterns 
 #' (patterns object) 2) data frame with the hotspots of influence for the
 #'  two patterns (the hotspots object). 3) data frame with the genes 

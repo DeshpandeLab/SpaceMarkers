@@ -13,7 +13,7 @@ getInteractingGenes(
   data,
   spPatterns,
   refPattern = "Pattern_1",
-  mode = c("DE", "residuals"),
+  mode = c("DE", "residual"),
   optParams = NULL,
   reconstruction = NULL,
   hotspots = NULL,
@@ -124,3 +124,8 @@ files <- list.files(".")[grepl(basename(counts_url),list.files("."))]
 unlink(files)
 
 }
+\seealso{
+other functions to get interacting genes
+\code{\link{getPairwiseInteractingGenes}()}
+}
+\concept{getIntGenes}

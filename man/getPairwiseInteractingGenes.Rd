@@ -19,31 +19,39 @@ getPairwiseInteractingGenes(
 )
 }
 \arguments{
-\item{data}{A matrix of gene expression data with genes as rows and
-spots as columns}
+\item{data}{original spatial data matrix.}
 
-\item{spPatterns}{A matrix of spatial patterns with barcodes as rows
-and patterns as columns}
+\item{spPatterns}{A data frame that contains the spatial coordinates
+for each cell type. The column names must include 'x' and 'y' as well as a
+set of numbered columns named 'Pattern_1.....N'.}
 
-\item{mode}{The mode for SpaceMarkers analysis. Default is "DE" for
-differential expression analysis. "residuals" mode is used if
-reconstruction matrix is provided}
+\item{mode}{SpaceMarkers mode of operation. Possible values are
+"residual" (the default) or "DE".}
 
-\item{optParams}{A matrix of optimal parameters for each pattern}
+\item{optParams}{a matrix with dimensions 2 X N,
+where N is the number
+of patterns with optimal parameters for outlier
+detection calculated from function getSpatialParameters(). The first row
+contains the kernel width sigmaOpt for each
+pattern, and the second row is the threshOpt (outlier threshold) for each
+pattern. Users can also input their
+preferred param values.
+The default value is NULL.}
 
-\item{reconstruction}{A matrix of reconstructed gene expression data}
+\item{reconstruction}{reconstruction of the data matrix from latent
+spaces. Required for "residual" mode.}
 
-\item{hotspots}{A matrix of hotspot regions for each pattern}
+\item{hotspots}{a vector that specifies the patterns to compare
+to the 'refPattern'. The default is NULL which indicates that all patterns
+would be compared to the 'refPattern'.}
 
-\item{minOverlap}{Minimum number of overlapping spots between patterns
-to consider them as interacting. Default is 50}
-
-\item{analysis}{The type of analysis to be performed.
-Default is "enrichment"}
+\item{minOverlap}{a number that specifies the minimum overlap between
+genes in two patterns to be considered for the statistical tests.
+The default is 50.}
 
 \item{patternPairs}{A matrix of pattern pairs to be analyzed. Default is}
 
-\item{...}{Additional arguments to be passed to the SpaceMarkers function}
+\item{...}{Arguments passed to methods}
 
 \item{workers}{(optional) Number of workers to
 be used for parallel processing.}
@@ -118,3 +126,8 @@ files <- list.files(".")[grepl(basename(counts_url),list.files("."))]
 unlink(files)
 
 }
+\seealso{
+other functions to get interacting genes
+\code{\link{getInteractingGenes}()}
+}
+\concept{getIntGenes}
