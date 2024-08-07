@@ -48,7 +48,6 @@ return(cbind(zVals,pvals))
 #===================
 #' find_genes_of_interest
 #' Identify genes associated with pattern interaction.
-
 #' This function identifies genes exhibiting significantly higher values of 
 #' testMat in the Interaction region of the two 
 #' patterns compared to regions with exclusive influence from either 
@@ -75,18 +74,15 @@ return(cbind(zVals,pvals))
 find_genes_of_interest<-function(
         testMat,goodGenes=NULL,region, fdr.level=0.05,
         analysis=c("enrichment","overlap"),...) {
-   
-     # Default analysis = enrichments
-    if ("enrichment" %in% analysis){
-        analysis <- "enrichment"
-    } else if ("overlap" %in% analysis){ 
-        analysis <- "overlap"
-    } else {
-        stop("analysis must be either 'enrichment' or 'overlap'")
-    }
+    
+    # Default analysis = enrichment
+    if ("enrichment" %in% analysis) {analysis <- "enrichment"}
+    else if ("overlap" %in% analysis) {analysis <- "overlap"}
+    else stop("analysis must be either 'enrichment' or 'overlap'")
     
     region <- factor(region)
     patnames <- levels(region)[which(levels(region)!="Interacting")]
+    
     pattern1 <- patnames[1]
     pattern2 <- patnames[2]
     if (!is.null(goodGenes)){
@@ -107,6 +103,12 @@ find_genes_of_interest<-function(
     qDunn$qvalues[ind,] <- qq$qvalue
     res_dunn_test <- cbind(res_dunn_test,qDunn$qvalues)
     colnames(res_dunn_test)[7:9] <- paste0(colnames(res_dunn_test)[7:9],".adj")
+    interactGenes <- buildInteractGenesdf(res_kruskal,
+        res_dunn_test,ind,fdr.level, pattern1,pattern2,analysis)
+    return(interactGenes)
+}
+buildInteractGenesdf <- function(res_kruskal,res_dunn_test,ind,
+                                fdr.level=0.05,pattern1,pattern2,analysis) {
     interact_patt1 <- res_dunn_test[ind,"pval_1_Int.adj"]<fdr.level
     interact_patt2 <- res_dunn_test[ind,"pval_2_Int.adj"]<fdr.level
     interacting_over_both_patterns <- interact_patt1 & interact_patt2

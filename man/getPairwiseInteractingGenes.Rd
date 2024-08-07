@@ -26,8 +26,8 @@ spots as columns}
 and patterns as columns}
 
 \item{mode}{The mode for SpaceMarkers analysis. Default is "DE" for
-differential expression analysis. "residuals" mode is used if reconstruction
-matrix is provided}
+differential expression analysis. "residuals" mode is used if
+reconstruction matrix is provided}
 
 \item{optParams}{A matrix of optimal parameters for each pattern}
 
@@ -38,7 +38,8 @@ matrix is provided}
 \item{minOverlap}{Minimum number of overlapping spots between patterns
 to consider them as interacting. Default is 50}
 
-\item{analysis}{The type of analysis to be performed. Default is "enrichment"}
+\item{analysis}{The type of analysis to be performed.
+Default is "enrichment"}
 
 \item{patternPairs}{A matrix of pattern pairs to be analyzed. Default is}
 
@@ -46,6 +47,13 @@ to consider them as interacting. Default is 50}
 
 \item{workers}{(optional) Number of workers to
 be used for parallel processing.}
+}
+\value{
+a list of data frames for each pattern with 1) names of the patterns
+(patterns object) 2) data frame with the hotspots of influence for the
+two patterns (the hotspots object). 3) data frame with the genes
+associated with the interaction between the two patterns
+(interacting genes object, empty if insufficient interaction).
 }
 \description{
 Performs pairwise analysis to find genes associated with
@@ -67,7 +75,8 @@ unlink("spatial", recursive = TRUE)
 files <- list.files(".")[grepl(basename(counts_url),list.files("."))]
 unlink(files)
 download.file(counts_url,basename(counts_url), mode = "wb")
-counts_matrix<-load10XExpr(visiumDir=".",h5filename = basename(counts_url))
+counts_matrix<-load10XExpr(visiumDir=".",
+h5filename = basename(counts_url))
 #Obtaining CoGAPS Patterns
 cogaps_result <- readRDS(system.file("extdata","CoGAPS_result.rds",
 package="SpaceMarkers",mustWork = TRUE))
@@ -84,7 +93,8 @@ untar(basename(sp_url))
 spCoords <- load10XCoords(visiumDir = ".", version = "1.0")
 rownames(spCoords) <- spCoords$barcode
 spCoords <- spCoords[barcodes,]
-spPatterns <- cbind(spCoords,slot(cogaps_result,"sampleFactors")[barcodes,])
+spPatterns <- cbind(spCoords,
+slot(cogaps_result,"sampleFactors")[barcodes,])
 data("curated_genes")
 spPatterns<-spPatterns[c("barcode","y","x","Pattern_1",
 "Pattern_3","Pattern_5")]

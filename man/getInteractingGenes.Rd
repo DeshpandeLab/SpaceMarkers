@@ -5,8 +5,9 @@
 \title{getInteractingGenes
 Calculate Interaction Regions and Associated Genes
 This function calculates statistically significant genes using a
-non-parametric Kruskal-Wallis test for genes in any one region of influence
-and a post hoc Dunn's test is used for analysis of genes between regions.}
+non-parametric Kruskal-Wallis test for genes in any one region
+of influence and a post hoc Dunn's test is used for analysis of
+genes between regions.}
 \usage{
 getInteractingGenes(
   data,
@@ -34,7 +35,8 @@ to study. The default value is "Pattern_1".}
 \item{mode}{SpaceMarkers mode of operation. Possible values are
 "residual" (the default) or "DE".}
 
-\item{optParams}{a matrix with dimensions 2 X N, where N is the number
+\item{optParams}{a matrix with dimensions 2 X N,
+where N is the number
 of patterns with optimal parameters for outlier
 detection calculated from function getSpatialParameters(). The first row
 contains the kernel width sigmaOpt for each
@@ -66,8 +68,9 @@ regions of influence for any two of patterns (the hotspots object).
 getInteractingGenes
 Calculate Interaction Regions and Associated Genes
 This function calculates statistically significant genes using a
-non-parametric Kruskal-Wallis test for genes in any one region of influence
-and a post hoc Dunn's test is used for analysis of genes between regions.
+non-parametric Kruskal-Wallis test for genes in any one region
+of influence and a post hoc Dunn's test is used for analysis of
+genes between regions.
 }
 \examples{
 library(SpaceMarkers)
@@ -99,7 +102,8 @@ untar(basename(sp_url))
 spCoords <- load10XCoords(visiumDir = ".", version = "1.0")
 rownames(spCoords) <- spCoords$barcode
 spCoords <- spCoords[barcodes,]
-spPatterns <- cbind(spCoords,slot(cogaps_result,"sampleFactors")[barcodes,])
+spPatterns <- cbind(spCoords,slot(cogaps_result,
+"sampleFactors")[barcodes,])
 data("curated_genes")
 spPatterns<-spPatterns[c("barcode","y","x","Pattern_1","Pattern_5")]
 counts_matrix <- counts_matrix[curated_genes,]
