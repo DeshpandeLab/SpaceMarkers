@@ -1,4 +1,4 @@
-# SoaceMarkers development version
+# SpaceMarkers development version
 
 * `getSpatialFeatures`: add default method to infer the object passed to it. 
 
