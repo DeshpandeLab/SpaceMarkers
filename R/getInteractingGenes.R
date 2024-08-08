@@ -316,7 +316,7 @@ getInteractingGenes <- function(data, spPatterns, refPattern="Pattern_1",
 #' 
 
 getPairwiseInteractingGenes <- function(data, spPatterns, 
-                                    mode=c("DE","residuals"), 
+                                    mode=c("DE","residual"), 
                                     optParams=NULL, reconstruction=NULL, 
                                     hotspots=NULL, minOverlap=50,
                                     analysis=c("enrichment","overlap"),
@@ -325,10 +325,15 @@ getPairwiseInteractingGenes <- function(data, spPatterns,
     argsParams <- list(spPatterns=spPatterns, mode=mode, 
                         optParams=optParams, hotspots=hotspots, 
                         analysis=analysis, minOverlap=minOverlap)
-    patternNames <- setdiff(colnames(spPatterns), c("x","y","barcode"))
+    if (!exists("patternList"))
+        patternList <- setdiff(colnames(spPatterns), c("x","y","barcode"))
+    else {
+        if (!all(patternList %in% colnames(spPatterns)))
+            stop("patternList contains patterns not present in spPatterns.")
+    }
     
     # check patternPairs if provided, if not generate them
-    patternPairs <- getPatternPairs(patternNames=patternNames, 
+    patternPairs <- getPatternPairs(patternList=patternList, 
                                         patternPairs=patternPairs)
 
     input_list <- apply(patternPairs,1, pairArgsList, argsParams)
@@ -343,7 +348,7 @@ getPairwiseInteractingGenes <- function(data, spPatterns,
         if (is.null(workers)) {
             workers <- BiocParallel::multicoreWorkers()  # Use default 
         } else if (workers <= 0) {
-            stop("Invalid number of workers. 
+            stop("Invalid number of workers. #
                 Please provide a positive integer.")
         }
         
@@ -385,11 +390,11 @@ pairArgsList <- function(patternPair, argsParams) {
     return(argList)
 }
 
-getPatternPairs <- function(patternNames, patternPairs) {
+getPatternPairs <- function(patternList, patternPairs) {
     if (is.null(patternPairs)){
         message("patternPairs not provided. Calculating all 
             possible pairs.")
-        patternPairs <- t(utils::combn(patternNames,2,simplify = TRUE))
+        patternPairs <- t(utils::combn(patternList,2,simplify = TRUE))
     } else {
         if (is.list(patternPairs)) {
             if (!all(vapply(patternPairs,length, FUN.VALUE = 1)==2)) 
@@ -399,15 +404,19 @@ getPatternPairs <- function(patternNames, patternPairs) {
         } else if (is.matrix(patternPairs)) {
             if (ncol(patternPairs) != 2) 
                 stop("patternPairs matrix must have 2 columns.")
-        } else if(is.character(patternPairs))
-            patternPairs <- matrix(patternPairs, ncol=2)
+        } else if(is.character(patternPairs)) {
+            if (length(patternPairs)!=2){
+                stop("A single pair be a character vector of length 2.")
+            } else
+                patternPairs <- matrix(patternPairs, nrow=1)
+        }
         else
             stop("patternPairs must either be a 2-column matrix 
                 or a list of vectors.")
         
-        if (!all(patternPairs %in% patternNames)) 
-            stop("patternPairs must be consistent 
-                    with column names of spPatterns matrix.")
+        if (!all(patternPairs %in% patternList)) 
+            stop("Following are not pattern names: ", 
+                paste0(setdiff(patternPairs, patternList)," "))
     }
     return(patternPairs)
 }

@@ -127,7 +127,7 @@ unlink(files)
 
 }
 \seealso{
-other functions to get interacting genes
+Other getIntGenes: 
 \code{\link{getInteractingGenes}()}
 }
 \concept{getIntGenes}

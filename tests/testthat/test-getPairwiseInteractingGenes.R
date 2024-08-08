@@ -72,7 +72,7 @@ test_that("Invalid patternPairs - throws error", {
     expect_error(result <- getPairwiseInteractingGenes(data=args$data, 
         spPatterns=args$spPatterns, 
         optParams=args$optParams, 
-        patternPairs = patternPairs, minOverlap = 0))
+        patternPairs = patternPairs, minOverlap = 0), "not pattern names")
 })
 
 # 5. Test without BiocParallel
