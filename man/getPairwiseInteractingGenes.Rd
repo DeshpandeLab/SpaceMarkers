@@ -7,7 +7,7 @@
 getPairwiseInteractingGenes(
   data,
   spPatterns,
-  mode = c("DE", "residuals"),
+  mode = c("DE", "residual"),
   optParams = NULL,
   reconstruction = NULL,
   hotspots = NULL,
