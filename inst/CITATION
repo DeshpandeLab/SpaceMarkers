@@ -1,0 +1,14 @@
+bibentry(
+    bibtype  = "Article",
+    title = "Uncovering the spatial landscape of molecular interactions within the tumor microenvironment through latent spaces",
+	volume = "14",
+	issn = "2405-4712",
+	url = "https://www.cell.com/cell-systems/abstract/S2405-4712(23)00080-7",
+	doi = "10.1016/j.cels.2023.03.004",
+	number = "4",
+	journal = "Cell Systems",
+	author = "Deshpande, Atul and Loth, Melanie and Sidiropoulos, Dimitrios N. and Zhang, Shuming and Yuan, Long and Bell, Alexander T. F. and Zhu, Qingfeng and Ho, Won Jin and Santa-Maria, Cesar and Gilkes, Daniele M. and Williams, Stephen R. and Uytingco, Cedric R. and Chew, Jennifer and Hartnett, Andrej and Bent, Zachary W. and Favorov, Alexander V. and Popel, Aleksander S. and Yarchoan, Mark and Kiemen, Ashley and Wu, Pei-Hsun and Fujikura, Kohei and Wirtz, Denis and Wood, Laura D. and Zheng, Lei and Jaffee, Elizabeth M. and Anders, Robert A. and Danilova, Ludmila and Stein-O’Brien, Genevieve and Kagohara, Luciane T. and Fertig, Elana J.",
+	month = "apr",
+	year = "2023",
+	pmid = "37080163"
+)

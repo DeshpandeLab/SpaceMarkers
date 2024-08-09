@@ -1,14 +1,14 @@
 Type: Package
 Package: SpaceMarkers
 Title: Spatial Interaction Markers
-Version: 1.11.1
+Version: 1.1.2
 Authors@R: c(
     person(given = "Atul", family = "Deshpande", email = "adeshpande@jhu.edu", role = c("aut", "cre"), comment = c(ORCID="0000-0001-5144-6924")),
     person(given = "Ludmila", family = "Danilova", email = "ldanilo1@jhmi.edu", role = "ctb"),
-    person(given = "Dimitrijs", family = "Lvovs", email = "dlvovs1@jh.edu", role = "ctb")
+    person(given = "Dmitrijs", family = "Lvovs", email = "dlvovs1@jh.edu", role = "ctb", comment = c(ORCID = "0009-0003-2152-6853"))
   )
-BugReports: https://github.com/atuldeshpande/SpaceMarkers/issues
-URL: https://github.com/atuldeshpande/SpaceMarkers
+BugReports: https://github.com/DeshpandeLab/SpaceMarkers/issues
+URL: https://github.com/DeshpandeLab/SpaceMarkers
 Description: Spatial transcriptomic technologies have helped to resolve the connection
             between gene expression and the 2D orientation of tissues relative to each other.
             However, the limited single-cell resolution makes it difficult to highlight the most 
@@ -48,6 +48,8 @@ Suggests:
     testthat (>= 3.0.0),
     viridis,
     CoGAPS
+Enhances: 
+    BiocParallel
 VignetteBuilder: 
     knitr
 Config/testthat/edition: 3

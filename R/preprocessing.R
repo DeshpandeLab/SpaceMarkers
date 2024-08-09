@@ -115,7 +115,7 @@ load10XCoords <- function(visiumDir, resolution = "lowres", version = NULL){
     } else if (version == "2.0") {
         has_header <- TRUE
         tissue_pos_name <- "tissue_positions.csv"
-  }
+    }
     spatial_dir <- paste0(visiumDir,'/spatial')
     scale_json <- dir(spatial_dir,
                         pattern = "scalefactors_json.json",full.names = TRUE)
@@ -167,8 +167,8 @@ getSpatialFeatures <- function(filePath, method = NULL, featureNames = "."){
     method <- .inferMethod(spObject, method)
 
     spFun <- c("CoGAPS"=.getCogapsFeatures,
-               "BayesTME"=.getBTMEfeatures,
-               "Seurat"=.getSeuratFeatures)
+                "BayesTME"=.getBTMEfeatures,
+                "Seurat"=.getSeuratFeatures)
 
     spFeatures <- spFun[[method]](spObject)
 
@@ -185,7 +185,7 @@ getSpatialFeatures <- function(filePath, method = NULL, featureNames = "."){
         }
     } else if(!all(featureNames %in% dataNames)) {
     stop("Some of the features were not found:",
-         sprintf(" %s", setdiff(featureNames, dataNames)))
+            sprintf(" %s", setdiff(featureNames, dataNames)))
     }
 
     featureNames <- intersect(featureNames, dataNames)

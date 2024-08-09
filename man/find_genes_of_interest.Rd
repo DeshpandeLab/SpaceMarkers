@@ -6,17 +6,12 @@
 Identify genes associated with pattern interaction.
 This function identifies genes exhibiting significantly higher values of
 testMat in the Interaction region of the two
-patterns compared #' to regions with exclusive influence from either
+patterns compared to regions with exclusive influence from either
 pattern. It uses Kruskal-Wallis test followed by
 posthoc analysis using Dunn's Test to identify the genes.}
 \usage{
-find_genes_of_interest(
-    testMat,
-    goodGenes = NULL,
-    region,
-    fdr.level = 0.05,
-    analysis = c("enrichment", "overlap")
-)
+find_genes_of_interest(testMat, goodGenes, region, fdr.level=0.05,
+       analysis=c("enrichment","overlap"),...)
 }
 \arguments{
 \item{testMat}{A matrix of counts with cells as columns and genes as rows}
@@ -32,6 +27,8 @@ with the other patterns}
 
 \item{analysis}{a character string that specifies the type of analysis to
 carry out, whether overlap or enrichment.}
+
+\item{...}{Additional arguments to be passed to lower level functions}
 }
 \value{
 a list of genes exhibiting significantly higher values of testMat in
@@ -43,7 +40,7 @@ find_genes_of_interest
 Identify genes associated with pattern interaction.
 This function identifies genes exhibiting significantly higher values of
 testMat in the Interaction region of the two
-patterns compared #' to regions with exclusive influence from either
+patterns compared to regions with exclusive influence from either
 pattern. It uses Kruskal-Wallis test followed by
 posthoc analysis using Dunn's Test to identify the genes.
 }
