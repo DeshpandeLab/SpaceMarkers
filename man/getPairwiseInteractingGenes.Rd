@@ -49,6 +49,12 @@ would be compared to the 'refPattern'.}
 genes in two patterns to be considered for the statistical tests.
 The default is 50.}
 
+\item{analysis}{a character string that specifies the type of downstream
+analysis to be performed. Possible values are "enrichment" (default)
+and "overlap". In enrichment mode, all genes are returned, ranked by
+the SpaceMarkers metric. In overlap mode, only the genes which are
+significantly overexpressed in the interaction region are returned.}
+
 \item{patternPairs}{A matrix of pattern pairs to be analyzed. Default is}
 
 \item{...}{Arguments passed to methods}

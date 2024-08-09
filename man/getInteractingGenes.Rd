@@ -17,6 +17,7 @@ getInteractingGenes(
   optParams = NULL,
   reconstruction = NULL,
   hotspots = NULL,
+  analysis = c("enrichment", "overlap"),
   minOverlap = 50,
   ...
 )
@@ -51,6 +52,12 @@ spaces. Required for "residual" mode.}
 \item{hotspots}{a vector that specifies the patterns to compare
 to the 'refPattern'. The default is NULL which indicates that all patterns
 would be compared to the 'refPattern'.}
+
+\item{analysis}{a character string that specifies the type of downstream
+analysis to be performed. Possible values are "enrichment" (default)
+and "overlap". In enrichment mode, all genes are returned, ranked by
+the SpaceMarkers metric. In overlap mode, only the genes which are
+significantly overexpressed in the interaction region are returned.}
 
 \item{minOverlap}{a number that specifies the minimum overlap between
 genes in two patterns to be considered for the statistical tests.

@@ -135,6 +135,12 @@ getSpaceMarkersMetric <- function(interacting.genes){
 #' @param    hotspots    a vector that specifies the patterns to compare
 #'  to the 'refPattern'. The default is NULL which indicates that all patterns
 #'   would be compared to the 'refPattern'.
+#' @param analysis a character string that specifies the type of downstream 
+#' analysis to be performed. Possible values are "enrichment" (default) 
+#' and "overlap". In enrichment mode, all genes are returned, ranked by 
+#' the SpaceMarkers metric. In overlap mode, only the genes which are 
+#' significantly overexpressed in the interaction region are returned.
+#' 
 #' @param ... Arguments passed to methods
 #' @return a list of data frames with information about the interacting genes
 #'  of the refPattern and each latent feature pattern matrix 
@@ -195,6 +201,7 @@ getSpaceMarkersMetric <- function(interacting.genes){
 getInteractingGenes <- function(data, spPatterns, refPattern="Pattern_1",
                                 mode=c("DE","residual"), optParams=NULL,
                                 reconstruction=NULL, hotspots=NULL,
+                                analysis=c("enrichment","overlap"),
                                 minOverlap=50,...) {
 
     testMat <- gettestMat(data,reconstruction,mode)
