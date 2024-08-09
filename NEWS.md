@@ -1,8 +1,9 @@
 # SpaceMarkers 1.1.2
+
 * Added getPairwiseInteractingGenes which enables pairwise analysis of 
 interacting patterns 
 
-# SpaceMarkers development version
+# SpaceMarkers 1.1.1
 
 * `getSpatialFeatures`: add default method to infer the object passed to it. 
 
