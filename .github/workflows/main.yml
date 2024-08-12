@@ -8,4 +8,4 @@ on:
     workflow_dispatch:
 jobs:
     build-check:
-        uses: FertigLab/actions/.github/workflows/r-build-check.yml@v1.2.2
+        uses: FertigLab/actions/.github/workflows/r-build-check.yml@v1.3.0
