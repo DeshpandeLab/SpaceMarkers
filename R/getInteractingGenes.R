@@ -128,7 +128,7 @@ getSpaceMarkersMetric <- function(interacting.genes){
 #'  "interaction" with every other pattern we want
 #' to study. The default value is "Pattern_1".
 #' @param    mode    SpaceMarkers mode of operation. Possible values are
-#'  "residual" (the default) or "DE".
+#'  "DE" (the default) or "residual".
 #' @param    minOverlap    a number that specifies the minimum overlap between
 #'  genes in two patterns to be considered for the statistical tests.
 #'  The default is 50.
