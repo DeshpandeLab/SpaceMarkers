@@ -26,7 +26,7 @@ for each cell type. The column names must include 'x' and 'y' as well as a
 set of numbered columns named 'Pattern_1.....N'.}
 
 \item{mode}{SpaceMarkers mode of operation. Possible values are
-"residual" (the default) or "DE".}
+"DE" (the default) or "residual".}
 
 \item{optParams}{a matrix with dimensions 2 X N,
 where N is the number
