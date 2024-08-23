@@ -1,0 +1,174 @@
+---
+title: "SpaceMarkers RCTD"
+author: "Orian Stapleton"
+date: "2024-01-08"
+output:
+    BiocStyle::html_document:
+        toc: yes
+        toc_depth: 3
+        number_sections: yes
+vignette: >
+    %\VignetteIndexEntry{Inferring Immune Interactions in Breast Cancer}
+    %\VignetteEngine{knitr::rmarkdown}
+    %\VignetteEncoding{UTF-8}
+params:
+  workdir: "."
+---
+
+```{r global.options, include = FALSE}
+knitr::opts_knit$set(
+    collapse = TRUE,
+    comment = "#>",
+    fig.align   = 'center'
+)
+knitr::opts_knit$set(
+  root.dir = params$workdir
+  )
+
+knitr::opts_chunk$set(out.extra = 'style="display:block; margin:auto;"')
+
+```
+
+# Overview
+
+SpaceMarkers leverages latent feature analysis of the spatial components of 
+transcriptomic data to identify biologically relevant molecular interactions 
+between cell groups.This tutorial will use the latent features from CoGAPS to 
+look at pattern interactions in a Visium 10x breast ductal carcinoma spatial 
+transcriptomics dataset.
+
+# Installation
+
+```{r eval = FALSE}
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("SpaceMarkers")
+```
+
+```{r message = FALSE, warning = FALSE}
+library(SpaceMarkers)
+library(spacexr)
+```
+
+
+# RCTD
+
+## Spatial Setup
+
+```{r}
+main_10xlink <- "https://cf.10xgenomics.com/samples/spatial-exp/1.3.0"
+counts_folder <- "Visium_Human_Breast_Cancer"
+counts_file <- "Visium_Human_Breast_Cancer_filtered_feature_bc_matrix.h5"
+counts_url<-paste(c(main_10xlink,counts_folder,counts_file), collapse = "/")
+sp_folder <- "Visium_Human_Breast_Cancer"
+sp_file <- "Visium_Human_Breast_Cancer_spatial.tar.gz"
+sp_url <- paste(c(main_10xlink,sp_folder,sp_file),collapse = "/")
+## Clear previous runs
+unlink(basename(sp_url))
+unlink("spatial", recursive = TRUE)
+files <- list.files(".")[grepl(basename(counts_url),list.files("."))]
+unlink(files)
+
+## Counts Matrix
+download.file(counts_url,basename(counts_url), mode = "wb")
+counts_matrix <- load10XExpr(visiumDir = ".", h5filename = counts_file)
+good_gene_threshold <- 3
+goodGenes <- rownames(counts_matrix)[
+    apply(counts_matrix,1,function(x) sum(x>0)>=good_gene_threshold)]
+spCounts <- counts_matrix[goodGenes,]
+
+## Coords
+download.file(sp_url, basename(sp_url), mode = "wb")
+untar(basename(sp_url))
+spCoords <- load10XCoords(visiumDir = ".")
+rownames(spCoords) <- spCoords$barcode
+spCoords <- spCoords[,-1]
+
+## Clear Folders
+unlink(basename(sp_url))
+unlink("spatial", recursive = TRUE)
+files <- list.files(".")[grepl(basename(counts_url),list.files("."))]
+unlink(files)
+```
+
+
+## scRNA-seq Reference Setup
+
+```{r eval = FALSE}
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(spacexr)
+#devtools::install_github("dmcable/spacexr", build_vignettes = FALSE)
+
+# Load the  dataset
+scObj <- Read10X(data.dir = "RCTD/scRNASeqRef_BreastCancer/")
+meta <- read.csv("RCTD/scRNASeqRef_BreastCancer/Whole_miniatlas_meta.csv")
+meta <- meta[-1,]
+rownames(meta) <- meta[,1]
+scObj <- CreateSeuratObject(counts = scObj, project = "BreastCancer",meta.data = meta)
+# saveRDS(scObj,'RCTD/scRef_BreastCancer.rds')
+# saveRDS(meta,'RCTD/scRef_meta.rds')
+# scObj <- readRDS("RCTD/scRef_BreastCancer.rds")
+# meta <- readRDS('RCTD/scRef_meta.rds') 
+
+#scRNA Reference
+celltypes <- meta$celltype_major
+names(celltypes) <- rownames(meta)
+celltypes <- as.factor(celltypes)
+features <- intersect(rownames(scObj@assays$RNA$counts),goodGenes)
+scCounts <- scObj@assays$RNA$count[features,]
+nUMI <- colSums(scCounts)
+reference <- Reference(counts = scCounts, cell_types = celltypes,nUMI = nUMI,
+                       require_int = FALSE, n_max_cells = 35000)
+#saveRDS(reference, "RCTD/RCTD_reference.rds")
+#Spatial RNA
+puck <- SpatialRNA(spCoords[,c("x","y")], spCounts,nUMI = NULL,
+                   require_int = FALSE)
+#saveRDS(puck, "RCTD/RCTD_spatial.rds")
+
+```
+
+## Run RCTD
+
+```{r eval = FALSE}
+# RCTD - ran on the cluster - jhpce01 (takes about 5 minutes with these settings)
+library(spacexr) 
+#reference <- readRDS('data/visiumBreastCancer_reference.rds')
+#puck <- readRDS('data/visiumBreastCancer_RCTDspatial.rds')
+myRCTD <- create.RCTD(puck, reference, max_cores = 8)
+myRCTD <- run.RCTD(myRCTD, doublet_mode = 'full')
+saveRDS(myRCTD,'outputs/RCTD_visiumBreastCancer.rds')
+```
+
+
+# SpaceMarkers
+
+## Spatial Features
+
+```{r}
+spFeatures <- getSpatialFeatures("RCTD/RCTD_visiumBreastCancer.rds",method = "RCTD")
+spFeatures <- spacexr::normalize_weights(spFeatures)
+```
+
+## Spatial Patterns
+
+```{r}
+spCoords$barcode <- rownames(spCoords)
+barcodes <- intersect(rownames(spCoords),rownames(spFeatures))
+spPatterns <- cbind(spCoords[barcodes,],as.data.frame(as.matrix(
+    spFeatures[barcodes,])))
+head(spPatterns)
+```
+
+## optParams
+
+```{r eval = FALSE}
+optParams <- getSpatialParameters(spPatterns)
+
+```
+```{r}
+optParams <- readRDS("RCTD/optParams.rds") 
+```
+

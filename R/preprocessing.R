@@ -173,6 +173,9 @@ getSpatialFeatures <- function(filePath,method = "CoGAPS",featureNames = NULL){
     } else if(method=="Seurat"){
         spFeatures <- readRDS(filePath)
         spFeatures <- spFeatures[[]]
+    } else if(method=="RCTD") {
+        spFeatures <- readRDS(filePath)
+        spFeatures <- slot(spFeatures,"results")[["weights"]]
     } else {stop("Method not supported.")}
     if(is.null(featureNames)){
         featureNames <- colnames(spFeatures)
