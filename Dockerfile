@@ -1,4 +1,4 @@
-#generated from 69d000eee2de41886a5732a1436be4a98f080dcf
+#generated from 4e39af5fe798d400963f32d25e09a1fb24758ecf
 # --platform=linux/amd64 to avoid 'no match for platform in the manifest' on M1
 FROM rocker/tidyverse:4
 
@@ -9,10 +9,13 @@ RUN sudo apt-get update -y && \
     apt-get upgrade -y && \
     apt-get install libhdf5-dev build-essential patch -y
 
+RUN Rscript -e 'install.packages("BiocManager");\
+                BiocManager::install("CoGAPS")'
+
 RUN Rscript -e 'devtools::install_deps()'
 
 #https://github.com/r-lib/devtools/issues/2395
-RUN Rscript -e 'devtools::install()'
+RUN Rscript -e 'devtools::install(dependencies = TRUE)'
 
 #optoional packages - for vizualization
 RUN Rscript -e 'install.packages("patchwork");\
