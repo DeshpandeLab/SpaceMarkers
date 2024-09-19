@@ -56,7 +56,7 @@ load10XExpr<- function(visiumDir=NULL,
         dims = shp[],
         repr = "T"
     )
-    spMat <- log2(1+spMat)
+    spMat@x <- log2(1+spMat@x)
     features <- make.unique(names = features)
     rownames(spMat) <- features
     colnames(spMat) <- barcodes
