@@ -233,9 +233,9 @@ getInteractingGenes <- function(data, spPatterns, refPattern="Pattern_1",
     does not match with data.")
     else 
         message("Using user provided hotspot regions.")
-    interacting_genes <- list(); data <- as.matrix(data)
+    interacting_genes <- list()
     for (pattern in setdiff(pattList,refPattern)){
-        region <- hotspots[,refPattern]; 
+        region <- hotspots[,refPattern]
         region <- ifelse(!is.na(region) & !is.na(
             hotspots[,pattern]),"Interacting",ifelse(
                 !is.na(region),region,hotspots[,pattern]))
@@ -243,9 +243,12 @@ getInteractingGenes <- function(data, spPatterns, refPattern="Pattern_1",
         if (length(levels(region))<3||any(table(region)<minOverlap))#def. 50
             message(refPattern," and ",pattern," do not sufficiently interact.
                 Skipping statistical test for genes.")
-        else
+        else {
+            message("Calculating genes of interest for ",refPattern," and ",
+                pattern)
             interacting_genes<-c(interacting_genes,find_genes_of_interest(
                     testMat = testMat, region=region,...))
+        }
     }
     interacting_genes <- getSpaceMarkersMetric(interacting_genes)
     return(list(interacting_genes=interacting_genes,hotspots=hotspots))

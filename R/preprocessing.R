@@ -54,7 +54,7 @@ load10XExpr<- function(visiumDir=NULL,
         p = indptr[],
         x = as.numeric(x = counts[]),
         dims = shp[],
-        repr = "T"
+        repr = "C"
     )
     spMat@x <- log2(1+spMat@x)
     features <- make.unique(names = features)

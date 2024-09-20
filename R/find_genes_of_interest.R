@@ -10,8 +10,9 @@ row.dunn.test <- function(in.data,region){
     region <- factor(region)
     pattern1 <- levels(region)[2]
     pattern2 <- levels(region)[3]
-    in.ranks <- matrixStats::rowRanks(in.data,cols = !is.na(region),
+    in.ranks <- sparseMatrixStats::rowRanks(in.data,cols = !is.na(region),
                                         ties.method = "average")
+
     rsub <- region[!is.na(region)]
     
     N <- length(rsub)
@@ -19,7 +20,11 @@ row.dunn.test <- function(in.data,region){
     N2 <- sum(rsub==pattern2)
     NI <- sum(rsub=="Interacting")
 
-    tiesStat <- apply(in.ranks,1,function(rr) sum(table(rr)^3-table(rr)))
+    tiesStat <- apply(in.ranks,1,function(rr) {
+        rr_table <- table(rr)
+        sum(rr_table * (rr_table^2 - 1))
+    })
+
     tiesStat2 <- sqrt(1 - tiesStat/N/(N-1)/(N+1))
 
     SEI1 <- sqrt(N*(N+1)/12*(1/NI+1/N1))
@@ -75,7 +80,7 @@ find_genes_of_interest<-function(
         testMat,goodGenes=NULL,region, fdr.level=0.05,
         analysis=c("enrichment","overlap"),...) {
     
-    # Default analysis = enrichment
+        # Default analysis = enrichment
     if ("enrichment" %in% analysis) {analysis <- "enrichment"}
     else if ("overlap" %in% analysis) {analysis <- "overlap"}
     else stop("analysis must be either 'enrichment' or 'overlap'")
@@ -90,10 +95,13 @@ find_genes_of_interest<-function(
         testMat <- testMat[subset_goodGenes,]
         }
     res_kruskal<- matrixTests::row_kruskalwallis(x=as.matrix(testMat),g=region)
+
     qq <- qvalue::qvalue(res_kruskal$pvalue,fdr.level = fdr.level,
                             pfdr = FALSE, pi0 = 1)
     res_kruskal <- cbind(res_kruskal,p.adj = qq$qvalues)
+        tic <- Sys.time()
     res_dunn_test <- row.dunn.test(as.matrix(testMat),region)
+    Sys.time() - tic
     rownames(res_dunn_test) <- rownames(res_kruskal)
     ind <- rownames(res_kruskal[which(res_kruskal$p.adj<fdr.level),])
     qDunn <- qvalue::qvalue(res_dunn_test[,4:6],
@@ -105,6 +113,7 @@ find_genes_of_interest<-function(
     colnames(res_dunn_test)[7:9] <- paste0(colnames(res_dunn_test)[7:9],".adj")
     interactGenes <- buildInteractGenesdf(res_kruskal,
         res_dunn_test,ind,fdr.level, pattern1,pattern2,analysis)
+
     return(interactGenes)
 }
 buildInteractGenesdf <- function(res_kruskal,res_dunn_test,ind,
