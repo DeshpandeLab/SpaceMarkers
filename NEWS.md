@@ -1,3 +1,8 @@
+# Unreleased
+
+* Optimized the long running row.dunn.test() function
+* Corrected sparse -> dense conversions
+
 # SpaceMarkers 1.1.2
 
 * Added getPairwiseInteractingGenes which enables pairwise analysis of 
