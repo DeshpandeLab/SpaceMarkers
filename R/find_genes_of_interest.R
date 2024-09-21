@@ -80,7 +80,7 @@ find_genes_of_interest<-function(
         testMat,goodGenes=NULL,region, fdr.level=0.05,
         analysis=c("enrichment","overlap"),...) {
     
-        # Default analysis = enrichment
+    # Default analysis = enrichment
     if ("enrichment" %in% analysis) {analysis <- "enrichment"}
     else if ("overlap" %in% analysis) {analysis <- "overlap"}
     else stop("analysis must be either 'enrichment' or 'overlap'")
@@ -99,9 +99,7 @@ find_genes_of_interest<-function(
     qq <- qvalue::qvalue(res_kruskal$pvalue,fdr.level = fdr.level,
                             pfdr = FALSE, pi0 = 1)
     res_kruskal <- cbind(res_kruskal,p.adj = qq$qvalues)
-        tic <- Sys.time()
     res_dunn_test <- row.dunn.test(as.matrix(testMat),region)
-    Sys.time() - tic
     rownames(res_dunn_test) <- rownames(res_kruskal)
     ind <- rownames(res_kruskal[which(res_kruskal$p.adj<fdr.level),])
     qDunn <- qvalue::qvalue(res_dunn_test[,4:6],
