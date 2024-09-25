@@ -19,7 +19,6 @@ Depends:
     R (>= 4.4.0)
 biocViews: SingleCell, GeneExpression, Software, Spatial, Transcriptomics
 Imports:
-    sparseMatrixStats,
     matrixStats,
     matrixTests,
     rstatix,

@@ -10,7 +10,7 @@ row.dunn.test <- function(in.data,region){
     region <- factor(region)
     pattern1 <- levels(region)[2]
     pattern2 <- levels(region)[3]
-    in.ranks <- sparseMatrixStats::rowRanks(in.data,cols = !is.na(region),
+    in.ranks <- matrixStats::rowRanks(in.data,cols = !is.na(region),
                                         ties.method = "average")
 
     rsub <- region[!is.na(region)]

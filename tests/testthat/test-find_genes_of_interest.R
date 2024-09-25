@@ -6,7 +6,8 @@ test_that('row dunn test works with both sparse and dense matrices',{
     region <- factor(region)
 
     expect_true("dgCMatrix" %in% class(sparse))
-    expect_no_error(row.dunn.test(sparse, region))
+    expect_error(row.dunn.test(sparse, region),
+        "Argument 'x' must be a matrix or a vector")
 
     expect_true("matrix" %in% class(dense))
     expect_no_error(row.dunn.test(dense, region))
