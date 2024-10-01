@@ -6,15 +6,13 @@
 ## author: Atul Deshpande
 ## email: adeshpande@jhu.edu
 
-row.dunn.test <- function(in.data,region){
-    region <- factor(region)
-    pattern1 <- levels(region)[2]
-    pattern2 <- levels(region)[3]
+row.dunn.test <- function(in.data,region,pattern1,pattern2){
+    
     in.ranks <- matrixStats::rowRanks(in.data,cols = !is.na(region),
                                         ties.method = "average")
 
     rsub <- region[!is.na(region)]
-    
+
     N <- length(rsub)
     N1 <- sum(rsub==pattern1)
     N2 <- sum(rsub==pattern2)
@@ -95,11 +93,11 @@ find_genes_of_interest<-function(
         testMat <- testMat[subset_goodGenes,]
         }
     res_kruskal<- matrixTests::row_kruskalwallis(x=as.matrix(testMat),g=region)
-
     qq <- qvalue::qvalue(res_kruskal$pvalue,fdr.level = fdr.level,
                             pfdr = FALSE, pi0 = 1)
     res_kruskal <- cbind(res_kruskal,p.adj = qq$qvalues)
-    res_dunn_test <- row.dunn.test(as.matrix(testMat),region)
+    res_dunn_test <- row.dunn.test(in.data=testMat, region=region, 
+                                        pattern1=pattern1, pattern2=pattern2)
     rownames(res_dunn_test) <- rownames(res_kruskal)
     ind <- rownames(res_kruskal[which(res_kruskal$p.adj<fdr.level),])
     qDunn <- qvalue::qvalue(res_dunn_test[,4:6],
