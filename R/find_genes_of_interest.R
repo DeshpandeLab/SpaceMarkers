@@ -92,11 +92,15 @@ find_genes_of_interest<-function(
         subset_goodGenes <- intersect(rownames(testMat),goodGenes)
         testMat <- testMat[subset_goodGenes,]
         }
-    res_kruskal<- matrixTests::row_kruskalwallis(x=as.matrix(testMat),g=region)
+
+    #we lose sparsity here, it is necessary for row tests (dunn, kruskal)
+    testMat <- as.matrix(testMat)
+
+    res_kruskal<- matrixTests::row_kruskalwallis(x=testMat,g=region)
     qq <- qvalue::qvalue(res_kruskal$pvalue,fdr.level = fdr.level,
                             pfdr = FALSE, pi0 = 1)
     res_kruskal <- cbind(res_kruskal,p.adj = qq$qvalues)
-    res_dunn_test <- row.dunn.test(in.data=as.matrix(testMat), region=region,
+    res_dunn_test <- row.dunn.test(in.data=testMat, region=region,
                                         pattern1=pattern1, pattern2=pattern2)
     rownames(res_dunn_test) <- rownames(res_kruskal)
     ind <- rownames(res_kruskal[which(res_kruskal$p.adj<fdr.level),])
