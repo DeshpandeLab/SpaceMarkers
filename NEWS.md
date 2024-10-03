@@ -1,4 +1,4 @@
-# Unreleased
+# SpaceMarkers 1.1.3
 
 * Optimized the long running row.dunn.test() function
 * Corrected sparse -> dense conversions
