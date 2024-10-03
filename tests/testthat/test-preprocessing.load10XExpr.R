@@ -40,6 +40,7 @@ test_that("load10XExpr loads data correctly", {
   expect_equal(colnames(spMat), barcodes, info = "Incorrect column names")
   expect_equal(spMat[1, 1], log2(1 + counts[1]), info = "Incorrect matrix value")
   expect_equal(spMat[3, 2], log2(1 + counts[6]), info = "Incorrect matrix value")
+  expect_true(class(spMat) %in% c("dgTMatrix","dgCMatrix"), info = "Incorrect matrix class")
   
   # Clean up the temporary directory
   unlink("test.h5")
