@@ -12,7 +12,6 @@ find_pattern_hotspots <- function(
         sigmaPair <- params["sigmaOpt"]
         kernelthreshold <- params["threshOpt"]
     }
-    
     allwin <- spatstat.geom::owin(
         xrange = c(min(spPatterns$x),max(spPatterns$x)),yrange =c(
             min(spPatterns$y),max(spPatterns$y)))
@@ -21,13 +20,11 @@ find_pattern_hotspots <- function(
         x=spPatterns$x,y = spPatterns$y, window = allwin,marks = patternVector)
     Kact1 <- spatstat.explore::Smooth(
         X, at = "points", sigma = sigmaPair[1], ...)
-    
     if (includeSelf == TRUE){
       Kact1 <- spPatterns[,patternName] + Kact1
     } else {
       Kact1 <- Kact1
     }
-    
     Karr1 <- vapply(seq(1,nullSamples),function(i){
         Xr<-X;
         spatstat.geom::marks(Xr) <- sample(spatstat.geom::marks(X));
