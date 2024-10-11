@@ -96,7 +96,8 @@ load10XExpr<- function(visiumDir=NULL,
 #' unlink("Visium_Human_Breast_Cancer_spatial.tar.gz")
 #' 
 
-load10XCoords <- function(visiumDir, resolution = "lowres", version = NULL){
+load10XCoords <- function(visiumDir, resolution = "lowres", version = NULL,
+                          spatialDir = "spatial"){
     #determine spacerager version
     if(is.null(version)){
         message("Version not provided. Trying to infer.")
@@ -116,15 +117,22 @@ load10XCoords <- function(visiumDir, resolution = "lowres", version = NULL){
         has_header <- TRUE
         tissue_pos_name <- "tissue_positions.csv"
     }
-    spatial_dir <- paste0(visiumDir,'/spatial')
-    scale_json <- dir(spatial_dir,
-                        pattern = "scalefactors_json.json",full.names = TRUE)
-    scale_values <- jsonlite::read_json(scale_json)
-    scale_factor <- scale_values[grepl(resolution, names(scale_values))][[1]]
+  spatial_dir <- file.path(visiumDir,spatialDir)
+  scale_json <- dir(spatial_dir,
+                    pattern = "scalefactors_json.json",full.names = TRUE)
+  scale_values <- jsonlite::read_json(scale_json)
+  scale_factor <- scale_values[grepl(resolution, names(scale_values))][[1]]
+  # account for visiumHD
+  if (version == "1.0" | version == "2.0"){
     coord_file <- dir(spatial_dir,
-                        pattern = tissue_pos_name, full.names = TRUE)
-
+                      pattern = tissue_pos_name, full.names = TRUE)
     coord_values <- read.csv(coord_file, header = has_header)
+  } else if (version == "3.0") {
+    tissue_pos_name <- "tissue_positions.parquet"
+    coord_file <- dir(spatial_dir,
+                      pattern = tissue_pos_name, full.names = TRUE)
+    coord_values <- nanoparquet::read_parquet(coord_file)
+  }
     coord_values <- coord_values[,c(1,5,6)]
     coord_values[,2:3] <- coord_values[,2:3]*scale_factor
     names(coord_values) <- c("barcode","y","x")
