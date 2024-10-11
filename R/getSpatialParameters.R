@@ -121,3 +121,68 @@ getSpatialParameters <- function(spatialPatterns,...){
     return(optParams)
 }
 
+#===================
+#' getSpatialParametersExternal
+#' Manually obtain Optimal Parameters for Interacting cells
+#'
+#' This function calculates obtains a specified width of a distribution
+#' (sigmaOpt) as well as the outlier threshold around the set of spots 
+#' (thresOpt) for each pattern from a latent feature space.
+#'
+#' @export
+#'
+#' @param spatialPatterns  A data frame that contains the spatial coordinates 
+#' for each cell type. The column names must include 'x' and 'y' as well as a 
+#' set of numbered columns named  'Pattern_1.....N'.
+#' @param visiumDir A string path specifying the location of the 10xVisium
+#' directory
+#' @param spatial A string path specifying the location of the spatial folder
+#' containing the .json file of the spot characteristics
+#' @param pattern A string specifying the name of the .json file
+#' @param spotDiameter A numeric value specifying your desired sigma
+#' @param threshold A numeric value specifying your hotspot threshold
+#' @return a numeric matrix of sigmaOpts - the optimal width of the gaussian 
+#' distribution, and the thresOpt - outlier threshold around the set of spots 
+#' for each pattern
+#' @examples
+#' library(SpaceMarkers)
+#' # Create test data
+#' cells <- c()
+#' test_num <- 500
+#' for(i in 1:test_num){
+#'     cells[length(cells)+1] <- paste0("cell_",i)
+#' }
+#' spPatterns <- data.frame(barcode = cells,
+#' y = runif(test_num, min=0, max=test_num),
+#' x = runif(test_num, min=0, max=test_num),
+#' Pattern_1 = runif(test_num, min=0, max=1),
+#' Pattern_2 = runif(test_num, min=0, max=1) )
+#' # Call the getSpatialParameters function with the test data
+#' optParams <- getSpatialParametersExternal(spPatterns, spotDiameter = 10)
+#'
+
+getSpatialParametersExternal <- function(spatialPatterns,visiumDir = ".",
+                                         spatialDir ="spatial",
+                                         pattern = "scalefactors_json.json",
+                                         spotDiameter = NULL,threshold = 3) {
+  patternList <- setdiff(colnames(spatialPatterns),c("barcode","x","y"))
+  if (!is.null(spotDiameter)) {
+    sigmaOpt <- spotDiameter
+    threshOpt <- threshold
+  } else if (is.null(spotDiameter)) {
+    message("Assuming Visium folder with .json file and spot diamater exists")
+    scale_json <- dir(paste0(visiumDir,"/",spatialDir),
+                      pattern = pattern,full.names = TRUE)
+    scale_values <- jsonlite::read_json(scale_json)
+    sigmaOpt <- scale_values[[4]]
+    threshOpt <- threshold
+    
+  } else {
+    stop("Please specify the spot diameter")
+  }
+  optParams <-matrix(c(sigmaOpt,threshOpt),nrow = 2,ncol = length(patternList))
+  colnames(optParams) <- patternList
+  rownames(optParams) <- c("sigmaOpt","threshOpt")
+  return(optParams)
+}
+
