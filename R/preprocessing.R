@@ -22,7 +22,6 @@
 #'
 #' @param visiumDir  A string path to the h5 file with expression information.
 #' @param h5filename  A string of the name of the h5 file in the directory.
-#' @param version A string specifying the version of the spaceranger data.
 #' @return A matrix of class dgeMatrix or Matrix that contains the expression 
 #' info for each sample (cells) across multiple features (genes)
 #' @examples
@@ -41,12 +40,8 @@
 #' 
 
 load10XExpr<- function(visiumDir=NULL,
-                        h5filename='filtered_feature_bc_matrix.h5',
-                       version = NULL){
-    if (version == "HD"){
-      message("Assuming VisiumHD with 008um resolution as default")
-      visiumDir <- file.path(visiumDir,"binned_outputs/square_008um")
-    }
+                       h5filename='filtered_feature_bc_matrix.h5'){
+  
     h5FilePath <- dir(path = visiumDir,pattern = h5filename,full.names = TRUE)
     hf <- hdf5r::h5file(filename = h5FilePath, mode='r')
     mat <- names(hf)

@@ -5,7 +5,7 @@ magnitude
 from file or from the user
 * Enabled includeSelf = TRUE in getInteractingGenes.R to improve hotspot 
 detection
-* Enabled preprocessing.R to read expression and coordinates from VisiumHD
+* Enabled load10XCoords to read coordinates from VisiumHD directory
 
 # SpaceMarkers 1.1.3
 
