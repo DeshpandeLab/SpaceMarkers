@@ -1,4 +1,5 @@
 # SpaceMarkers 1.1.4
+
 * Updated SpaceMarkersMetric by fixing signage and log transformed to scale
 magnitude
 * Added getSpatialParameters_External which enables getting spatial parameters
