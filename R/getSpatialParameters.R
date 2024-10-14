@@ -136,7 +136,7 @@ getSpatialParameters <- function(spatialPatterns,...){
 #' set of numbered columns named  'Pattern_1.....N'.
 #' @param visiumDir A string path specifying the location of the 10xVisium
 #' directory
-#' @param spatial A string path specifying the location of the spatial folder
+#' @param spatialDir A string path specifying the location of the spatial folder
 #' containing the .json file of the spot characteristics
 #' @param pattern A string specifying the name of the .json file
 #' @param spotDiameter A numeric value specifying your desired sigma

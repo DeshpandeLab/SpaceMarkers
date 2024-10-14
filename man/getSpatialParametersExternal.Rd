@@ -22,14 +22,14 @@ set of numbered columns named  'Pattern_1.....N'.}
 \item{visiumDir}{A string path specifying the location of the 10xVisium
 directory}
 
+\item{spatialDir}{A string path specifying the location of the spatial folder
+containing the .json file of the spot characteristics}
+
 \item{pattern}{A string specifying the name of the .json file}
 
 \item{spotDiameter}{A numeric value specifying your desired sigma}
 
 \item{threshold}{A numeric value specifying your hotspot threshold}
-
-\item{spatial}{A string path specifying the location of the spatial folder
-containing the .json file of the spot characteristics}
 }
 \value{
 a numeric matrix of sigmaOpts - the optimal width of the gaussian
