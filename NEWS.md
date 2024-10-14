@@ -1,3 +1,12 @@
+# SpaceMarkers 1.1.4
+* Updated SpaceMarkersMetric by fixing signage and log transformed to scale
+magnitude
+* Added getSpatialParameters_External which enables getting spatial parameters
+from file or from the user
+* Enabled includeSelf = TRUE in getInteractingGenes.R to improve hotspot 
+detection
+* Enabled preprocessing.R to read expression and coordinates from VisiumHD
+
 # SpaceMarkers 1.1.3
 
 * Optimized the long running row.dunn.test() function

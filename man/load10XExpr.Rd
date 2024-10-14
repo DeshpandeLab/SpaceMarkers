@@ -5,12 +5,18 @@
 \title{load10XExpr
 load 10X Visium Expression Data}
 \usage{
-load10XExpr(visiumDir = NULL, h5filename = "filtered_feature_bc_matrix.h5")
+load10XExpr(
+  visiumDir = NULL,
+  h5filename = "filtered_feature_bc_matrix.h5",
+  version = NULL
+)
 }
 \arguments{
 \item{visiumDir}{A string path to the h5 file with expression information.}
 
 \item{h5filename}{A string of the name of the h5 file in the directory.}
+
+\item{version}{A string specifying the version of the spaceranger data.}
 }
 \value{
 A matrix of class dgeMatrix or Matrix that contains the expression
