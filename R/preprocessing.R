@@ -117,29 +117,30 @@ load10XCoords <- function(visiumDir, resolution = "lowres", version = NULL){
             version <- "1.0"
         }
     }
+    spatial_dir <- paste0(visiumDir,"/spatial")
     #account for different versions of visium data
     if(version == "1.0"){
         has_header <- FALSE
         tissue_pos_name <- "tissue_positions_list.csv"
+        coord_file <- dir(spatial_dir,
+                          pattern = tissue_pos_name, full.names = TRUE)
+        coord_values <- read.csv(coord_file, header = has_header)
     } else if (version == "2.0") {
         has_header <- TRUE
         tissue_pos_name <- "tissue_positions.csv"
+        coord_file <- dir(spatial_dir,
+                          pattern = tissue_pos_name, full.names = TRUE)
+        coord_values <- read.csv(coord_file, header = has_header)
+    } else if (version == "HD") {
+      tissue_pos_name <- "tissue_positions.parquet"
+      coord_file <- dir(spatial_dir,pattern = tissue_pos_name,
+                        full.names = TRUE)
+      coord_values <- nanoparquet::read_parquet(coord_file)
     }
-    spatial_dir <- paste0(visiumDir,"/spatial")
     scale_json <- dir(spatial_dir,
                         pattern = "scalefactors_json.json",full.names = TRUE)
     scale_values <- jsonlite::read_json(scale_json)
     scale_factor <- scale_values[grepl(resolution, names(scale_values))][[1]]
-    if (version == "HD") {
-      tissue_pos_name <- "tissue_positions.parquet"
-      coord_file <- dir(spatial_dir,
-                        pattern = tissue_pos_name, full.names = TRUE)
-      coord_values <- nanoparquet::read_parquet(coord_file)
-    } else {
-      coord_file <- dir(spatial_dir,
-                        pattern = tissue_pos_name, full.names = TRUE)
-      coord_values <- read.csv(coord_file, header = has_header)
-    }
     coord_values <- coord_values[,c(1,5,6)]
     coord_values[,2:3] <- coord_values[,2:3]*scale_factor
     names(coord_values) <- c("barcode","y","x")

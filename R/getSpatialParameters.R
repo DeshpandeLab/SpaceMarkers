@@ -171,14 +171,13 @@ getSpatialParametersExternal <- function(spatialPatterns,visiumDir = ".",
       threshOpt <- threshold
     } else if (is.null(spotDiameter)) {
       message("Assuming Visium folder with .json file and spot diamater exists")
-      scale_json <- dir(paste0(visiumDir,"/",spatialDir),
-                        pattern = pattern,full.names = TRUE)
-      scale_values <- jsonlite::read_json(scale_json)
-      sigmaOpt <- scale_values[[4]]
+      scale_values <- jsonlite::read_json(file.path(visiumDir,spatialDir,
+                                                    pattern))
+      sigmaOpt <- scale_values$spot_diameter_fullres
       threshOpt <- threshold
       
-    } else {
-      stop("Please specify the spot diameter")
+    } else  {
+      stop("Please specify the spot diameter or correct path to .json")
     }
     optParams <-matrix(c(sigmaOpt,threshOpt),nrow = 2,ncol = length(patternList))
     colnames(optParams) <- patternList
