@@ -4,10 +4,10 @@
 find_pattern_hotspots <- function(
         spPatterns, params = NULL, patternName = "Pattern_1",
         outlier = "positive",
-    nullSamples = 100,...){
+    nullSamples = 100, includeSelf = TRUE,...){
     if (is.null(params)){
         sigmaPair <- 10
-        kernelthreshold <- 2
+        kernelthreshold <- 3
     } else {
         sigmaPair <- params["sigmaOpt"]
         kernelthreshold <- params["threshOpt"]
@@ -21,6 +21,11 @@ find_pattern_hotspots <- function(
         x=spPatterns$x,y = spPatterns$y, window = allwin,marks = patternVector)
     Kact1 <- spatstat.explore::Smooth(
         X, at = "points", sigma = sigmaPair[1], ...)
+    if (includeSelf == TRUE){
+      Kact1 <- spPatterns[,patternName] + Kact1
+    } else {
+      Kact1 <- Kact1
+    }
     Karr1 <- vapply(seq(1,nullSamples),function(i){
         Xr<-X;
         spatstat.geom::marks(Xr) <- sample(spatstat.geom::marks(X));
@@ -83,12 +88,12 @@ getSpaceMarkersMetric <- function(interacting.genes){
     for (i in seq(1,length(interacting_genes)))
     {
         if (all(dim(interacting_genes[[i]])>1))   {
-            Zsign <- (2*(-1+((interacting_genes[[i]]$Dunn.zP1_Int<0)|
+            Zsign <- (2*(-1+((interacting_genes[[i]]$Dunn.zP1_Int<0)&
                         (interacting_genes[[i]]$Dunn.zP2_Int<0))*1)+1)
-            Zmag <- (interacting_genes[[i]]$Dunn.zP1_Int)*
+            Zmag <- abs((interacting_genes[[i]]$Dunn.zP1_Int)*
                     (interacting_genes[[i]]$Dunn.zP2_Int)/
-                    (pmax(abs(interacting_genes[[i]]$Dunn.zP2_P1),1))
-                interacting_genes[[i]]$SpaceMarkersMetric <- Zsign*Zmag
+                    (pmax(abs(interacting_genes[[i]]$Dunn.zP2_P1),1)))
+                interacting_genes[[i]]$SpaceMarkersMetric <- Zsign*log2(Zmag+1)
                 od <- order(
                     interacting_genes[[i]]$SpaceMarkersMetric,decreasing=TRUE)
                 interacting_genes[[i]] <- interacting_genes[[i]][od,]
