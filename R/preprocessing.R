@@ -109,11 +109,11 @@ load10XCoords <- function(visiumDir, resolution = "lowres", version = NULL){
           visiumDir,"binned_outputs/square_008um/spatial")) {
           version <- "HD"
           visiumDir <- file.path(visiumDir,"binned_outputs/square_008um")
-          message(".parquet file found. 
+          message(".parquet file found.
                   Assuming VisiumHD with 008um resolution as default")
         } else {
             message(
-              "probe_set.csv  or .parquet not found.Assuming version 1.0.")
+              "probe_set.csv or .parquet not found.Assuming version 1.0.")
             version <- "1.0"
         }
     }
