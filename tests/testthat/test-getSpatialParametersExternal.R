@@ -62,4 +62,4 @@ test_that("getSpatialParametersExternal works with threshold", {
   expect_equal(result[["sigmaOpt", "pattern2"]], 6)
   expect_equal(result[["threshOpt", "pattern2"]], 10)
 })
-#unlink(temp, recursive = TRUE)
+unlink(temp, recursive = TRUE)
