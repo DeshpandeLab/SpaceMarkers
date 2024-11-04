@@ -3,7 +3,8 @@
 \name{getSpatialParameters}
 \alias{getSpatialParameters}
 \title{getSpatialParameters
-Calculate the Optimal Parameters for Interacting Cells}
+Calculate the optimal parameters from spatial kernel density for cell-cell
+interactions}
 \usage{
 getSpatialParameters(spatialPatterns, ...)
 }
@@ -20,9 +21,9 @@ distribution, and the thresOpt - outlier threshold around the set of spots
 for each pattern
 }
 \description{
-This function calculates the optimal width of the gaussian distribution
-(sigmaOpt) as well as the outlier threshold around the set of spots
-(thresOpt) for each pattern from a latent feature space.
+This function uses Morans.I to calculate the optimal width of the kernel
+density (sigmaOpt) as well as the outlier threshold around the set of spots
+(thresOpt) for a null distribution.
 }
 \examples{
 library(SpaceMarkers)

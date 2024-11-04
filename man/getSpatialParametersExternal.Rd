@@ -3,15 +3,17 @@
 \name{getSpatialParametersExternal}
 \alias{getSpatialParametersExternal}
 \title{getSpatialParametersExternal
-Manually obtain Optimal Parameters for Interacting cells}
+Read optimal parameters for spatial kernel density from user input or .json
+file}
 \usage{
 getSpatialParametersExternal(
   spatialPatterns,
   visiumDir = ".",
   spatialDir = "spatial",
   pattern = "scalefactors_json.json",
-  spotDiameter = NULL,
-  threshold = 3
+  sigma = NULL,
+  threshold = 3,
+  resolution = c("lowres", "hires", "fullres")
 )
 }
 \arguments{
@@ -27,7 +29,7 @@ containing the .json file of the spot characteristics}
 
 \item{pattern}{A string specifying the name of the .json file}
 
-\item{spotDiameter}{A numeric value specifying your desired sigma}
+\item{sigma}{A numeric value specifying your desired sigma}
 
 \item{threshold}{A numeric value specifying your hotspot threshold}
 }
@@ -37,9 +39,10 @@ distribution, and the thresOpt - outlier threshold around the set of spots
 for each pattern
 }
 \description{
-This function calculates obtains a specified width of a distribution
-(sigmaOpt) as well as the outlier threshold around the set of spots
-(thresOpt) for each pattern from a latent feature space.
+This function obtains the width of a spatial kernel density  (sigma) from
+either the user input or from a scale factors .json file. The outlier
+threshold around the set of spots (threshold) for each pattern is specified
+by the user (default is 3).
 }
 \examples{
 library(SpaceMarkers)
@@ -55,6 +58,6 @@ x = runif(test_num, min=0, max=test_num),
 Pattern_1 = runif(test_num, min=0, max=1),
 Pattern_2 = runif(test_num, min=0, max=1) )
 # Call the getSpatialParameters function with the test data
-optParams <- getSpatialParametersExternal(spPatterns, spotDiameter = 10)
+optParams <- getSpatialParametersExternal(spPatterns, sigma = 10)
 
 }

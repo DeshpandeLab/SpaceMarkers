@@ -76,11 +76,12 @@ getOptimalSigmaThresh <- function(pattern, locs, sigVec, threshVec,...){
 }
 #===================
 #' getSpatialParameters
-#' Calculate the Optimal Parameters for Interacting Cells
+#' Calculate the optimal parameters from spatial kernel density for cell-cell 
+#' interactions
 #'
-#' This function calculates the optimal width of the gaussian distribution 
-#' (sigmaOpt) as well as the outlier threshold around the set of spots 
-#' (thresOpt) for each pattern from a latent feature space.
+#' This function uses Morans.I to calculate the optimal width of the kernel
+#' density (sigmaOpt) as well as the outlier threshold around the set of spots 
+#' (thresOpt) for a null distribution.
 #'
 #' @export
 #'
@@ -123,11 +124,13 @@ getSpatialParameters <- function(spatialPatterns,...){
 
 #===================
 #' getSpatialParametersExternal
-#' Manually obtain Optimal Parameters for Interacting cells
+#' Read optimal parameters for spatial kernel density from user input or .json
+#' file
 #'
-#' This function calculates obtains a specified width of a distribution
-#' (sigmaOpt) as well as the outlier threshold around the set of spots 
-#' (thresOpt) for each pattern from a latent feature space.
+#' This function obtains the width of a spatial kernel density  (sigma) from
+#' either the user input or from a scale factors .json file. The outlier 
+#' threshold around the set of spots (threshold) for each pattern is specified 
+#' by the user (default is 3). 
 #'
 #' @export
 #'
@@ -139,7 +142,7 @@ getSpatialParameters <- function(spatialPatterns,...){
 #' @param spatialDir A string path specifying the location of the spatial folder
 #' containing the .json file of the spot characteristics
 #' @param pattern A string specifying the name of the .json file
-#' @param spotDiameter A numeric value specifying your desired sigma
+#' @param sigma A numeric value specifying your desired sigma
 #' @param threshold A numeric value specifying your hotspot threshold
 #' @return a numeric matrix of sigmaOpts - the optimal width of the gaussian 
 #' distribution, and the thresOpt - outlier threshold around the set of spots 
@@ -158,28 +161,51 @@ getSpatialParameters <- function(spatialPatterns,...){
 #' Pattern_1 = runif(test_num, min=0, max=1),
 #' Pattern_2 = runif(test_num, min=0, max=1) )
 #' # Call the getSpatialParameters function with the test data
-#' optParams <- getSpatialParametersExternal(spPatterns, spotDiameter = 10)
+#' optParams <- getSpatialParametersExternal(spPatterns, sigma = 10)
 #'
 
 getSpatialParametersExternal <- function(spatialPatterns,visiumDir = ".",
                                          spatialDir ="spatial",
                                          pattern = "scalefactors_json.json",
-                                         spotDiameter = NULL,threshold = 3) {
+                                         sigma = NULL,threshold = 3,
+                                         resolution = 
+                                           c("lowres","hires","fullres")) {
     patternList <- setdiff(colnames(spatialPatterns),c("barcode","x","y"))
-    if (!is.null(spotDiameter)) {
-      sigmaOpt <- spotDiameter
+    if (!is.null(sigma)) {
+      sigmaOpt <- sigma
       threshOpt <- threshold
-    } else if (is.null(spotDiameter)) {
-      message("Assuming Visium folder with .json file and spot diamater exists")
+    } else if (is.null(sigma) & 
+               file.exists(file.path(visiumDir,spatialDir,pattern))) {
+      message("Reading sigma from specified .json file")
       scale_values <- jsonlite::read_json(file.path(visiumDir,spatialDir,
                                                     pattern))
-      sigmaOpt <- scale_values$spot_diameter_fullres
+      if ("lowres" %in% resolution){
+        resolution <- "lowres"
+      } else if ("hires" %in% resolution){
+        resolution <- "hires"
+      } else if ("fullres" %in% resolution){
+        resolution <- "fullres"
+      } else if (is.null(resolution)){
+        message("Assuming resolution = lowres")
+        resolution <- "lowres"
+      } else {
+        stop("Resolution argument not recognized.
+             Please supply either lowres, hires or fullres.")
+      }
+      scale_factor <- scale_values[grepl(resolution,
+                                          names(scale_values))][[1]]
+      if (resolution == "fullres") {
+        sigmaOpt <- scale_values$spot_diameter_fullres
+      } else {
+        sigmaOpt <- scale_values$spot_diameter_fullres * scale_factor
+      }
       threshOpt <- threshold
       
     } else  {
-      stop("Please specify the spot diameter or correct path to .json")
+      stop("Please specify the sigma or correct path to .json")
     }
-    optParams <-matrix(c(sigmaOpt,threshOpt),nrow = 2,ncol = length(patternList))
+    optParams <-matrix(c(sigmaOpt,threshOpt),nrow = 2,
+                       ncol = length(patternList))
     colnames(optParams) <- patternList
     rownames(optParams) <- c("sigmaOpt","threshOpt")
   return(optParams)
