@@ -19,11 +19,11 @@ test_that("getInteracting genes return empty interacting_genes object when no in
                            "Pattern_2" = runif(cell_num , min=0, max=1))
   
   optParams <- NULL
-  output <- getInteractingGenes(data=data, spPatterns, reconstruction=NULL,
+  suppressWarnings(output <- getInteractingGenes(data=data, spPatterns, reconstruction=NULL,
                                 optParams = optParams,
                                 spPatterns = spPatterns,
                                 refPattern = "Pattern_1",
-                                mode="DE",analysis="overlap")
+                                mode="DE",analysis="overlap"))
   # Checkin result if no interacting genes found
   res<-evaluate_promise(output$interacting_genes)
   expect_equal(res$result, list())

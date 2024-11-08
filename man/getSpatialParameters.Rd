@@ -17,13 +17,13 @@ set of numbered columns named  'Pattern_1.....N'.}
 }
 \value{
 a numeric matrix of sigmaOpts - the optimal width of the gaussian
-distribution, and the thresOpt - outlier threshold around the set of spots
+distribution, and the threshOpt - outlier threshold around the set of spots
 for each pattern
 }
 \description{
 This function uses Morans.I to calculate the optimal width of the kernel
 density (sigmaOpt) as well as the outlier threshold around the set of spots
-(thresOpt) for a null distribution.
+(threshOpt) for a null distribution.
 }
 \examples{
 library(SpaceMarkers)

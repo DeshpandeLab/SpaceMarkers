@@ -88,9 +88,9 @@ counts_matrix <- counts_matrix[goodGenes,]
 ## Obtaining CoGAPS Patterns
 
 In this example the latent features from CoGAPS will be used to identify 
-interacting genes with SpaceMarkers. Here the featureLoadings (cells) and 
-samplePatterns (genes) for both the expression matrix and CoGAPS matrix need to 
-match.
+interacting genes with SpaceMarkers. Here the featureLoadings (genes) and 
+samplePatterns (barcodes) for both the expression matrix and CoGAPS matrix 
+need to match.
 
 ```{r}
 cogaps_result <- readRDS(system.file("extdata","CoGAPS_result.rds",
@@ -165,7 +165,7 @@ reconstruction with the latent feature matrix.
 #### SpaceMarkers Step1: Hotpsots
 
 SpaceMarkers identifies regions of influence using a gaussian kernel outlier 
-based model. sSpots that have spatial influence beyond the defined outlier 
+based model. Spots that have spatial influence beyond the defined outlier 
 threshold are termed **hotspots**. SpaceMarkers then identifies where the
 hotspots are overlapping/interacting and where they are mutually exclusive.
 
@@ -179,12 +179,14 @@ Pro Quad-Intel Core i5 processor with 16 GB of memory. Therefore we can load
 this data from a previous run by specifying data("optParams"). 
 
 To circumvent this issue in practice, we have also provided a function,
-getSpatialParametersExternal. This allows the user to specify the sigma of the
-distribution or pull it from the spot diamater on file, which we have found
+getSpatialParamsExternal. This allows the user to specify the sigma of the
+distribution or pull it from the spot diameter on file, which we have found
 to be a good estimate. 
 
 ```{r}
-optParams <- getSpatialParametersExternal(spPatterns,visiumDir = data_dir,
+message("Note that getSpatialParameters is deprecated. 
+        Use getSpatialParamsExternal instead.")
+optParams <- getSpatialParamsExternal(spPatterns,visiumDir = data_dir,
                                           resolution = "lowres")
 ```
 
@@ -649,9 +651,9 @@ counts_df <- as.data.frame(as.matrix(
 ## Generate Plots
 
 ```{r}
-image_paths <- c("spatial/tissue_lowres_image.png")
-scalefactor_paths <- c("spatial/scalefactors_json.json")
-tissue_paths <- c("spatial/tissue_positions_list.csv")
+image_paths <- file.path(data_dir,"spatial","tissue_lowres_image.png")
+scalefactor_paths <- file.path(data_dir,"spatial","scalefactors_json.json")
+tissue_paths <- file.path(data_dir,"spatial","tissue_positions_list.csv")
 
 spatialMaps <- list()
 exprPlots <- list()
@@ -799,7 +801,7 @@ knitr::kable(paramTable, col.names = c("Argument","Description"))
 
 ```
 
-## getSpatialParametersExternal() Arguments
+## getSpatialParamsExternal() Arguments
 
 ```{r echo=FALSE}
 parameters = c('spPatterns','visiumDir','spatialDir','pattern','sigma',

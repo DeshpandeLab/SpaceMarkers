@@ -2,8 +2,9 @@
 
 * Updated SpaceMarkersMetric by fixing signage and log transformed to scale
 magnitude
-* Added getSpatialParameters_External which enables getting spatial parameters
-from file or from the user
+* Added getSpatialParamsExternal which enables getting spatial parameters
+from file or from the user.
+* Deprecated getSpatialParameters
 * Enabled includeSelf = TRUE in getInteractingGenes.R to improve hotspot 
 detection
 * Enabled load10XCoords to read coordinates from VisiumHD directory

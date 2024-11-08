@@ -428,10 +428,9 @@ getPatternPairs <- function(patternList, patternPairs) {
         else
             stop("patternPairs must either be a 2-column matrix 
                 or a list of vectors.")
-        
+        mess <- paste0(setdiff(patternPairs, patternList)," ")
         if (!all(patternPairs %in% patternList)) 
-            stop("Following are not pattern names: ", 
-                paste0(setdiff(patternPairs, patternList)," "))
+            stop("Following are not pattern names: ",mess )
     }
     return(patternPairs)
 }
