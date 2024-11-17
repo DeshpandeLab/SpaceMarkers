@@ -76,16 +76,12 @@ getOptimalSigmaThresh <- function(pattern, locs, sigVec, threshVec,...){
 }
 
 #===================
-#' getSpatialParameters
-#' Calculate the optimal parameters from spatial kernel density for cell-cell 
-#' interactions
-#'
-#' This function uses Morans.I to calculate the optimal width of the kernel
-#' density (sigmaOpt) as well as the outlier threshold around the set of spots 
-#' (threshOpt) for a null distribution.
-#'
+#' Calculate the optimal parameters from spatial kernel density for 
+#' cell-cell interactions
+#' @description This function uses Morans.I to calculate the optimal width of 
+#' the kernel density (sigmaOpt) as well as the outlier threshold around the set
+#' of spots (threshOpt) for a null distribution.
 #' @export
-#'
 #' @param spatialPatterns  A data frame that contains the spatial coordinates 
 #' for each cell type. The column names must include 'x' and 'y' as well as a 
 #' set of numbered columns named  'Pattern_1.....N'.
@@ -123,17 +119,14 @@ getSpatialParameters <- function(spatialPatterns,...){
 }
 
 #===================
-#' getSpatialParamsExternal
 #' Read optimal parameters for spatial kernel density from user input or .json
 #' file
 #'
-#' This function obtains the width of a spatial kernel density  (sigma) from
-#' either the user input or from a scale factors .json file. The outlier 
-#' threshold around the set of spots (threshold) for each pattern is specified 
-#' by the user (default is 3). 
-#'
+#' @description This function obtains the width of a spatial kernel density
+#' (sigma) from either the user input or from a scale factors .json file. 
+#' The outlier threshold around the set of spots (threshold) for each pattern is
+#' specified  by the user (default is 3). 
 #' @export
-#'
 #' @param spatialPatterns  A data frame that contains the spatial coordinates 
 #' for each cell type. The column names must include 'x' and 'y' as well as a 
 #' set of numbered columns named  'Pattern_1.....N'.

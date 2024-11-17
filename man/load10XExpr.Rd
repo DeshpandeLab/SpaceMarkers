@@ -2,8 +2,7 @@
 % Please edit documentation in R/preprocessing.R
 \name{load10XExpr}
 \alias{load10XExpr}
-\title{load10XExpr
-load 10X Visium Expression Data}
+\title{Load 10X Visium Expression Data}
 \usage{
 load10XExpr(visiumDir = NULL, h5filename = "filtered_feature_bc_matrix.h5")
 }
@@ -17,7 +16,8 @@ A matrix of class dgeMatrix or Matrix that contains the expression
 info for each sample (cells) across multiple features (genes)
 }
 \description{
-This loads log-transformed 10X Visium expression data from standard 10X
+This loads log-transformed 10X Visium expression data from
+standard 10X
 Visium folder.
 }
 \examples{

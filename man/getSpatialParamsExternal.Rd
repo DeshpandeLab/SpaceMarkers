@@ -2,8 +2,7 @@
 % Please edit documentation in R/getSpatialParameters.R
 \name{getSpatialParamsExternal}
 \alias{getSpatialParamsExternal}
-\title{getSpatialParamsExternal
-Read optimal parameters for spatial kernel density from user input or .json
+\title{Read optimal parameters for spatial kernel density from user input or .json
 file}
 \usage{
 getSpatialParamsExternal(
@@ -44,10 +43,10 @@ distribution, and the threshOpt - outlier threshold around the set of spots
 for each pattern
 }
 \description{
-This function obtains the width of a spatial kernel density  (sigma) from
-either the user input or from a scale factors .json file. The outlier
-threshold around the set of spots (threshold) for each pattern is specified
-by the user (default is 3).
+This function obtains the width of a spatial kernel density
+(sigma) from either the user input or from a scale factors .json file.
+The outlier threshold around the set of spots (threshold) for each pattern is
+specified  by the user (default is 3).
 }
 \examples{
 library(SpaceMarkers)
