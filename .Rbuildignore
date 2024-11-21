@@ -2,4 +2,5 @@ Dockerfile
 .gitignore
 .github
 .dockerignore
+.nf
 /vignettes/test-args.Rmd
