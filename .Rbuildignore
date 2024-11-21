@@ -2,5 +2,5 @@ Dockerfile
 .gitignore
 .github
 .dockerignore
-.nf
+nextflow
 /vignettes/test-args.Rmd
