@@ -2,7 +2,7 @@
 ## email: adeshpande@jhu.edu
 
 #===================
-#' @title Calculate influence of spatially varying features
+#' @title Identify hotspots of spatial pattern influence
 #' @description This function calculates 'hotspots' which are regions of high
 #'  spatial influence based on an outlier threshold from a null distribution. 
 #' @export

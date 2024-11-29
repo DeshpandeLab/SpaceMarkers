@@ -11,7 +11,7 @@ getSpatialParamsExternal(
   spatialDir = "spatial",
   pattern = "scalefactors_json.json",
   sigma = NULL,
-  threshold = 3,
+  threshold = 4,
   resolution = c("lowres", "hires", "fullres"),
   ...
 )
@@ -29,9 +29,12 @@ containing the .json file of the spot characteristics}
 
 \item{pattern}{A string specifying the name of the .json file}
 
-\item{sigma}{A numeric value specifying your desired sigma}
+\item{sigma}{A numeric value specifying the width of the kernel density
+estimate to be used for smoothing}
 
-\item{threshold}{A numeric value specifying your hotspot threshold}
+\item{threshold}{A numeric value specifying how many standard deviations
+above the mean of a null distribution to use an outlier threshold for
+identifying 'hotspots'}
 
 \item{resolution}{A string specifying image resolution}
 
@@ -46,7 +49,7 @@ for each pattern
 This function obtains the width of a spatial kernel density
 (sigma) from either the user input or from a scale factors .json file.
 The outlier threshold around the set of spots (threshold) for each pattern is
-specified  by the user (default is 3).
+specified  by the user (default is 4).
 }
 \examples{
 library(SpaceMarkers)

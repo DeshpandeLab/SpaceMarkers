@@ -2,7 +2,7 @@
 % Please edit documentation in R/getInteractingGenes.R
 \name{findPatternHotspots}
 \alias{findPatternHotspots}
-\title{Calculate influence of spatially varying features}
+\title{Identify hotspots of spatial pattern influence}
 \usage{
 findPatternHotspots(
   spPatterns,
