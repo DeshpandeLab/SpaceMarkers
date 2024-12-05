@@ -27,10 +27,11 @@ process SPACEMARKERS {
     """
   script:
     def args = task.ext.args ?: ''
-    prefix = task.ext.prefix ?: "${meta.id}"/"${features.simpleName}"
+    prefix = task.ext.prefix ?: "${meta.id}/$features.simpleName"
     """
     #!/usr/bin/env Rscript
-    dir.create("${prefix}", showWarnings = FALSE)
+    print("$prefix")
+    dir.create("${prefix}", showWarnings = FALSE, recursive = TRUE)
     library("SpaceMarkers")
     
     #load spatial coords from tissue positions, deconvolved patterns, and expression
