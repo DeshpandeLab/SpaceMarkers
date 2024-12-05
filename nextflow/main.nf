@@ -27,7 +27,7 @@ process SPACEMARKERS {
     """
   script:
     def args = task.ext.args ?: ''
-    prefix = task.ext.prefix ?: "${meta.id}"
+    prefix = task.ext.prefix ?: "${meta.id}"/"${features.simpleName}"
     """
     #!/usr/bin/env Rscript
     dir.create("${prefix}", showWarnings = FALSE)
