@@ -13,7 +13,7 @@ process SPACEMARKERS {
 
   stub:
     def args = task.ext.args ?: ''
-    def source = features.simpleName
+    source = features.simpleName
     prefix = task.ext.prefix ?: "${meta.id}/${source}"
     """
     mkdir -p "${prefix}"
@@ -28,11 +28,10 @@ process SPACEMARKERS {
     """
   script:
     def args = task.ext.args ?: ''
-    def source = features.simpleName
+    source = features.simpleName
     prefix = task.ext.prefix ?: "${meta.id}/${source}"
     """
     #!/usr/bin/env Rscript
-    print("$prefix")
     dir.create("${prefix}", showWarnings = FALSE, recursive = TRUE)
     library("SpaceMarkers")
     
@@ -61,7 +60,7 @@ process SPACEMARKERS {
                                                   spPatterns = spPatterns,
                                                   mode = "DE",
                                                   analysis="enrichment",
-					          workers=$task.cpus)
+					                                        workers=$task.cpus)
 
     saveRDS(spaceMarkers, file = "${prefix}/spaceMarkers.rds")
 
