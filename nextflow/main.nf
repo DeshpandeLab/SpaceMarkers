@@ -6,16 +6,17 @@ process SPACEMARKERS {
   input:
     tuple val(meta), path(features), path(data)
   output:
-    tuple val(meta), path("${prefix}/spPatterns.rds"),   emit: spPatterns
-    tuple val(meta), path("${prefix}/optParams.rds"),    emit: optParams
-    tuple val(meta), path("${prefix}/spaceMarkers.rds"), emit: spaceMarkers
-    path  "versions.yml",                                emit: versions
+    tuple val(meta), path("${prefix}/spPatterns.rds"), val(source),   emit: spPatterns
+    tuple val(meta), path("${prefix}/optParams.rds"), val(source),    emit: optParams
+    tuple val(meta), path("${prefix}/spaceMarkers.rds"), val(source), emit: spaceMarkers
+    path  "versions.yml",                                             emit: versions
 
   stub:
     def args = task.ext.args ?: ''
-    prefix = task.ext.prefix ?: "${meta.id}"
+    source = features.simpleName
+    prefix = task.ext.prefix ?: "${meta.id}/${source}"
     """
-    mkdir "${prefix}"
+    mkdir -p "${prefix}"
     touch "${prefix}/spPatterns.rds"
     touch "${prefix}/optParams.rds"
     touch "${prefix}/spaceMarkers.rds"
@@ -27,10 +28,10 @@ process SPACEMARKERS {
     """
   script:
     def args = task.ext.args ?: ''
-    prefix = task.ext.prefix ?: "${meta.id}/$features.simpleName"
+    source = features.simpleName
+    prefix = task.ext.prefix ?: "${meta.id}/${source}"
     """
     #!/usr/bin/env Rscript
-    print("$prefix")
     dir.create("${prefix}", showWarnings = FALSE, recursive = TRUE)
     library("SpaceMarkers")
     
@@ -59,7 +60,7 @@ process SPACEMARKERS {
                                                   spPatterns = spPatterns,
                                                   mode = "DE",
                                                   analysis="enrichment",
-					          workers=$task.cpus)
+					                                        workers=$task.cpus)
 
     saveRDS(spaceMarkers, file = "${prefix}/spaceMarkers.rds")
 
@@ -78,17 +79,17 @@ process SPACEMARKERS_MQC {
   container 'ghcr.io/deshpandelab/spacemarkers:main'
 
   input:
-    tuple val(meta), path(spaceMarkers)
+    tuple val(meta), path(spaceMarkers), val(source)
   output:
     tuple val(meta), path("${prefix}/spacemarkers_mqc.json"), emit: spacemarkers_mqc
     path  "versions.yml",                                     emit: versions
 
   script:
     def args = task.ext.args ?: ''
-    prefix = task.ext.prefix ?: "${meta.id}"
+    prefix = task.ext.prefix ?: "${meta.id}/${source}"
     """
     #!/usr/bin/env Rscript
-    dir.create("${prefix}", showWarnings = FALSE)
+    dir.create("${prefix}", showWarnings = FALSE, recursive = TRUE)
 
     #[['']] notation needed to allow nextflow var susbtitution
 
@@ -171,9 +172,9 @@ process SPACEMARKERS_MQC {
 
     stub:
     def args = task.ext.args ?: ''
-    prefix = task.ext.prefix ?: "${meta.id}"
+    prefix = task.ext.prefix ?: "${meta.id}/${source}"
     """
-    mkdir "${prefix}"
+    mkdir -p "${prefix}"
     touch "${prefix}/spacemarkers_mqc.json"
     cat <<-END_VERSIONS > versions.yml
       "${task.process}":
@@ -189,17 +190,17 @@ process SPACEMARKERS_IMSCORES {
   container 'ghcr.io/deshpandelab/spacemarkers:main'
 
   input:
-    tuple val(meta), path(spaceMarkers)
+    tuple val(meta), path(spaceMarkers), val(source)
   output:
     tuple val(meta), path("${prefix}/imscores.csv"), emit: spacemarkers_imscores
     path  "versions.yml",                            emit: versions
 
   script:
     def args = task.ext.args ?: ''
-    prefix = task.ext.prefix ?: "${meta.id}"
+    prefix = task.ext.prefix ?: "${meta.id}/${source}"
     """
     #!/usr/bin/env Rscript
-    dir.create("${prefix}", showWarnings = FALSE)
+    dir.create("${prefix}", showWarnings = FALSE, recursive = TRUE)
 
     sm <- readRDS("$spaceMarkers")
     smi <- sm[which(sapply(sm, function(x) length(x[['interacting_genes']]))>0)]
@@ -232,9 +233,9 @@ process SPACEMARKERS_IMSCORES {
 
     stub:
     def args = task.ext.args ?: ''
-    prefix = task.ext.prefix ?: "${meta.id}"
+    prefix = task.ext.prefix ?: "${meta.id}/${source}"
     """
-    mkdir "${prefix}"
+    mkdir -p "${prefix}"
     touch "${prefix}/imscores.csv"
     cat <<-END_VERSIONS > versions.yml
       "${task.process}":
