@@ -12,7 +12,7 @@ test_that("getSpatialParameters returns optimal parameters", {
                             Pattern_1 = runif(test_num, min=0, max=1),
                             Pattern_2 = runif(test_num, min=0, max=1) )
   # Call the getSpatialParameters function with the test data
-  optParams <- getSpatialParameters(spPatterns)
+  suppressWarnings(optParams <- getSpatialParameters(spPatterns))
   optParams_test <- data.matrix(data.frame("Pattern_1" = c(40,3),
                                            "Pattern_2" = c(40.0,2.5)))
   rownames(optParams_test) <- c("sigmaOpt","threshOpt")
