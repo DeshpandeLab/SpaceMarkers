@@ -87,6 +87,7 @@ process SPACEMARKERS_MQC {
   script:
     def args = task.ext.args ?: ''
     prefix = task.ext.prefix ?: "${meta.id}/${source}"
+    mqc_sample = prefix.replaceAll("/", "_")
     """
     #!/usr/bin/env Rscript
     dir.create("${prefix}", showWarnings = FALSE, recursive = TRUE)
@@ -136,7 +137,7 @@ process SPACEMARKERS_MQC {
 
     #report
     report_data <- list(
-      "${prefix}" = list(
+      "$mqc_sample" = list(
         'Pairs Total' = n_pairs_total,
         'Pairs Interact' = n_pairs_interact,
         'SpaceMarker Metric' = sprintf('%0.1f - %0.1f', min_spacemarker_metric, max_spacemarker_metric),
