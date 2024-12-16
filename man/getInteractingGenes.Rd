@@ -2,12 +2,7 @@
 % Please edit documentation in R/getInteractingGenes.R
 \name{getInteractingGenes}
 \alias{getInteractingGenes}
-\title{getInteractingGenes
-Calculate Interaction Regions and Associated Genes
-This function calculates statistically significant genes using a
-non-parametric Kruskal-Wallis test for genes in any one region
-of influence and a post hoc Dunn's test is used for analysis of
-genes between regions.}
+\title{Calculate Interaction Regions and Associated Genes}
 \usage{
 getInteractingGenes(
   data,
@@ -26,8 +21,8 @@ getInteractingGenes(
 \item{data}{original spatial data matrix.}
 
 \item{spPatterns}{A data frame that contains the spatial coordinates
-for each cell type. The column names must include 'x' and 'y' as well as a
-set of numbered columns named 'Pattern_1.....N'.}
+and metrics for spatial features (cell types/cell processes). The column
+names must include 'x' and 'y' as well as the spatially varying features.}
 
 \item{refPattern}{a character string that specifies the pattern whose
 "interaction" with every other pattern we want
@@ -36,15 +31,11 @@ to study. The default value is "Pattern_1".}
 \item{mode}{SpaceMarkers mode of operation. Possible values are
 "DE" (the default) or "residual".}
 
-\item{optParams}{a matrix with dimensions 2 X N,
-where N is the number
-of patterns with optimal parameters for outlier
-detection calculated from function getSpatialParameters(). The first row
-contains the kernel width sigmaOpt for each
-pattern, and the second row is the threshOpt (outlier threshold) for each
-pattern. Users can also input their
-preferred param values.
-The default value is NULL.}
+\item{optParams}{a matrix with dimensions 2 X N, where N is the number
+of spatial patterns with optimal parameters. The first row contains the
+kernel width 'sigmaOpt' for each pattern, and the second row is the
+threshOpt (outlier threshold) for each pattern. Users can also input their
+preferred param values. The default value is NULL.}
 
 \item{reconstruction}{reconstruction of the data matrix from latent
 spaces. Required for "residual" mode.}
@@ -72,8 +63,6 @@ of the refPattern and each latent feature pattern matrix
 regions of influence for any two of patterns (the hotspots object).
 }
 \description{
-getInteractingGenes
-Calculate Interaction Regions and Associated Genes
 This function calculates statistically significant genes using a
 non-parametric Kruskal-Wallis test for genes in any one region
 of influence and a post hoc Dunn's test is used for analysis of
@@ -133,6 +122,7 @@ unlink(files)
 }
 \seealso{
 Other getIntGenes: 
+\code{\link{findPatternHotspots}()},
 \code{\link{getPairwiseInteractingGenes}()}
 }
 \concept{getIntGenes}

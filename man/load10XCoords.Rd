@@ -2,8 +2,7 @@
 % Please edit documentation in R/preprocessing.R
 \name{load10XCoords}
 \alias{load10XCoords}
-\title{load10XCoords
-Load 10x Visium Spatial Coordinates}
+\title{Load 10x Visium Spatial Coordinates}
 \usage{
 load10XCoords(visiumDir, resolution = "lowres", version = NULL)
 }
@@ -23,7 +22,8 @@ a data frame of the spatial coordinates
 ( x and y) for each spot/cell
 }
 \description{
-This function loads spatial coordinates for each cell from a 10X Visium
+This function loads spatial coordinates for each cell from a
+10X Visium
 spatial folder.
 }
 \examples{

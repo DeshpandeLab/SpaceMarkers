@@ -12,14 +12,11 @@
 
 #
 #===================
-#' load10XExpr
-#' load 10X Visium Expression Data
-#'
-#' This loads log-transformed 10X Visium expression data from standard 10X 
+#' @title Load 10X Visium Expression Data
+#' @description This loads log-transformed 10X Visium expression data from
+#'  standard 10X 
 #' Visium folder.
-#'
 #' @export
-#'
 #' @param visiumDir  A string path to the h5 file with expression information.
 #' @param h5filename  A string of the name of the h5 file in the directory.
 #' @return A matrix of class dgeMatrix or Matrix that contains the expression 
@@ -67,14 +64,11 @@ load10XExpr<- function(visiumDir=NULL,
 }
 
 #===================
-#' load10XCoords
-#' Load 10x Visium Spatial Coordinates
-#'
-#' This function loads spatial coordinates for each cell from a 10X Visium 
+#' @title Load 10x Visium Spatial Coordinates
+#' @description This function loads spatial coordinates for each cell from a
+#' 10X Visium 
 #' spatial folder.
-#'
 #' @export
-#'
 #' @param visiumDir A string path to the location of the folder containing the 
 #' spatial coordinates. The folder in your visiumDir must be named 'spatial' 
 #' and must contain files 'scalefactors_json.json' 
@@ -147,13 +141,10 @@ load10XCoords <- function(visiumDir, resolution = "lowres", version = NULL){
 }
 
 #===================
-#' getSpatialFeatures
-#' Load spatial features
-#'
-#' This function loads spatial features from a file containing spatial features
-#'
+#' @title Load spatial features
+#' @description This function loads spatial features from a file containing
+#' spatial features
 #' @export
-#'
 #' @param filePath A string path to the location of the file containing the 
 #' spatial features. 
 #' @param method A string specifying the type of object to obtain spatial

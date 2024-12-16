@@ -16,45 +16,46 @@ mock_json <- function(temp_dir = temp) {
   
   json_data <- list(
     scale_factors = 1,
-    tissue_hires_scalef = 2,
-    tissue_lowres_scalef = 3,
+    tissue_hires_scalef = 0.75,
+    tissue_lowres_scalef = 0.25,
     spot_diameter_fullres = 4
   )
   jsonlite::write_json(json_data,file.path(spatial_dir,
-                                           "scalefactors_json.json"))
+                                           "scalefactors_json.json"), 
+                       simplifyVector =TRUE)
   return(list(visiumDir = temp_dir, spatialDir = spatial_dir,
               pattern = "scalefactors_json.json"))
 }
 
-# Test cases for getSpatialParametersExternal
-test_that("getSpatialParametersExternal works with provided spotDiameter", {
-  result <- getSpatialParametersExternal(spatialPatterns, spotDiameter = 5)
+# Test cases for getSpatialParamsExternal
+test_that("getSpatialParamsExternal works with provided sigma", {
+  result <- getSpatialParamsExternal(spatialPatterns, sigma = 5)
   
   expect_equal(nrow(result), 2)
   expect_equal(ncol(result), 2)
   expect_equal(result[["sigmaOpt", "pattern1"]], 5)
-  expect_equal(result[["threshOpt", "pattern1"]], 3)
+  expect_equal(result[["threshOpt", "pattern1"]], 4)
   expect_equal(result[["sigmaOpt", "pattern2"]], 5)
-  expect_equal(result[["threshOpt", "pattern2"]], 3)
+  expect_equal(result[["threshOpt", "pattern2"]], 4)
 })
 
-test_that("getSpatialParametersExternal works by reading from JSON file", {
+test_that("getSpatialParamsExternal works by reading from JSON file", {
   paths <- mock_json()
   
-  result <- getSpatialParametersExternal(spatialPatterns,
+result <- getSpatialParamsExternal(spatialPatterns,
                                          visiumDir = paths$visiumDir,
                                          spatialDir = "spatial")
   
   expect_equal(nrow(result), 2)
   expect_equal(ncol(result), 2)
-  expect_equal(result[["sigmaOpt", "pattern1"]], 4)
-  expect_equal(result[["threshOpt", "pattern1"]], 3)
-  expect_equal(result[["sigmaOpt", "pattern2"]], 4)
-  expect_equal(result[["threshOpt", "pattern2"]], 3)
+  expect_equal(result[["sigmaOpt", "pattern1"]], 1)
+  expect_equal(result[["threshOpt", "pattern1"]], 4)
+  expect_equal(result[["sigmaOpt", "pattern2"]], 1)
+  expect_equal(result[["threshOpt", "pattern2"]], 4)
 })
 
-test_that("getSpatialParametersExternal works with threshold", {
-  result <- getSpatialParametersExternal(spatialPatterns, spotDiameter = 6,
+test_that("getSpatialParamsExternal works with threshold", {
+  result <- getSpatialParamsExternal(spatialPatterns, sigma = 6,
                                          threshold = 10)
   
   expect_equal(result[["sigmaOpt", "pattern1"]], 6)

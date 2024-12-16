@@ -2,8 +2,8 @@
 % Please edit documentation in R/getSpatialParameters.R
 \name{getSpatialParameters}
 \alias{getSpatialParameters}
-\title{getSpatialParameters
-Calculate the Optimal Parameters for Interacting Cells}
+\title{Calculate the optimal parameters from spatial kernel density for
+cell-cell interactions}
 \usage{
 getSpatialParameters(spatialPatterns, ...)
 }
@@ -16,13 +16,13 @@ set of numbered columns named  'Pattern_1.....N'.}
 }
 \value{
 a numeric matrix of sigmaOpts - the optimal width of the gaussian
-distribution, and the thresOpt - outlier threshold around the set of spots
+distribution, and the threshOpt - outlier threshold around the set of spots
 for each pattern
 }
 \description{
-This function calculates the optimal width of the gaussian distribution
-(sigmaOpt) as well as the outlier threshold around the set of spots
-(thresOpt) for each pattern from a latent feature space.
+This function uses Morans.I to calculate the optimal width of
+the kernel density (sigmaOpt) as well as the outlier threshold around the set
+of spots (threshOpt) for a null distribution.
 }
 \examples{
 library(SpaceMarkers)
