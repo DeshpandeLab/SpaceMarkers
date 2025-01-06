@@ -102,11 +102,11 @@ getOptimalSigmaThresh <- function(pattern, locs, sigVec, threshVec,...){
 #' x = runif(test_num, min=0, max=test_num),
 #' Pattern_1 = runif(test_num, min=0, max=1),
 #' Pattern_2 = runif(test_num, min=0, max=1) )
-#' # Call the getSpatialParameters function with the test data
-#' optParams <- getSpatialParameters(spPatterns)
+#' # Call the getSpatialParamsMoransI function with the test data
+#' optParams <- getSpatialParamsMoransI(spPatterns)
 #'
-getSpatialParameters <- function(spatialPatterns,...){
-    .Deprecated(new = "getSpatialParamsExternal")
+getSpatialParamsMoransI <- function(spatialPatterns,...){
+    .Deprecated(new = "getSpatialParameters")
     sigmaRes <- max(floor(min(diff(range(spatialPatterns$x)),
                                 diff(range(spatialPatterns$y)))/250),1)
     sigVec <- seq(2,40*sigmaRes,sigmaRes)
@@ -158,11 +158,11 @@ getSpatialParameters <- function(spatialPatterns,...){
 #' x = runif(test_num, min=0, max=test_num),
 #' Pattern_1 = runif(test_num, min=0, max=1),
 #' Pattern_2 = runif(test_num, min=0, max=1) )
-#' # Call the getSpatialParamsExternal function with the test data
-#' optParams <- getSpatialParamsExternal(spPatterns, sigma = 10)
+#' # Call the getSpatialParameters function with the test data
+#' optParams <- getSpatialParameters(spPatterns, sigma = 10)
 #'
 
-getSpatialParamsExternal <- function(spatialPatterns,visiumDir = ".",
+getSpatialParameters <- function(spatialPatterns,visiumDir = ".",
                                          spatialDir ="spatial",
                                          pattern = "scalefactors_json.json",
                                          sigma = NULL,threshold = 4,
