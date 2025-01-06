@@ -51,7 +51,7 @@ process SPACEMARKERS {
     dataMatrix <- dataMatrix[keepGenes, keepBarcodes]
 
     #compute optimal parameters for spatial patterns
-    optParams <- getSpatialParameters(spPatterns);
+    optParams <- getSpatialParameters(spPatterns, visiumDir="$data");
     saveRDS(optParams, file = "${prefix}/optParams.rds")
 
     #find genes that are differentially expressed in spatial patterns
