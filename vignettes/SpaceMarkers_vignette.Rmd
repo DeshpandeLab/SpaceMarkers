@@ -5,8 +5,8 @@ date: "2024-01-08"
 output:
     BiocStyle::html_document:
         toc: yes
-        toc_depth: 3
-        number_sections: yes
+        toc_float:
+          toc_collapsed: true
 vignette: >
     %\VignetteIndexEntry{Inferring Immune Interactions in Breast Cancer}
     %\VignetteEngine{knitr::rmarkdown}
@@ -45,15 +45,19 @@ library(SpaceMarkers)
 ```
 
 # Setup
+
 ## Links to Data
 
 The data that will be used to demonstrate SpaceMarkers' capabilities is a human
-breast cancer spatial transcriptomics dataset that comes from Visium.The CoGAPS
+breast cancer spatial transcriptomics dataset that comes from Visium. The CoGAPS
 patterns as seen in the manuscript 
 [Atul Deshpande et al.](https://doi.org/10.1016/j.cels.2023.03.004) 
 will also be used
 
 ```{r}
+data_dir <- "visiumBrCA"
+unlink(file.path(data_dir), recursive = TRUE)
+dir.create(data_dir,showWarnings = FALSE)
 main_10xlink <- "https://cf.10xgenomics.com/samples/spatial-exp/1.3.0"
 counts_folder <- "Visium_Human_Breast_Cancer"
 counts_file <- "Visium_Human_Breast_Cancer_filtered_feature_bc_matrix.h5"
@@ -63,17 +67,9 @@ sp_file <- "Visium_Human_Breast_Cancer_spatial.tar.gz"
 sp_url<-paste(c(main_10xlink,sp_folder,sp_file),collapse = "/")
 ```
 
-The functions require that some files and directories with the same name be 
-unique. Therefore any downloads from a previous runs will be removed.
-```{r}
-unlink(basename(sp_url))
-files <- list.files(".")[grepl(counts_file,list.files("."))]
-unlink(files)
-unlink("spatial", recursive = TRUE)
-```
-
 
 ## Extracting Counts Matrix
+
 ### load10xExpr
 
 Here the counts matrix will be obtained from the h5 object on the Visium site 
@@ -81,22 +77,20 @@ and genes with less than 3 counts are removed from the dataset.This can be
 achieved with the load10XExpr function.
 
 ```{r}
-download.file(counts_url,basename(counts_url), mode = "wb")
-counts_matrix <- load10XExpr(visiumDir = ".", h5filename = counts_file)
+download.file(counts_url,file.path(data_dir,basename(counts_url)), mode = "wb")
+counts_matrix <- load10XExpr(visiumDir = data_dir, h5filename = counts_file)
 good_gene_threshold <- 3
 goodGenes <- rownames(counts_matrix)[
     apply(counts_matrix,1,function(x) sum(x>0)>=good_gene_threshold)]
 counts_matrix <- counts_matrix[goodGenes,]
-files <- list.files(".")[grepl(basename(counts_url),list.files("."))]
-unlink(files)
 ```
 
 ## Obtaining CoGAPS Patterns
 
 In this example the latent features from CoGAPS will be used to identify 
-overlapping genes with SpaceMarkers. Here the featureLoadings (cells) and 
-samplePatterns (genes) for both the expression matrix and CoGAPS matrix need to 
-match.
+interacting genes with SpaceMarkers. Here the featureLoadings (genes) and 
+samplePatterns (barcodes) for both the expression matrix and CoGAPS matrix 
+need to match.
 
 ```{r}
 cogaps_result <- readRDS(system.file("extdata","CoGAPS_result.rds",
@@ -111,6 +105,7 @@ cogaps_matrix<-slot(cogaps_result,"featureLoadings")[features,]%*%
 ```
 
 ## Obtaining Spatial Coordinates
+
 ### load10XCoords
 
 The spatial coordinates will also be pulled from Visium for this dataset. 
@@ -119,20 +114,22 @@ pattern interact in 2D space. The data can be extracted with the
 **load10XCoords()** function
 
 ```{r}
-download.file(sp_url, basename(sp_url), mode = "wb")
-untar(basename(sp_url))
-spCoords <- load10XCoords(visiumDir = ".", version = "1.0")
+download.file(sp_url, file.path(data_dir,basename(sp_url)), mode = "wb")
+untar(file.path(data_dir,basename(sp_url)), exdir = file.path(data_dir))
+spCoords <- load10XCoords(visiumDir = data_dir, version = "1.0")
 rownames(spCoords) <- spCoords$barcode
 spCoords <- spCoords[barcodes,]
 spPatterns <- cbind(spCoords,slot(cogaps_result,"sampleFactors")[barcodes,])
 head(spPatterns)
 ```
+
 For demonstration purposes we will look at two patterns; Pattern_1 (immune cell)
 and Pattern_5 (invasive carcinoma lesion). Furthermore we will only look at the
 relationship between a pre-curated list of genes for efficiency.
+
 ```{r}
 data("curated_genes")
-spPatterns<-spPatterns[c("barcode","y","x","Pattern_1","Pattern_5")]
+spPatterns <- spPatterns[c("barcode","y","x","Pattern_1","Pattern_5")]
 counts_matrix <- counts_matrix[curated_genes,]
 cogaps_matrix <- cogaps_matrix[curated_genes, ]
 ```
@@ -141,7 +138,7 @@ cogaps_matrix <- cogaps_matrix[curated_genes, ]
 
 ## SpaceMarker Modes
 
-SpaceMarkers can operate in 'residual'or 'DE' (DifferentialExpression) mode. 
+SpaceMarkers can operate in 'residual' or 'DE' (DifferentialExpression) mode. 
 In an ideal world the overlapping patterns identified by SpaceMarkers would be a
 homogeneous population of cells and the relationship between them would be 
 linear. However, due to confounding effects of variations in cell density and 
@@ -153,62 +150,64 @@ space matrix. The features with the highest residual error are reported.
 The genes are then classified according to regions of overlapping vs exclusive 
 influence. The default mode is 'residual' mode.
 
-Suppose the feature (gene) information is not readily available and only the 
-sample (cells) latent feature patterns with P-values are available? 
-This is the advantage of 'DE' mode. Where residual mode assesses the non-linear 
-effects that may arise from confounding variables, 'DE' mode assesses simple 
-linear interactions between patterns directly from expression. DE mode also 
-compares genes from regions of overlapping vs exclusive influence but does not 
+However this is not to say there is no utility for DE mode. Suppose the 
+feature (gene) information is not readily available and only the sample (cells)
+latent feature patterns with P-values are available? This is the advantage of
+'DE' mode. Where residual mode assesses the non-linear effects that may arise
+from confounding variables, 'DE' mode assesses simple linear interactions 
+between patterns directly from expression. DE mode like residual mode also 
+compares genes from regions of overlapping vs exclusive influence butdoes not
 consider residuals from the expression matrix as there is no matrix 
 reconstruction with the latent feature matrix.
 
 ### Residual Mode
 
+#### SpaceMarkers Step1: Hotpsots
+
 SpaceMarkers identifies regions of influence using a gaussian kernel outlier 
-based model. The reference pattern (Pattern_1 in this case) is used as the prior
-for this model. SpaceMarkers then identifies where the regions of influence are 
-interacting from each of the other patterns as well as where they are mutually 
-exclusive.
+based model. Spots that have spatial influence beyond the defined outlier 
+threshold are termed **hotspots**. SpaceMarkers then identifies where the
+hotspots are overlapping/interacting and where they are mutually exclusive.
 
-getSpatialParameters: This function identifies the optimal width of the gaussian
-distribution (sigmaOpt) as well as the outlier threshold around the set of spots
-(thresOpt) for each pattern.These parameters minimize the spatial 
-autocorrelation residuals of the spots in the regions of influence. 
-
-getSpatialParameters took approximately 5 minutes on a MacBook Pro Quad-Intel 
-Core i5 processor with 16 GB of memory. Therefore we will load this data from
-a previous run. The spPatterns object is the sole parameter for this function if
-you would like to run this yourself
+getSpatialParameters: This function sets the width of the spatial kernel 
+(sigmaOpt) as well as the outlier threshold around the set of spots
+(threshOpt) for each pattern. By default, the sigmaOpt is set to the spot 
+diameter at the appropriate resolution. Note that the legacy function has been
+deprecated and has been renamed to getSpatialParamsMoransI. Please read the 
+documentation for more information.
 
 ```{r}
-data("optParams")
-optParams
+optParams <- getSpatialParameters(spPatterns,visiumDir = data_dir,
+                                          resolution = "lowres")
 ```
 
-getInteractingGenes: This function identifies the regions of influence and 
-interaction as well as the genes associated with these regions. A non-parametric
-Kruskal-Wallis test is used to identify statistically significant genes in any 
-one region of influence without discerning which region is more significant. 
-A post hoc Dunn's Test is used for analysis of genes between regions and can 
-distinguish which of two regions is more significant. If 'residual' mode is 
-selected the user must provide a reconstructed matrix from the latent feature
-matrix. The matrix is passed to the 'reconstruction' argument and can be left 
-as NULL for 'DE' mode. The 'data' parameter is the original expression matrix. 
-The 'spPatterns' argument takes a dataframe with the spatial coordinates of 
-each cell as well as the patterns. The spatial coordinate columns must contain 
-the labels 'x' and 'y' to be recognized by the function.
+#### SpaceMarkers Step2: Interacting Genes
+
+getPairwiseInteractingGenes: This function identifies the regions of influence 
+and interaction as well as the **genes** associated with these regions. 
+A non-parametric Kruskal-Wallis test is used to identify statistically 
+significant genes in any one region of influence without discerning which region
+is more significant. A post hoc Dunn's Test is used for analysis of genes
+between regions and can distinguish which of two regions is more significant. 
+If 'residual' mode is selected the user must provide a reconstructed matrix from
+the latent feature matrix. The matrix is passed to the 'reconstruction' argument
+and can be left as NULL for 'DE' mode. The 'data' parameter is the original
+expression matrix. The 'spPatterns' argument takes a dataframe with the spatial
+coordinates of each cell as well as the patterns. The spatial coordinate columns
+must contain the labels 'x' and 'y' to be recognized by the function.
+The output of this are all possible pairs fo interactions from the spatial
+patterns. 
 
 ```{r}
-SpaceMarkers <- getInteractingGenes(data = counts_matrix,
+SpaceMarkers <- getPairwiseInteractingGenes(data = counts_matrix,
                                     reconstruction = cogaps_matrix,
                                     optParams = optParams,
                                     spPatterns = spPatterns,
-                                    refPattern = "Pattern_1",
                                     mode ="residual",analysis="overlap")
 
 ```
 
-NB: When running getInteractingGenes some warnings may be generated. 
+NB: When running getPairwiseInteractingGenes some warnings may be generated. 
 The warnings are due to the nature of the 'sparse' data being used. 
 Comparing two cells from the two patterns with identical information is 
 redundant as SpaceMarkers is identifying statistically different expression for
@@ -219,12 +218,12 @@ is nothing to compare in the Kruskal Wallis test.
 
 
 ```{r}
-print(head(SpaceMarkers$interacting_genes[[1]]))
-print(head(SpaceMarkers$hotspots))
+print(head(SpaceMarkers[[1]]$interacting_genes[[1]]))
+print(head(SpaceMarkers[[1]]$hotspots))
 ```
 
 The output is a list of data frames with information about the interacting genes
-of the refPattern and each pattern from the CoGAPS matrix 
+between patterns from the CoGAPS matrix 
 (interacting_genes object). 
 There is also a data frame with all of the regions of influence for any two of 
 patterns (the hotspotRegions object).
@@ -240,25 +239,25 @@ is used to rank the genes.
 
 As described previously 'DE' mode only requires the counts matrix and spatial 
 patterns and not the reconstructed CoGAPS matrix. It identifies simpler 
-molecular interactions between regions.
+molecular interactions between regions and still executes the 'hotspots' and
+'interacting genes' steps of SpaceMarkers
 
 ```{r}
-SpaceMarkers_DE <- getInteractingGenes(
+SpaceMarkers_DE <- getPairwiseInteractingGenes(
     data=counts_matrix,reconstruction=NULL,
     optParams = optParams,
     spPatterns = spPatterns,
-    refPattern = "Pattern_1",
     mode="DE",analysis="overlap")
 ```
 
-### Differences between Residual Mode and DE Mode
+### Residual Mode vs DE Mode: Differences
 
 One of the first things to notice is the difference in the number 
-of genes identified between the two modes. Here we will use the genes 
+of genes identified between the two modes.  
 
 ```{r}
-residual_p1_p5<-SpaceMarkers$interacting_genes[[1]]
-DE_p1_p5<-SpaceMarkers_DE$interacting_genes[[1]]
+residual_p1_p5<-SpaceMarkers[[1]]$interacting_genes[[1]]
+DE_p1_p5<-SpaceMarkers_DE[[1]]$interacting_genes[[1]]
 ```
 
 ```{r}
@@ -267,6 +266,7 @@ paste(
         "interacting genes,while DE mode identified",dim(DE_p1_p5)[1],
         "interacting genes",collapse = NULL)
 ```
+
 DE mode produces more genes than residual mode because the matrix of 
 residuals highlights less significant differences for confounding genes 
 across the spots.The next analysis will show where the top genes rank in each 
@@ -304,18 +304,18 @@ DE_to_res <- compare_genes(head(DE_p1_p5$Gene, n = 20),residual_p1_p5$Gene,
                             ref_name = "DE",list2_name = "residual")
 ```
 
-### Comparing residual mode to DE mode
+#### Comparing residual mode to DE mode
 
 ```{r}
 res_to_DE
 ```
 
 Here we identify the top 20 genes in 'residual' mode and their corresponding 
-ranking in DE mode.HLA-DRB1 is the only gene identified in 
+ranking in DE mode. HLA-DRB1 is the only gene identified in 
 residual mode and not in DE mode. The other genes are ranked relatively high
 in both residual and DE mode.
 
-### Comparing DE mode to residual mode
+#### Comparing DE mode to residual mode
 
 ```{r}
 DE_to_res
@@ -339,29 +339,26 @@ between the two is that enrichment mode includes genes even if they did not
 pass the post-hoc Dunn's test. These additional genes were included to enable a
 more statistically powerful pathway enrichment analysis and understand to a 
 better extent the impact of genes involved each pathway. 
-Changing analysis = 'enrichment' in the getInteractingGenes function will enable
-this.
+Changing analysis = 'enrichment' in the getPairwiseInteractingGenes function 
+will enable this.
 
 ```{r}
-SpaceMarkers_enrich <- getInteractingGenes(data = counts_matrix,
+SpaceMarkers_enrich <- getPairwiseInteractingGenes(data = counts_matrix,
                                     reconstruction = cogaps_matrix,
                                     optParams = optParams,
                                     spPatterns = spPatterns,
-                                    refPattern = "Pattern_1",
                                     mode ="residual",analysis="enrichment")
-SpaceMarkers_DE_enrich <- getInteractingGenes(
+SpaceMarkers_DE_enrich <- getPairwiseInteractingGenes(
     data=counts_matrix,reconstruction=NULL,
     optParams = optParams,
     spPatterns = spPatterns,
-    refPattern = "Pattern_1",
     mode="DE",analysis="enrichment")
-residual_p1_p5_enrichment<-SpaceMarkers_enrich$interacting_genes[[1]]$Gene
-DE_p1_p5_enrichment<-SpaceMarkers_DE_enrich$interacting_genes[[1]]$Gene
+residual_p1_p5_enrichment<-SpaceMarkers_enrich[[1]]$interacting_genes[[1]]$Gene
+DE_p1_p5_enrichment<-SpaceMarkers_DE_enrich[[1]]$interacting_genes[[1]]$Gene
 
 ```
 
-
-### Residual Mode and DE Mode - Enrichment
+### Residual Mode vs DE Mode: Enrichment
 
 The data frames for the Pattern_1 x Pattern_5 will be used to compare the 
 results of the enrichment analyses
@@ -373,6 +370,7 @@ enrich_res_to_de<-compare_genes(
     ref_name="DE_Enrich",list2_name = "res_Enrich")
 enrich_res_to_de
 ```
+
 The ranks differ alot more here because now genes that were not previously 
 ranked are assigned a score.
 
@@ -384,19 +382,23 @@ overlap_enrich_de<-compare_genes(
     list2_name="DE_Overlap")
 overlap_enrich_de
 ```
+
 The enrichment and overlap analysis are in great agreement for DE mode.
-Typically, you may see slight changes among genes lower in the ranking. This is 
+Typically, you may see more changes among genes lower in the ranking. This is 
 especially important where genes that do not pass the Dunn's test for 
 interactions between any of the other two patterns in the overlap analysis are 
-now ranked in enrichment analysis. The Pattern_1 x Pattern_5 column for these 
-genes is labelled as FALSE. 
+now ranked in enrichment analysis. The Pattern_1 x Pattern_5 entry for these 
+genes is labelled as **FALSE**. 
 
 Here is an example of the statistics for such genes. 
+
 ```{r}
-tail(SpaceMarkers_DE_enrich$interacting_genes[[1]])
+tail(SpaceMarkers_DE_enrich[[1]]$interacting_genes[[1]])
 ```
-A similar trend can be observed when comparing the overlap and enrichment
-analysis in residual mode.
+
+The rankings of genes between the overlap and enrichment
+analysis in residual mode are comparable as well. 
+
 ```{r}
 overlap_enrich_res<-compare_genes(
     head(residual_p1_p5$Gene, 20),
@@ -407,16 +409,10 @@ overlap_enrich_res
 
 # Visualizing SpaceMarkers
 
-The differences between the gene interactions of Pattern_1 and 
-Pattern_5 can be visualized in various ways to view 
-both the magnitude and location of expression in space. In this analysis the top
-2-3 genes in residual mode from Pattern_5 only vs Pattern_1, Pattern_1 only vs 
-Pattern_5 and the interacting region vs both Pattern_1 and Pattern_5 will be
-compared.
 
 ## Loading Packages
 
-The following libraries are required to make the plots:
+The following libraries are required to make the plots and summarize dataframes
 
 ```{r message = FALSE, warning=FALSE}
 library(Matrix)
@@ -432,6 +428,27 @@ library(hrbrthemes)
 library(ggplot2)
 ```
 
+
+The two main statistics used to help interpret the expression of genes across 
+the patterns are the KW statistics/pvalue and the Dunn's test. In this context
+the null hypothesis of the KW test is that the expression of a given gene across
+all of the spots is equal. The post hoc Dunn's test identifies how statistically
+significant the difference in expression of the given gene is between two 
+patterns. The Dunn's test considers the differences between specific patterns 
+and the KW test considers differences across all of the spots without 
+considering the specific patterns. Ultimately, we summarize and rank these
+effects with the SpaceMarkersMetric.
+
+We will look at the top few genes based on our SpaceMarkersMetric
+
+
+```{r}
+res_enrich <- SpaceMarkers_enrich[[1]]$interacting_genes[[1]]
+hotspots <- SpaceMarkers_enrich[[1]]$hotspots
+top <- res_enrich %>% arrange(-SpaceMarkersMetric)
+print(head(top))
+```
+
 ## Code Setup
 
 This first function below can visualize the locations of these patterns on a 
@@ -440,322 +457,305 @@ spatial grid. The code has been adopted from 10xgenomics:
 
 ```{r}
 geom_spatial <-  function(mapping = NULL,
-    data = NULL,
-    stat = "identity",
-    position = "identity",
-    na.rm = FALSE,
-    show.legend = NA,
-    inherit.aes = FALSE,...) {
-    GeomCustom <- ggproto(
-        "GeomCustom",
-        Geom,
-        setup_data = function(self, data, params) {
-            data <- ggproto_parent(Geom, self)$setup_data(data, params)
-            data
-        },
-        
-        draw_group = function(data, panel_scales, coord) {
-            vp <- grid::viewport(x=data$x, y=data$y)
-            g <- grid::editGrob(data$grob[[1]], vp=vp)
-            ggplot2:::ggname("geom_spatial", g)
-        },
-        
-        required_aes = c("grob","x","y")
-        
-    )
-    
-    layer(geom = GeomCustom,mapping = mapping,data = data,stat = stat,position=
-                position,show.legend = show.legend,inherit.aes =
-                inherit.aes,params = list(na.rm = na.rm, ...)
-    )
+                          data = NULL,
+                          stat = "identity",
+                          position = "identity",
+                          na.rm = FALSE,
+                          show.legend = NA,
+                          inherit.aes = FALSE,...) {
+  GeomCustom <- ggproto(
+    "GeomCustom",
+    Geom,
+    setup_data = function(self, data, params) {
+      data <- ggproto_parent(Geom, self)$setup_data(data, params)
+      data
+    },
+    draw_group = function(data, panel_scales, coord) {
+      vp <- grid::viewport(x=data$x, y=data$y)
+      g <- grid::editGrob(data$grob[[1]], vp=vp)
+      ggplot2:::ggname("geom_spatial", g)
+    },
+    required_aes = c("grob","x","y")
+  )
+  layer(geom = GeomCustom,mapping = mapping,data = data,stat = stat,position=
+          position,show.legend = show.legend,inherit.aes =
+          inherit.aes,params = list(na.rm = na.rm, ...)
+  )
 }
+
 ```
 
-Some spatial information for the breast cancer dataset is required.
+The plotSpatialData function allows you to look at the deconvoluted patterns
+on the tissue image.
 
 ```{r}
-sample_names <- c("BreastCancer")
-image_paths <- c("spatial/tissue_lowres_image.png")
-scalefactor_paths <- c("spatial/scalefactors_json.json")
-tissue_paths <- c("spatial/tissue_positions_list.csv")
-
-images_cl <- list()
-
-for (i in 1:length(sample_names)) {
-    images_cl[[i]] <- read.bitmap(image_paths[i])
-}
-
-height <- list()
-
-for (i in 1:length(sample_names)) {
-    height[[i]] <-  data.frame(height = nrow(images_cl[[i]]))
-}
-
-height <- bind_rows(height)
-
-width <- list()
-
-for (i in 1:length(sample_names)) {
-    width[[i]] <- data.frame(width = ncol(images_cl[[i]]))
-}
-
-width <- bind_rows(width)
-
-grobs <- list()
-for (i in 1:length(sample_names)) {
-    grobs[[i]]<-rasterGrob(images_cl[[i]],width=unit(1,"npc"),
-                            height=unit(1,"npc"))
-}
-
-images_tibble <- tibble(sample=factor(sample_names), grob=grobs)
-images_tibble$height <- height$height
-images_tibble$width <- width$width
-
-
-scales <- list()
-
-for (i in 1:length(sample_names)) {
-    scales[[i]] <- rjson::fromJSON(file = scalefactor_paths[i])
-}
-
-```
-
-It is also helpful to adjust spot position by scale factor and format some of 
-the tissue information.
-
-```{r}
-bcs <- list()
-for (i in 1:length(sample_names)) {
-    bcs[[i]] <- read.csv(tissue_paths[i],col.names=c(
-        "barcode","tissue","row","col","imagerow","imagecol"), header = FALSE)
-    bcs[[i]]$imagerow <- bcs[[i]]$imagerow * scales[[i]]$tissue_lowres_scalef
-    # scale tissue coordinates for lowres image
-    bcs[[i]]$imagecol <- bcs[[i]]$imagecol * scales[[i]]$tissue_lowres_scalef
-    bcs[[i]]$tissue <- as.factor(bcs[[i]]$tissue)
-    bcs[[i]]$height <- height$height[i]
-    bcs[[i]]$width <- width$width[i]
-}
-names(bcs) <- sample_names
-```
-
-Adding umi per spot, total genes per spot and merging the data
-
-```{r}
-matrix <- list()
-for (i in 1:length(sample_names)) {
-    matrix[[i]] <- as.data.frame(t(as.matrix(counts_matrix)))
-}
-umi_sum <- list()
-for (i in 1:length(sample_names)) {
-    umi_sum[[i]] <- data.frame(barcode =  row.names(matrix[[i]]),
-                                sum_umi = Matrix::rowSums(matrix[[i]]))
-}
-names(umi_sum) <- sample_names
-
-umi_sum <- bind_rows(umi_sum, .id = "sample")
-gene_sum <- list()
-
-for (i in 1:length(sample_names)) {
-    gene_sum[[i]] <- data.frame(barcode=row.names(
-        matrix[[i]]),sum_gene=Matrix::rowSums(matrix[[i]] != 0))
-
-}
-names(gene_sum) <- sample_names
-gene_sum <- bind_rows(gene_sum, .id = "sample")
-bcs_merge <- bind_rows(bcs, .id = "sample")
-bcs_merge <- merge(bcs_merge,umi_sum, by = c("barcode", "sample"))
-bcs_merge <- merge(bcs_merge,gene_sum, by = c("barcode", "sample"))
-
-```
-
-Specifying a continuous scale and colors before plotting
-
-```{r}
-myPalette <- function(numLevels) {
-    return(colorRampPalette(c("blue","yellow"))(numLevels))}
-```
-
-Extracting top 3 genes ...
-
-```{r}
-gene_list <- c()
-sp_genes <- SpaceMarkers$interacting_genes[[1]]
-interactions <- unique(sp_genes$`Pattern_1 x Pattern_5`)
-n_genes <- 3
-for (g in 1:length(interactions)){
-    
-    df <- sp_genes %>% dplyr::filter(
-        sp_genes$`Pattern_1 x Pattern_5` == interactions[g] & abs(
-        sp_genes$Dunn.zP2_P1) > 1 )
-    df <- df[!is.na(df$Gene),]
-    valid_genes <- min(nrow(df),n_genes)
-    print(paste0("Top ",valid_genes," genes for ",interactions[g]))
-    print(df$Gene[1:valid_genes])
-    gene_list <- c(gene_list,df$Gene[1:valid_genes])
-    
-}
-
-```
-
-Visualize expression spatially
-
-```{r message = FALSE, warning=FALSE}
-
-plots <- list()
-# default size = 1.75, stroke = 0.5
-for (g in gene_list){
-    for (i in 1:length(sample_names)) {
-        plots[[length(plots)+1]] <- bcs_merge %>%dplyr::filter(
-            sample ==sample_names[i]) %>% bind_cols(as.data.table(
-            matrix[i])[,g, with=FALSE]) %>% ggplot(aes_string(
-                x='imagecol', y='imagerow', fill=g, alpha = g)) +geom_spatial(
-                data=images_tibble[i,], aes(grob=grob), x=0.5, y=0.5)+
-            geom_point(shape = 21, colour = "black", size = 1.1, stroke = 0.2)+
-            coord_cartesian(expand=FALSE)+scale_fill_gradientn(
-                colours = myPalette(100))+xlim(0,max(bcs_merge %>%dplyr::filter(
-                    sample ==sample_names[i]) %>% select(width)))+ylim(max(
-                        bcs_merge %>%dplyr::filter(sample ==sample_names[i])%>%
-                            select(height)),0)+xlab("") +ylab("") + ggtitle(
-                                sample_names[i])+
-            theme_set(theme_bw(base_size = 10))+
-            theme(
-                panel.grid.major=element_blank(),
-                panel.grid.minor = element_blank(),
-                panel.background = element_blank(),
-                axis.line = element_line(colour="black"),
-                axis.text=element_blank(),axis.ticks = element_blank())
+plotSpatialData <- function(spatial_data,positions_path,image_path,jsonPath,
+                              feature_col,colors = NULL,
+                              title = "Spatial Heatmap",
+                              alpha = 0.6,scaled = FALSE,res = "lowres",
+                              x_col = "x",y_col = "y",sample = "Sample",
+                              plot = TRUE) {
+  og_positions <- read.csv(positions_path, header = FALSE)
+  og_positions <- og_positions[,c(1,5,6)]
+  colnames(og_positions) <- c("barcode",y_col,x_col)
+  spatial_data <- dplyr::inner_join(
+    og_positions,spatial_data[,c("barcode",feature_col)],by = "barcode")
+  images_cl <- readbitmap::read.bitmap(image_path)
+  height <-  data.frame(height = nrow(images_cl))
+  width <- data.frame(width = ncol(images_cl))
+  grobs<-grid::rasterGrob(images_cl,width=unit(1,"npc"),
+                          height=unit(1,"npc"))
+  images_tibble <- dplyr::tibble(sample=factor(sample), grob=list(grobs))
+  images_tibble$height <- height$height
+  images_tibble$width <- width$width
+  scales <- jsonlite::read_json(jsonPath)
+  if (scaled == FALSE){
+    res <- names(scales)[grepl(pattern = res,x = names(scales))]
+    spatial_data[[x_col]]<-  scales[[res]] * spatial_data[[x_col]]
+    spatial_data[[y_col]] <- scales[[res]] * spatial_data[[y_col]]
+  }
+  spatial_data$height <- height$height
+  spatial_data$width <- width$width
+  if (is.numeric(spatial_data[[feature_col]])){
+    p <- spatial_data %>% ggplot(aes(
+      x=.data[[x_col]], y=.data[[y_col]], fill=.data[[feature_col]],
+      alpha = .data[[feature_col]])) + geom_spatial(data=images_tibble[1,],
+                                                    mapping = aes(grob=grob),
+                                                    x=0.5, y=0.5) +
+      geom_point(shape = 21, colour = "black", size = 1.1, stroke = 0.2)
+  } else {
+    p <- spatial_data %>% ggplot(aes(
+      x=.data[[x_col]], y=.data[[y_col]], fill=.data[[feature_col]]))+
+      geom_spatial(data=images_tibble[1,],mapping = aes(grob=grob),
+                   x=0.5, y=0.5) +
+      geom_point(shape = 21, colour = "black", size = 1.1, stroke = 0.2,
+                 alpha = alpha)
+  }
+  p <- p + coord_cartesian(expand=FALSE) + 
+    xlim(0,max(spatial_data$width)) + ylim(max(spatial_data$height),0) +
+    xlab("") + ylab("")+
+    ggtitle(title) + theme_set(theme_bw(base_size = 10)) +
+    theme(
+      panel.grid.major=element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.background = element_blank(),
+      axis.line = element_line(colour="black"),
+      axis.text=element_blank(),axis.ticks = element_blank())
+  # Check if the feature_col is continuous or discrete and apply 
+  #the appropriate color scale
+  if (is.numeric(spatial_data[[feature_col]]) & !is.null(colors)) {
+    # Use gradient scale for continuous variables when colors are provided
+    p <- p + scale_fill_gradientn(colours = colors)
+  } else if (is.numeric(spatial_data[[feature_col]]) & is.null(colors)) {
+    # Default to a color palette when no colors are provided for 
+    #continuous variables
+    p <- p + scale_fill_gradientn(colours = rev(
+      RColorBrewer::brewer.pal(name = "RdYlBu", n = 11)))
+  } else if (!is.numeric(spatial_data[[feature_col]])) {
+    # Use manual scale for discrete variables
+    if (!is.null(colors)) {
+      p <- p + scale_fill_manual(values = colors)
+    } else {
+      features <- unique(spatial_data[[feature_col]])
+      features <- as.character(features[!is.na(features)])
+      if (length(features) > 1){
+        message("You can specify your colors. Ensure the length is equal to the
+                number of unique features in your feature_col")
+      } else {
+        p <- p + scale_fill_manual(values = "red")
+      }
     }
+  }
+  if (plot == TRUE) {
+    print(p)
+  } 
+  return(p)
 }
 ```
 
-This next block of code can visualize the gene expression in each region using 
-box plots.
+We can compare these spatial maps to the expression of genes identified 
+interacting genes on violin plots. 
 
 ```{r}
-region <- SpaceMarkers$hotspots[,1]
-region <- ifelse(!is.na(region)&!is.na(SpaceMarkers$hotspots[,2]),
-                    "Interacting",ifelse(!is.na(region),region,
-                                            SpaceMarkers$hotspots[,2]))
-region <- factor(region, levels = c("Pattern_1","Interacting","Pattern_5"))
-plist <- list()
-mplot2 <- t(as.matrix(counts_matrix[,!is.na(region)]))
-mplot2 <- as.data.frame(as.matrix(mplot2))
-mplot2 <- cbind(mplot2,region = region[!is.na(region)])
-for (ii in 1:length(gene_list)){
-    plist[[ii]]<- mplot2 %>% ggplot( aes_string(x='region',y=gene_list[ii],
-                                                fill='region'))+geom_boxplot()+
-        scale_fill_viridis(discrete = TRUE,alpha=0.6)+
-        geom_jitter(color="black",size=0.4,alpha=0.9)+theme_ipsum()+
-        theme(legend.position="none",plot.title = element_text(size=11),
-                axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
-        ggtitle(paste0(gene_list[ii]," Expression (Log)")) + xlab("") 
+createInteractCol <- function(spHotspots, 
+                              interaction_cols = c("T.cells","B-cells")){
+  col1 <- spHotspots[,interaction_cols[1]]
+  col2 <- spHotspots[,interaction_cols[2]]
+  one <- col1
+  two <- col2
+  one[!is.na(col1)] <- "match"
+  two[!is.na(col2)] <- "match"
+  both_idx <- which(one == two)
+  both <- col1
+  both[both_idx] <- "interacting"
+  one_only <- setdiff(which(!is.na(col1)),unique(c(which(is.na(col1)),
+                                                   both_idx)))
+  two_only <- setdiff(which(!is.na(col2)),unique(c(which(is.na(col2)),
+                                                   both_idx)))
+  both[one_only] <- interaction_cols[1]
+  both[two_only] <- interaction_cols[2]
+  both <- factor(both,levels = c(interaction_cols[1],"interacting",
+                                 interaction_cols[2]))
+  return(both)
+}
+
+#NB: Since we are likely to plot multipe genes, this function assumes an
+#already transposed counts matrix. This saves time and memory in the long run
+#for larger counts matrices
+plotSpatialExpr <- function(data,gene,hotspots,patterns,
+                               remove.na = TRUE,
+                               title = "Expression (Log)"){
+  counts <- data
+  interact <- createInteractCol(spHotspots = hotspots,
+                                interaction_cols = patterns)
+  df <- cbind(counts,hotspots,data.frame("region" = interact))
+  if (remove.na){
+    df <- df[!is.na(df$region),]
+  }
+  p <- df %>% ggplot( aes_string(x='region',y=gene,
+                                            fill='region')) + geom_violin() +
+    scale_fill_viridis(discrete = TRUE,alpha=0.6) +
+    geom_jitter(color="black",size=0.4,alpha=0.9) + theme_ipsum()+
+    theme(legend.position="none",plot.title = element_text(size=11),
+            axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+    ggtitle(paste0(gene,": ",title)) + xlab("")
+  return(p)
+}
+
+
+
+```
+
+
+## Get the Spatial Data
+
+Let's transpose the counts matrix and combine the expression information with
+the spatial information. 
+
+```{r}
+genes <- top$Gene
+counts_df <- as.data.frame(as.matrix(
+  t(counts_matrix[rownames(counts_matrix) %in% genes,])))
+
+```
+
+## Generate Plots
+
+```{r}
+image_paths <- file.path(data_dir,"spatial","tissue_lowres_image.png")
+scalefactor_paths <- file.path(data_dir,"spatial","scalefactors_json.json")
+tissue_paths <- file.path(data_dir,"spatial","tissue_positions_list.csv")
+
+spatialMaps <- list()
+exprPlots <- list()
+
+for (g in genes){
+  spatialMaps[[length(spatialMaps)+1]] <- plotSpatialData(
+    spatial_data = cbind(spPatterns, counts_df), 
+                positions_path = tissue_paths,
+                image_path = image_paths,
+                jsonPath = scalefactor_paths,
+                feature_col = g,
+                colors = NULL,
+                title = g,
+                scaled = FALSE, plot = FALSE)
+  exprPlots[[length(exprPlots)+1]] <- plotSpatialExpr(
+    data = counts_df,gene = g,hotspots = hotspots, 
+                   patterns = c("Pattern_1","Pattern_5"))
 }
 ```
 
-## SpaceMarkers Visualiztions
+Below  are violin plots and spatial heatmaps to help visualize the expression
+of individual genes across different patterns. 
 
-### Interacting region (vsBoth)
+### Pattern_1
 
-This category compares the interacting region to both Pattern_1 and Pattern_5 
-exclusively
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plotSpatialData(
+    spatial_data = cbind(spPatterns, counts_df), 
+                positions_path = tissue_paths,
+                image_path = image_paths,
+                jsonPath = scalefactor_paths,
+                feature_col = "Pattern_1",
+                colors = NULL,
+                title = "Pattern_1",
+                scaled = FALSE, plot = FALSE)
+```
 
-Below there are box plots and spatial heatmaps to help visualize the expression
-of individual genes across different patterns. The two main statistics used to 
-help interpret the expression of genes across the patterns are the KW 
-statistics/pvalue and the Dunn's test. In this context the null hypothesis of 
-the KW test is that the expression of a given gene across all of the spots is 
-equal. The post hoc Dunn's test identifies how statistically significant the 
-difference in expression of the given gene is between two patterns. The Dunn's 
-test considers the differences between specific patterns and the KW test 
-considers differences across all of the spots without considering the specific
-patterns.
+### Pattern_5
 
-#### Table of statistics
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plotSpatialData(
+    spatial_data = cbind(spPatterns, counts_df), 
+                positions_path = tissue_paths,
+                image_path = image_paths,
+                jsonPath = scalefactor_paths,
+                feature_col = "Pattern_5",
+                colors = NULL,
+                title = "Pattern_5",
+                scaled = FALSE, plot = FALSE)
+```
+
+On the spatial heatmap, Pattern_5, the invasive carcinoma pattern, is 
+more prevalent on the bottom left of the tissue image. Where as Pattern_1,
+the immune pattern is prevalent along the diagonal of the tissue image.
+
+### Top SpaceMarkers
+
+```{r, message=FALSE, warning=FALSE, dpi=36, fig.width=6, fig.height=2.5}
+plot_grid(plotlist = list(exprPlots[[1]],spatialMaps[[1]]))
+plot_grid(plotlist = list(exprPlots[[2]],spatialMaps[[2]]))
+```
+
+APOE is expressed highly across all patterns but is especially strong in the 
+interacting pattern. This is a good example of a SpaceMarker that is  highly 
+expressed in the interacting region relative to both Pattern_1 and Pattern_5. 
+The second gene also has a similar expression profile. 
+
+
+```{r, message=FALSE, dpi=36, warning=FALSE, fig.width=6, fig.height=2.5}
+plot_grid(plotlist = list(exprPlots[[3]],spatialMaps[[3]]))
+```
+
+This gene is not as highly expressed in the tissue as the previous genes but
+still shows higher and specific expression in the interacting region relative to
+either Pattern_1 and Pattern_5 hence why it is still highly ranked by the 
+SpaceMarkersMetric.
+
+### Negative SpaceMarkersMetric
+
+More negative SpaceMarkersMetric highlights that the expression of a gene in the
+interacting region is **lower** relative to either pattern.
 
 ```{r}
-head(residual_p1_p5 %>% dplyr::filter(
-    sp_genes$`Pattern_1 x Pattern_5` == "vsBoth"),n_genes)
+bottom <- res_enrich %>% arrange(SpaceMarkersMetric)
+print(head(bottom))
 ```
 
-#### Visualizations
+```{r warning=FALSE}
+g <- bottom$Gene[1]
+p1 <- plotSpatialExpr(
+    data = counts_df,gene = g,hotspots = hotspots, 
+                   patterns = c("Pattern_1","Pattern_5"))
+p2 <- plotSpatialData(
+    spatial_data = cbind(spPatterns, counts_df), 
+                positions_path = tissue_paths,
+                image_path = image_paths,
+                jsonPath = scalefactor_paths,
+                feature_col = g,
+                colors = NULL,
+                title = g,
+                scaled = FALSE, plot = FALSE)
 
-```{r, message=FALSE, warning=FALSE, dpi=36, fig.width=12, fig.height=5}
-plot_grid(plotlist = list(plist[[1]],plots[[1]]))
-plot_grid(plotlist = list(plist[[2]],plots[[2]]))
-```
-
-On the spatial heatmap, Pattern_1 takes up most of the top half of the spatial
-heatmap, followed by the interacting region along the diagonal and finally 
-Pattern_5 in the bottom left corner. APOC1 is expressed across all patterns but
-is especially strong in the interacting pattern. IGHE is highly specific to the
-interacting pattern. The Dunn.pval_1_Int is lower for IGHE compared to APOC1 
-indicating more significance in the interacting region vs the other two regions.
-However, the overall SpaceMarkersMetric for APOC1 is higher and so it is 
-ranked higher than IGHE.
-
-
-```{r, message=FALSE, dpi=36, warning=FALSE, fig.width=12, fig.height=5}
-plot_grid(plotlist = list(plist[[3]],plots[[3]]))
-```
-
-The spatial heatmap for TGM2 shows fairly high expression interacting region 
-relative to Pattern_1 or Pattern_5 by itself similar but less so than IGHE. 
-as well with high expression in the interacting pattern vs the other 
-two patterns.
-
-### Pattern_5 Only vs Pattern_1 (including Pattern_1 in interacting region)
-
-
-#### Table of statistics
-
-```{r}
-head(sp_genes %>% dplyr::filter(
-    sp_genes$`Pattern_1 x Pattern_5` == "vsPattern_1"),n_genes - 1 )
-```
-
-#### Visualizations
-
-```{r, message=FALSE, dpi=36, warning=FALSE, fig.width=12, fig.height=5}
-plot_grid(plotlist = list(plist[[4]],plots[[4]]))
-plot_grid(plotlist = list(plist[[5]],plots[[5]]))
-```
-
-Unlike the previous three genes the KW pvalues and Dunn's pvalues are relatively
-high so the distinction will not appear as pronounced on the expression map.
-
-### Pattern_1 Only vs Pattern_5 (including Pattern_5 in interacting region)
-
-#### Table of statistics
-
-```{r}
-head(sp_genes %>% dplyr::filter(
-    sp_genes$`Pattern_1 x Pattern_5`=="vsPattern_5"),n_genes - 1)
+plot_grid(plotlist = list(p1,p2))
 
 ```
 
-#### Visualizations
-
-```{r, message=FALSE, dpi=36, warning=FALSE, fig.width=12, fig.height=5}
-plot_grid(plotlist = list(plist[[6]],plots[[6]]))
-plot_grid(plotlist = list(plist[[7]],plots[[7]]))
-```
-
-The expression of these genes across interaction is harder to distinguish on
-either plot. Although, they pass the initial KW-test, the post-hoc Dunn's test
-p-values are high. This lack of distinction highlights the fact that 
-SpaceMarkers performs best for identifying interactions for two latent 
-individual latent Patterns interacting with each other. In other words, the 
-vsBoth genes are ranked highest in the list, while the vsPattern_1 and 
-vsPattern_5 genes, which look at an individual Pattern interaction with another
-already interacting region, are ranked lower in the SpaceMarkers list.
 
 # Removing Directories
 
 ```{r}
-unlink(basename(sp_url))
-unlink("spatial", recursive = TRUE)
-files <- list.files(".")[grepl(basename(counts_url),list.files("."))]
-unlink(files)
+unlink(file.path(data_dir), recursive = TRUE)
 ```
 
 # References
@@ -795,19 +795,28 @@ knitr::kable(paramTable, col.names = c("Argument","Description"))
 ## getSpatialParameters() Arguments
 
 ```{r echo=FALSE}
-parameters = c('spPatterns')
-paramDescript = c('A data frame of spatial coordinates and patterns.')
+parameters = c('spPatterns','visiumDir','spatialDir','pattern','sigma',
+               'threshold','resolution')
+paramDescript = c('A data frame of spatial coordinates and patterns.',
+                  'A directory with the spatial and expression data for 
+                  the tissue sample',
+                  'A directory with spatial data for the tissue sample',
+                  'A string of the .json filename with the image parameters',
+                  'A numeric value specifying the kernel distribution width',
+                  'A numeric value specifying the outlier threshold for the 
+                  kernel',
+                  'A string specifying the image resolution to scale')
 paramTable = data.frame(parameters, paramDescript)
 knitr::kable(paramTable, col.names = c("Argument","Description"))
 
 ```
 
-## getInteractingGenes() Arguments
+## getPairwiseInteractingGenes() Arguments
 
 ```{r echo=FALSE}
 parameters = c(
         'data','reconstruction', 'optParams','spPatterns',
-            'refPattern','mode', 'minOverlap','hotspotRegions','analysis')
+        'mode', 'minOverlap','hotspotRegions','analysis')
 paramDescript = c(
         'An expression matrix of genes and columns being the samples.',
         'Latent feature matrix. NULL if \'DE\' mode is specified',
@@ -816,7 +825,6 @@ paramDescript = c(
         'A string of the reference pattern for comparison to other patterns',
         'A string specifying either \'residual\' or \'DE\' mode.',
         'A value that specifies the minimum pattern overlap. 50 is the default',
-        'A vector of patterns to compare to the \'refPattern\'',
         'A string specifying the type of analysis')
 paramTable = data.frame(parameters, paramDescript)
 knitr::kable(paramTable, col.names = c("Argument","Description"))

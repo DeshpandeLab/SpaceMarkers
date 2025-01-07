@@ -74,22 +74,20 @@ getOptimalSigmaThresh <- function(pattern, locs, sigVec, threshVec,...){
     return(data.frame(
         sigmaOpt=smallsigVec[sigOpt1_ind],threshOpt=threshVec[threshOpt1_ind]))
 }
+
 #===================
-#' getSpatialParameters
-#' Calculate the Optimal Parameters for Interacting Cells
-#'
-#' This function calculates the optimal width of the gaussian distribution 
-#' (sigmaOpt) as well as the outlier threshold around the set of spots 
-#' (thresOpt) for each pattern from a latent feature space.
-#'
+#' Calculate the optimal parameters from spatial kernel density for 
+#' cell-cell interactions
+#' @description This function uses Morans.I to calculate the optimal width of 
+#' the kernel density (sigmaOpt) as well as the outlier threshold around the set
+#' of spots (threshOpt) for a null distribution.
 #' @export
-#'
 #' @param spatialPatterns  A data frame that contains the spatial coordinates 
 #' for each cell type. The column names must include 'x' and 'y' as well as a 
 #' set of numbered columns named  'Pattern_1.....N'.
 #' @param ... Arguments passed to methods
 #' @return a numeric matrix of sigmaOpts - the optimal width of the gaussian 
-#' distribution, and the thresOpt - outlier threshold around the set of spots 
+#' distribution, and the threshOpt - outlier threshold around the set of spots 
 #' for each pattern
 #' @examples
 #' library(SpaceMarkers)
@@ -104,12 +102,11 @@ getOptimalSigmaThresh <- function(pattern, locs, sigVec, threshVec,...){
 #' x = runif(test_num, min=0, max=test_num),
 #' Pattern_1 = runif(test_num, min=0, max=1),
 #' Pattern_2 = runif(test_num, min=0, max=1) )
-#' # Call the getSpatialParameters function with the test data
-#' optParams <- getSpatialParameters(spPatterns)
+#' # Call the getSpatialParamsMoransI function with the test data
+#' optParams <- getSpatialParamsMoransI(spPatterns)
 #'
-
-getSpatialParameters <- function(spatialPatterns,...){
-    good_gene_threshold <- 3;
+getSpatialParamsMoransI <- function(spatialPatterns,...){
+    .Deprecated(new = "getSpatialParameters")
     sigmaRes <- max(floor(min(diff(range(spatialPatterns$x)),
                                 diff(range(spatialPatterns$y)))/250),1)
     sigVec <- seq(2,40*sigmaRes,sigmaRes)
@@ -117,20 +114,19 @@ getSpatialParameters <- function(spatialPatterns,...){
     patternList <- setdiff(colnames(spatialPatterns),c("barcode","x","y"))
     optParams<-vapply(patternList,function(i) unlist(getOptimalSigmaThresh(
         pattern=spatialPatterns[,i],locs=data.frame(
-        x=spatialPatterns$x,y=spatialPatterns$y),sigVec,threshVec)),numeric(2))
+        x=spatialPatterns$x,y=spatialPatterns$y),sigVec,threshVec,...)),numeric(2))
     return(optParams)
 }
 
 #===================
-#' getSpatialParametersExternal
-#' Manually obtain Optimal Parameters for Interacting cells
+#' Read optimal parameters for spatial kernel density from user input or .json
+#' file
 #'
-#' This function calculates obtains a specified width of a distribution
-#' (sigmaOpt) as well as the outlier threshold around the set of spots 
-#' (thresOpt) for each pattern from a latent feature space.
-#'
+#' @description This function obtains the width of a spatial kernel density
+#' (sigma) from either the user input or from a scale factors .json file. 
+#' The outlier threshold around the set of spots (threshold) for each pattern is
+#' specified  by the user (default is 4). 
 #' @export
-#'
 #' @param spatialPatterns  A data frame that contains the spatial coordinates 
 #' for each cell type. The column names must include 'x' and 'y' as well as a 
 #' set of numbered columns named  'Pattern_1.....N'.
@@ -139,10 +135,15 @@ getSpatialParameters <- function(spatialPatterns,...){
 #' @param spatialDir A string path specifying the location of the spatial folder
 #' containing the .json file of the spot characteristics
 #' @param pattern A string specifying the name of the .json file
-#' @param spotDiameter A numeric value specifying your desired sigma
-#' @param threshold A numeric value specifying your hotspot threshold
+#' @param sigma A numeric value specifying the width of the kernel density 
+#' estimate to be used for smoothing
+#' @param threshold A numeric value specifying how many standard deviations 
+#' above the mean of a null distribution to use an outlier threshold for
+#' identifying 'hotspots'
+#' @param resolution A string specifying image resolution
+#' @param ... Arguments passed to methods
 #' @return a numeric matrix of sigmaOpts - the optimal width of the gaussian 
-#' distribution, and the thresOpt - outlier threshold around the set of spots 
+#' distribution, and the threshOpt - outlier threshold around the set of spots 
 #' for each pattern
 #' @examples
 #' library(SpaceMarkers)
@@ -158,28 +159,49 @@ getSpatialParameters <- function(spatialPatterns,...){
 #' Pattern_1 = runif(test_num, min=0, max=1),
 #' Pattern_2 = runif(test_num, min=0, max=1) )
 #' # Call the getSpatialParameters function with the test data
-#' optParams <- getSpatialParametersExternal(spPatterns, spotDiameter = 10)
+#' optParams <- getSpatialParameters(spPatterns, sigma = 10)
 #'
 
-getSpatialParametersExternal <- function(spatialPatterns,visiumDir = ".",
+getSpatialParameters <- function(spatialPatterns,visiumDir = ".",
                                          spatialDir ="spatial",
                                          pattern = "scalefactors_json.json",
-                                         spotDiameter = NULL,threshold = 3) {
+                                         sigma = NULL,threshold = 4,
+                                         resolution = 
+                                           c("lowres","hires","fullres"), ...) {
     patternList <- setdiff(colnames(spatialPatterns),c("barcode","x","y"))
-    if (!is.null(spotDiameter)) {
-      sigmaOpt <- spotDiameter
+    if (!is.null(sigma)) {
+      sigmaOpt <- sigma
       threshOpt <- threshold
-    } else if (is.null(spotDiameter)) {
-      message("Assuming Visium folder with .json file and spot diamater exists")
-      scale_values <- jsonlite::read_json(file.path(visiumDir,spatialDir,
+    } else if (is.null(sigma) & 
+               file.exists(file.path(visiumDir,spatialDir,pattern))) {
+        message("Reading spot diameter from specified .json file")
+        scale_values <- jsonlite::read_json(file.path(visiumDir,spatialDir,
                                                     pattern))
-      sigmaOpt <- scale_values$spot_diameter_fullres
+      if ("lowres" %in% resolution){
+        resolution <- "lowres"
+      } else if ("hires" %in% resolution){
+        resolution <- "hires"
+      } else if ("fullres" %in% resolution){
+        resolution <- "fullres"
+      } else {
+        stop("Resolution argument not recognized.
+             Please supply either lowres, hires or fullres.")
+      }
+      
       threshOpt <- threshold
+      sigmaOpt <- as.numeric(scale_values$spot_diameter_fullres)
+      if (resolution != "fullres") {
+        scale_factor <- scale_values[grepl(resolution,
+                                           names(scale_values))][[1]]
+        sigmaOpt <- sigmaOpt * as.numeric(scale_factor)
+      } 
+      
       
     } else  {
-      stop("Please specify the spot diameter or correct path to .json")
+      stop("Please specify the sigma or correct path to .json")
     }
-    optParams <-matrix(c(sigmaOpt,threshOpt),nrow = 2,ncol = length(patternList))
+    optParams <-matrix(c(sigmaOpt,threshOpt),nrow = 2,
+                       ncol = length(patternList))
     colnames(optParams) <- patternList
     rownames(optParams) <- c("sigmaOpt","threshOpt")
   return(optParams)

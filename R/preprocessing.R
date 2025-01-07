@@ -12,14 +12,11 @@
 
 #
 #===================
-#' load10XExpr
-#' load 10X Visium Expression Data
-#'
-#' This loads log-transformed 10X Visium expression data from standard 10X 
+#' @title Load 10X Visium Expression Data
+#' @description This loads log-transformed 10X Visium expression data from
+#'  standard 10X 
 #' Visium folder.
-#'
 #' @export
-#'
 #' @param visiumDir  A string path to the h5 file with expression information.
 #' @param h5filename  A string of the name of the h5 file in the directory.
 #' @return A matrix of class dgeMatrix or Matrix that contains the expression 
@@ -67,14 +64,11 @@ load10XExpr<- function(visiumDir=NULL,
 }
 
 #===================
-#' load10XCoords
-#' Load 10x Visium Spatial Coordinates
-#'
-#' This function loads spatial coordinates for each cell from a 10X Visium 
+#' @title Load 10x Visium Spatial Coordinates
+#' @description This function loads spatial coordinates for each cell from a
+#' 10X Visium 
 #' spatial folder.
-#'
 #' @export
-#'
 #' @param visiumDir A string path to the location of the folder containing the 
 #' spatial coordinates. The folder in your visiumDir must be named 'spatial' 
 #' and must contain files 'scalefactors_json.json' 
@@ -147,13 +141,10 @@ load10XCoords <- function(visiumDir, resolution = "lowres", version = NULL){
 }
 
 #===================
-#' getSpatialFeatures
-#' Load spatial features
-#'
-#' This function loads spatial features from a file containing spatial features
-#'
+#' @title Load spatial features
+#' @description This function loads spatial features from a file containing
+#' spatial features
 #' @export
-#'
 #' @param filePath A string path to the location of the file containing the 
 #' spatial features. 
 #' @param method A string specifying the type of object to obtain spatial
@@ -183,7 +174,8 @@ getSpatialFeatures <- function(filePath, method = NULL, featureNames = "."){
 
     spFun <- c("CoGAPS"=.getCogapsFeatures,
                 "BayesTME"=.getBTMEfeatures,
-                "Seurat"=.getSeuratFeatures)
+                "Seurat"=.getSeuratFeatures,
+                "CSV"=.getCSVfeatures)
 
     spFeatures <- spFun[[method]](spObject)
 
@@ -218,7 +210,10 @@ getSpatialFeatures <- function(filePath, method = NULL, featureNames = "."){
         obj <- readRDS(path)
     } else if (grepl(".h5ad",path)){
         obj <- hdf5r::h5file(filename = path, mode='r')
-    } else {
+    } else if (grepl(".csv",path)){
+        obj <- read.csv(path)
+    } else
+    {
         stop("File format not supported.")
     }
     return(obj)
@@ -233,6 +228,12 @@ getSpatialFeatures <- function(filePath, method = NULL, featureNames = "."){
             method <- "BayesTME"
         } else if(inherits(spObject, "CogapsResult")){
             method <- "CoGAPS"
+        } else if(inherits(spObject, "Seurat")){
+            method <- "Seurat"
+        } else if(inherits(spObject, "data.frame")){
+            method <- "CSV"
+        } else {
+            stop("Method not supported.")
         }
     }
     return(method)
@@ -261,7 +262,7 @@ getSpatialFeatures <- function(filePath, method = NULL, featureNames = "."){
     if (is.null(colnames(spFeatures))) {
         colnames(spFeatures)<-paste0("BayesTME_",seq(1,ncol(spFeatures)))
     }
-
+    
     return(spFeatures)
 }
 
@@ -273,8 +274,24 @@ getSpatialFeatures <- function(filePath, method = NULL, featureNames = "."){
     spFeatures <- slot(obj, "meta.data")
     selection <- grepl("_Feature",colnames(spFeatures), ignore.case = TRUE)
     if (!any(selection)){
-        stop("No _feature columns found in Seurat object.")
+        stop("No _Feature columns found in Seurat object.")
     }
     spFeatures <- spFeatures[,selection, drop = FALSE]
+    return(spFeatures)
+}
+
+#' .getCSVFeatures
+#' Load features from dataframe
+#' @keywords internal
+#' 
+.getCSVfeatures <- function(obj){
+    spFeatures <- obj
+    if ("barcode" %in% colnames(spFeatures)){
+        rownames(spFeatures) <- spFeatures$barcode
+    } else {
+        rownames(spFeatures) <- spFeatures[,"X"]
+    }
+    removeCols <- c("NA","barcode","in_tissue","array_row","array_col","pxl_col_in_fullres","pxl_row_in_fullres")
+    spFeatures <- spFeatures[,-which(startsWith(colnames(spFeatures),"X") | colnames(spFeatures) %in% removeCols)]
     return(spFeatures)
 }

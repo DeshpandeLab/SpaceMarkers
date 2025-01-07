@@ -1,13 +1,75 @@
 ## author: Atul Deshpande
 ## email: adeshpande@jhu.edu
 
-find_pattern_hotspots <- function(
+#===================
+#' @title Identify hotspots of spatial pattern influence
+#' @description This function calculates 'hotspots' which are regions of high
+#'  spatial influence based on an outlier threshold from a null distribution. 
+#' @export
+#' @family getIntGenes
+#' @param    spPatterns    A data frame that contains the spatial coordinates 
+#' and metrics for spatial features (cell types/cell processes). The column 
+#' names must include 'x' and 'y' as well as the spatially varying features.
+#' @param    params    a named vector of the optimal sigma and threshold for a 
+#' given spatial pattern. The names are should be 'sigmaOpt' and 'threshOpt'.
+#' The default value is NULL.
+#' @param patternName     a character string that specifies the pattern of 
+#' interest
+#' @param    outlier    a character string specifying whether to apply the 
+#' outlier threshold to the kernel density distribution in a one-sided manner
+#' (specify 'positive' the default) or in a two sided manner (specify 
+#' 'two.sided').
+#' @param nullSamples a numeric values specifying the number of spatial patterns
+#' to randomly sample for a null distribution.
+#' @param    includeSelf    a logic value specifying whether to consider the
+#' spatial influence the pattern has on surrounding regions only (set to FALSE),
+#' or whether to also consider the influence of the pattern itself (set to TRUE
+#' , the default).
+#' @param ... Arguments passed to methods
+#' @return a character vector with the spatial feature name if the spatial 
+#' influence exceeded the threshold for that spot/cell, and NA otherwise
+#' @examples 
+#' library(SpaceMarkers)
+#' #Visium data links
+#' urls <- read.csv(system.file("extdata","visium_data.txt",
+#'                            package="SpaceMarkers",mustWork = TRUE))
+#' sp_url <- urls[["visium_url"]][2]
+#' #Remove present Directories if any
+#' unlink(basename(sp_url))
+#' unlink("spatial", recursive = TRUE)
+#' #Obtaining CoGAPS Patterns i.e Spatial Features
+#' cogaps_result <- readRDS(system.file("extdata","CoGAPS_result.rds",
+#'                                    package="SpaceMarkers",mustWork = TRUE))
+#' spFeatures <- slot(cogaps_result,"sampleFactors")
+#' #Obtaining Spatial Coordinates
+#' download.file(sp_url, basename(sp_url), mode = "wb")
+#' untar(basename(sp_url))
+#' spCoords <- load10XCoords(visiumDir = ".", version = "1.0")
+#' rownames(spCoords) <- spCoords$barcode
+#' #Match Dimensions
+#' barcodes <- intersect(rownames(spFeatures),spCoords$barcode)
+#' spCoords <- spCoords[barcodes,]
+#' spFeatures <- spFeatures[barcodes,]
+#' spPatterns <- cbind(spCoords,spFeatures[barcodes,])
+#' spPatterns<-spPatterns[c("barcode","y","x","Pattern_1","Pattern_5")]
+#' data("optParams")
+#' hotspots <- findPatternHotspots(
+#' spPatterns = spPatterns,
+#' patternName = "Pattern_1",
+#' params = optParams[,"Pattern_1"],
+#' outlier = "positive",nullSamples = 100,includeSelf = TRUE)
+#' #Remove present Directories if any
+#' unlink(basename(sp_url))
+#' unlink("spatial", recursive = TRUE)
+#' 
+
+findPatternHotspots <- function(
         spPatterns, params = NULL, patternName = "Pattern_1",
         outlier = "positive",
     nullSamples = 100, includeSelf = TRUE,...){
     if (is.null(params)){
         sigmaPair <- 10
-        kernelthreshold <- 3
+        kernelthreshold <- 4
     } else {
         sigmaPair <- params["sigmaOpt"]
         kernelthreshold <- params["threshOpt"]
@@ -106,9 +168,8 @@ getSpaceMarkersMetric <- function(interacting.genes){
 
 
 #===================
-#' getInteractingGenes
-#' Calculate Interaction Regions and Associated Genes
-#' This function calculates statistically significant genes using a 
+#' @title Calculate Interaction Regions and Associated Genes
+#' @description This function calculates statistically significant genes using a 
 #' non-parametric Kruskal-Wallis test for genes in any one region 
 #' of influence and a post hoc Dunn's test is used for analysis of 
 #' genes between regions.
@@ -118,17 +179,13 @@ getSpaceMarkersMetric <- function(interacting.genes){
 #' @param    reconstruction    reconstruction of the data matrix from latent 
 #' spaces. Required for "residual" mode.
 #' @param    spPatterns    A data frame that contains the spatial coordinates 
-#' for each cell type. The column names must include 'x' and 'y' as well as a
-#'  set of numbered columns named 'Pattern_1.....N'.
-#' @param    optParams    a matrix with dimensions 2 X N, 
-#' where N is the number
-#'  of patterns with optimal parameters for outlier
-#' detection calculated from function getSpatialParameters(). The first row
-#'  contains the kernel width sigmaOpt for each
-#' pattern, and the second row is the threshOpt (outlier threshold) for each
-#'  pattern. Users can also input their
-#' preferred param values.
-#' The default value is NULL.
+#' and metrics for spatial features (cell types/cell processes). The column 
+#' names must include 'x' and 'y' as well as the spatially varying features.
+#' @param    optParams    a matrix with dimensions 2 X N, where N is the number
+#' of spatial patterns with optimal parameters. The first row contains the 
+#' kernel width 'sigmaOpt' for each pattern, and the second row is the
+#' threshOpt (outlier threshold) for each pattern. Users can also input their
+#' preferred param values. The default value is NULL.
 #' @param refPattern     a character string that specifies the pattern whose
 #'  "interaction" with every other pattern we want
 #' to study. The default value is "Pattern_1".
@@ -145,7 +202,6 @@ getSpaceMarkersMetric <- function(interacting.genes){
 #' and "overlap". In enrichment mode, all genes are returned, ranked by 
 #' the SpaceMarkers metric. In overlap mode, only the genes which are 
 #' significantly overexpressed in the interaction region are returned.
-#' 
 #' @param ... Arguments passed to methods
 #' @return a list of data frames with information about the interacting genes
 #'  of the refPattern and each latent feature pattern matrix 
@@ -212,8 +268,8 @@ getInteractingGenes <- function(data, spPatterns, refPattern="Pattern_1",
     testMat <- gettestMat(data,reconstruction,mode)
     pattList<- setdiff(colnames(spPatterns),c("barcode","x","y"))
     if (is.null(optParams)){
-        message("optParams not provided. Calculating optParams.")
-        optParams <- getSpatialParameters(spPatterns)
+        stop("optParams not provided. Please run getSpatialParameters() to get
+        optParams and pass to the function.")
     } else {
         message("Using user provided optParams.")
         if (any(colnames(optParams)!=pattList)) stop(
@@ -226,7 +282,7 @@ getInteractingGenes <- function(data, spPatterns, refPattern="Pattern_1",
         hotspots <- c()
         for (patternName in pattList) {
             hotspots <- cbind(
-                hotspots,find_pattern_hotspots(
+                hotspots,findPatternHotspots(
                     spPatterns=spPatterns,patternName=patternName,
                     params=optParams[,patternName],outlier = "positive") )
         }
@@ -428,10 +484,9 @@ getPatternPairs <- function(patternList, patternPairs) {
         else
             stop("patternPairs must either be a 2-column matrix 
                 or a list of vectors.")
-        
+        mess <- paste0(setdiff(patternPairs, patternList)," ")
         if (!all(patternPairs %in% patternList)) 
-            stop("Following are not pattern names: ", 
-                paste0(setdiff(patternPairs, patternList)," "))
+            stop("Following are not pattern names: ",mess )
     }
     return(patternPairs)
 }

@@ -2,8 +2,7 @@
 % Please edit documentation in R/preprocessing.R
 \name{getSpatialFeatures}
 \alias{getSpatialFeatures}
-\title{getSpatialFeatures
-Load spatial features}
+\title{Load spatial features}
 \usage{
 getSpatialFeatures(filePath, method = NULL, featureNames = ".")
 }
@@ -24,7 +23,8 @@ a matrix of spatial features with barcodes associated
 with individual coordinates
 }
 \description{
-This function loads spatial features from a file containing spatial features
+This function loads spatial features from a file containing
+spatial features
 }
 \examples{
 library(SpaceMarkers)

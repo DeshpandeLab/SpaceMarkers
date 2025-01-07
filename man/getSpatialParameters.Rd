@@ -2,27 +2,54 @@
 % Please edit documentation in R/getSpatialParameters.R
 \name{getSpatialParameters}
 \alias{getSpatialParameters}
-\title{getSpatialParameters
-Calculate the Optimal Parameters for Interacting Cells}
+\title{Read optimal parameters for spatial kernel density from user input or .json
+file}
 \usage{
-getSpatialParameters(spatialPatterns, ...)
+getSpatialParameters(
+  spatialPatterns,
+  visiumDir = ".",
+  spatialDir = "spatial",
+  pattern = "scalefactors_json.json",
+  sigma = NULL,
+  threshold = 4,
+  resolution = c("lowres", "hires", "fullres"),
+  ...
+)
 }
 \arguments{
 \item{spatialPatterns}{A data frame that contains the spatial coordinates
 for each cell type. The column names must include 'x' and 'y' as well as a
 set of numbered columns named  'Pattern_1.....N'.}
 
+\item{visiumDir}{A string path specifying the location of the 10xVisium
+directory}
+
+\item{spatialDir}{A string path specifying the location of the spatial folder
+containing the .json file of the spot characteristics}
+
+\item{pattern}{A string specifying the name of the .json file}
+
+\item{sigma}{A numeric value specifying the width of the kernel density
+estimate to be used for smoothing}
+
+\item{threshold}{A numeric value specifying how many standard deviations
+above the mean of a null distribution to use an outlier threshold for
+identifying 'hotspots'}
+
+\item{resolution}{A string specifying image resolution}
+
 \item{...}{Arguments passed to methods}
 }
 \value{
 a numeric matrix of sigmaOpts - the optimal width of the gaussian
-distribution, and the thresOpt - outlier threshold around the set of spots
+distribution, and the threshOpt - outlier threshold around the set of spots
 for each pattern
 }
 \description{
-This function calculates the optimal width of the gaussian distribution
-(sigmaOpt) as well as the outlier threshold around the set of spots
-(thresOpt) for each pattern from a latent feature space.
+This function obtains the width of a spatial kernel density
+(sigma) from either the user input or from a scale factors .json file.
+The outlier threshold around the set of spots (threshold) for each pattern is
+specified  by the user (default is 4).
 }
 \examples{
 library(SpaceMarkers)
@@ -38,6 +65,6 @@ x = runif(test_num, min=0, max=test_num),
 Pattern_1 = runif(test_num, min=0, max=1),
 Pattern_2 = runif(test_num, min=0, max=1) )
 # Call the getSpatialParameters function with the test data
-optParams <- getSpatialParameters(spPatterns)
+optParams <- getSpatialParameters(spPatterns, sigma = 10)
 
 }

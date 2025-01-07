@@ -17,14 +17,24 @@ test_that("getInteracting genes return empty interacting_genes object when no in
                            x = runif(cell_num , min=0, max=cell_num ),
                            "Pattern_1" = runif(cell_num , min=0, max=1),
                            "Pattern_2" = runif(cell_num , min=0, max=1))
-  
   optParams <- NULL
-  output <- getInteractingGenes(data=data, spPatterns, reconstruction=NULL,
+  expect_error(output <- getInteractingGenes(data=data, spPatterns,
+      reconstruction=NULL,
+      optParams = optParams,
+      spPatterns = spPatterns,
+      refPattern = "Pattern_1",
+      mode="DE",analysis="overlap"))
+  
+  optParams <- matrix(c(7,2.1,6.4,1.2), nrow=2, ncol=2)
+  rownames(optParams) <- c("sigmaOpt","threshOpt")
+  colnames(optParams) <- c("Pattern_1","Pattern_2")
+  suppressWarnings(output <- getInteractingGenes(data=data, spPatterns,
+                                                 reconstruction=NULL,
                                 optParams = optParams,
                                 spPatterns = spPatterns,
                                 refPattern = "Pattern_1",
-                                mode="DE",analysis="overlap")
-  # Checkin result if no interacting genes found
+                                mode="DE",analysis="overlap"))
+  # Checking result if no interacting genes found
   res<-evaluate_promise(output$interacting_genes)
   expect_equal(res$result, list())
   
