@@ -169,24 +169,15 @@ based model. Spots that have spatial influence beyond the defined outlier
 threshold are termed **hotspots**. SpaceMarkers then identifies where the
 hotspots are overlapping/interacting and where they are mutually exclusive.
 
-getSpatialParameters: This function identifies the optimal width of the a
-distribution (sigmaOpt) as well as the outlier threshold around the set of spots
-(thresOpt) for each pattern.  These parameters minimize the spatial 
-autocorrelation residuals of the spots in the regions of influence and are
-caluculated using Morans.I. The spPatterns object is the sole parameter for 
-this function.getSpatialParameters took approximately 5 minutes on a MacBook
-Pro Quad-Intel Core i5 processor with 16 GB of memory. Therefore we can load 
-this data from a previous run by specifying data("optParams"). 
-
-To circumvent this issue in practice, we have also provided a function,
-getSpatialParamsExternal. This allows the user to specify the sigma of the
-distribution or pull it from the spot diameter on file, which we have found
-to be a good estimate. 
+getSpatialParameters: This function sets the width of the spatial kernel 
+(sigmaOpt) as well as the outlier threshold around the set of spots
+(threshOpt) for each pattern. By default, the sigmaOpt is set to the spot 
+diameter at the appropriate resolution. Note that the legacy function has been
+deprecated and has been renamed to getSpatialParamsMoransI. Please read the 
+documentation for more information.
 
 ```{r}
-message("Note that getSpatialParameters is deprecated. 
-        Use getSpatialParamsExternal instead.")
-optParams <- getSpatialParamsExternal(spPatterns,visiumDir = data_dir,
+optParams <- getSpatialParameters(spPatterns,visiumDir = data_dir,
                                           resolution = "lowres")
 ```
 
@@ -679,7 +670,7 @@ of individual genes across different patterns.
 
 ### Pattern_1
 
-```{r}
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 plotSpatialData(
     spatial_data = cbind(spPatterns, counts_df), 
                 positions_path = tissue_paths,
@@ -693,7 +684,7 @@ plotSpatialData(
 
 ### Pattern_5
 
-```{r}
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 plotSpatialData(
     spatial_data = cbind(spPatterns, counts_df), 
                 positions_path = tissue_paths,
@@ -711,7 +702,7 @@ the immune pattern is prevalent along the diagonal of the tissue image.
 
 ### Top SpaceMarkers
 
-```{r, message=FALSE, warning=FALSE, dpi=36, fig.width=12, fig.height=5}
+```{r, message=FALSE, warning=FALSE, dpi=36, fig.width=6, fig.height=2.5}
 plot_grid(plotlist = list(exprPlots[[1]],spatialMaps[[1]]))
 plot_grid(plotlist = list(exprPlots[[2]],spatialMaps[[2]]))
 ```
@@ -722,7 +713,7 @@ expressed in the interacting region relative to both Pattern_1 and Pattern_5.
 The second gene also has a similar expression profile. 
 
 
-```{r, message=FALSE, dpi=36, warning=FALSE, fig.width=12, fig.height=5}
+```{r, message=FALSE, dpi=36, warning=FALSE, fig.width=6, fig.height=2.5}
 plot_grid(plotlist = list(exprPlots[[3]],spatialMaps[[3]]))
 ```
 
@@ -801,7 +792,7 @@ knitr::kable(paramTable, col.names = c("Argument","Description"))
 
 ```
 
-## getSpatialParamsExternal() Arguments
+## getSpatialParameters() Arguments
 
 ```{r echo=FALSE}
 parameters = c('spPatterns','visiumDir','spatialDir','pattern','sigma',

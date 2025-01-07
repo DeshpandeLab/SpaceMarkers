@@ -174,7 +174,8 @@ getSpatialFeatures <- function(filePath, method = NULL, featureNames = "."){
 
     spFun <- c("CoGAPS"=.getCogapsFeatures,
                 "BayesTME"=.getBTMEfeatures,
-                "Seurat"=.getSeuratFeatures)
+                "Seurat"=.getSeuratFeatures,
+                "CSV"=.getCSVfeatures)
 
     spFeatures <- spFun[[method]](spObject)
 
@@ -209,7 +210,10 @@ getSpatialFeatures <- function(filePath, method = NULL, featureNames = "."){
         obj <- readRDS(path)
     } else if (grepl(".h5ad",path)){
         obj <- hdf5r::h5file(filename = path, mode='r')
-    } else {
+    } else if (grepl(".csv",path)){
+        obj <- read.csv(path)
+    } else
+    {
         stop("File format not supported.")
     }
     return(obj)
@@ -224,6 +228,12 @@ getSpatialFeatures <- function(filePath, method = NULL, featureNames = "."){
             method <- "BayesTME"
         } else if(inherits(spObject, "CogapsResult")){
             method <- "CoGAPS"
+        } else if(inherits(spObject, "Seurat")){
+            method <- "Seurat"
+        } else if(inherits(spObject, "data.frame")){
+            method <- "CSV"
+        } else {
+            stop("Method not supported.")
         }
     }
     return(method)
@@ -252,7 +262,7 @@ getSpatialFeatures <- function(filePath, method = NULL, featureNames = "."){
     if (is.null(colnames(spFeatures))) {
         colnames(spFeatures)<-paste0("BayesTME_",seq(1,ncol(spFeatures)))
     }
-
+    
     return(spFeatures)
 }
 
@@ -264,8 +274,24 @@ getSpatialFeatures <- function(filePath, method = NULL, featureNames = "."){
     spFeatures <- slot(obj, "meta.data")
     selection <- grepl("_Feature",colnames(spFeatures), ignore.case = TRUE)
     if (!any(selection)){
-        stop("No _feature columns found in Seurat object.")
+        stop("No _Feature columns found in Seurat object.")
     }
     spFeatures <- spFeatures[,selection, drop = FALSE]
+    return(spFeatures)
+}
+
+#' .getCSVFeatures
+#' Load features from dataframe
+#' @keywords internal
+#' 
+.getCSVfeatures <- function(obj){
+    spFeatures <- obj
+    if ("barcode" %in% colnames(spFeatures)){
+        rownames(spFeatures) <- spFeatures$barcode
+    } else {
+        rownames(spFeatures) <- spFeatures[,"X"]
+    }
+    removeCols <- c("NA","barcode","in_tissue","array_row","array_col","pxl_col_in_fullres","pxl_row_in_fullres")
+    spFeatures <- spFeatures[,-which(startsWith(colnames(spFeatures),"X") | colnames(spFeatures) %in% removeCols)]
     return(spFeatures)
 }
