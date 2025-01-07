@@ -280,7 +280,7 @@ getSpatialFeatures <- function(filePath, method = NULL, featureNames = "."){
     return(spFeatures)
 }
 
-#' .getDfFeatures
+#' .getCSVFeatures
 #' Load features from dataframe
 #' @keywords internal
 #' 
