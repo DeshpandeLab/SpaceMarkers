@@ -125,7 +125,7 @@ test_that("Single pair of patterns", {
 
 test_that("getPairwiseInteractingGenes works with specified hotspots", {
     args <- createSampleData()
-    spHotspots <- findAllHotspots(spPatterns = spPatterns, params = optParams,
+    spHotspots <- findAllHotspots(spPatterns = args$spPatterns, params = args$optParams,
         outlier = "positive", nullSamples = 1000, includeSelf = TRUE)
 
     suppressMessages({
