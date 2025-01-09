@@ -111,6 +111,27 @@ findPatternHotspots <- function(
     return(region)
 }
 
+#===================
+#' @title Find hotpots for all spatial patterns
+#' @description Convenience function to find hotspots for all spatial patterns
+#' @export
+
+findAllHotspots <- function(spPatterns, params = NULL, outlier = "positive",
+                        nullSamples = 100, includeSelf = TRUE,...){
+    pattList <- setdiff(colnames(spPatterns),c("x","y","barcode"))
+    hotspots <- matrix(NA, nrow=nrow(spPatterns), ncol=length(pattList))
+    colnames(hotspots) <- pattList
+    for (patternName in pattList){
+        hotspots[,patternName] <- findPatternHotspots(
+            spPatterns = spPatterns, params = params[,patternName],
+            patternName = patternName, outlier = outlier,
+            nullSamples = nullSamples, includeSelf = includeSelf,...)
+    }
+    hotspots <- cbind(spPatterns[c("barcode","y","x")],hotspots)
+    row.names(hotspots) <- hotspots$barcode
+    return(as.data.frame(hotspots))
+}
+
 gettestMat <- function(data,reconstruction,mode){
     if ("DE" %in% mode)
         testMat <- data
