@@ -5,8 +5,8 @@ test_that("No patternPairs - computes all pairs", {
     # Call the function
     
     suppressMessages(
-        result <- getPairwiseInteractingGenes(data=args$data, 
-        spPatterns=args$spPatterns, 
+        result <- getPairwiseInteractingGenes(data=args$data,
+        spPatterns=args$spPatterns,
         optParams=args$optParams, minOverlap = 0)
     )
     patnames <- setdiff(colnames(args$spPatterns), c("x", "y", "barcode"))
@@ -121,4 +121,20 @@ test_that("Single pair of patterns", {
     
     # Check the names of the results
     expect_equal(names(result), "pattern1_pattern2")
+})
+
+test_that("getPairwiseInteractingGenes works with specified hotspots", {
+    args <- createSampleData()
+    spHotspots <- findAllHotspots(spPatterns = spPatterns, params = optParams,
+        outlier = "positive", nullSamples = 1000, includeSelf = TRUE)
+
+    suppressMessages({
+        interactingGenes <- getPairwiseInteractingGenes(
+            data=args$data,
+            spPatterns=args$spPatterns,
+            optParams=args$optParams,
+            minOverlap = 0,
+            hotspots = spHotspots)})
+    expect_true(is.list(interactingGenes))
+
 })
