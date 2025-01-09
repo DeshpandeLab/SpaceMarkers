@@ -114,6 +114,24 @@ findPatternHotspots <- function(
 #===================
 #' @title Find hotpots for all spatial patterns
 #' @description Convenience function to find hotspots for all spatial patterns
+#' @param   spPatterns    A data frame that contains the spatial coordinates
+#' and metrics for spatial features (cell types/cell processes). The column
+#' names must include 'x' and 'y' as well as the spatially varying features.
+#' @param   params    a matrix with dimensions 2 X N, where N is the number of
+#' spatial patterns with optimal parameters. The first row contains the kernel
+#' width 'sigmaOpt' for each pattern, and the second row is the threshOpt
+#' (outlier threshold) for each pattern. Users can also input their preferred
+#' param values. The default value is NULL.
+#' @param   outlier    a character string specifying whether to apply the outlier
+#' threshold to the kernel density distribution in a one-sided manner (specify
+#' 'positive' the default) or in a two sided manner (specify 'two.sided').
+#' @param   nullSamples a numeric values specifying the number of spatial patterns
+#' to randomly sample for a null distribution.
+#' @param   includeSelf    a logic value specifying whether to consider the spatial
+#' influence the pattern has on surrounding regions only (set to FALSE), or
+#' whether to also consider the influence of the pattern itself (set to TRUE,
+#' the default).
+#' @param ... Arguments passed to methods
 #' @export
 
 findAllHotspots <- function(spPatterns, params = NULL, outlier = "positive",
