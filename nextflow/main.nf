@@ -9,7 +9,7 @@ process SPACEMARKERS {
     tuple val(meta), path("${prefix}/spPatterns.rds"), val(source),         emit: spPatterns
     tuple val(meta), path("${prefix}/optParams.rds"), val(source),          emit: optParams
     tuple val(meta), path("${prefix}/spaceMarkersObject.rds"), val(source), emit: spaceMarkers
-    tuple val(meta), path("${prexix}/hotspots.rds"), val(source),           emit: hotspots
+    tuple val(meta), path("${prefix}/hotspots.rds"), val(source),           emit: hotspots
     path  "versions.yml",                                                   emit: versions
 
   stub:
