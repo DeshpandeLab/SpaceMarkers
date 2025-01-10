@@ -57,16 +57,16 @@
 #' spPatterns = spPatterns,
 #' patternName = "Pattern_1",
 #' params = optParams[,"Pattern_1"],
-#' outlier = "positive",nullSamples = 100,includeSelf = TRUE)
+#' outlier = "positive",nullSamples = 1000,includeSelf = TRUE)
 #' #Remove present Directories if any
 #' unlink(basename(sp_url))
 #' unlink("spatial", recursive = TRUE)
 #' 
 
 findPatternHotspots <- function(
-        spPatterns, params = NULL, patternName = "Pattern_1",
-        outlier = "positive",
-    nullSamples = 100, includeSelf = TRUE,...){
+    spPatterns, params = NULL, patternName = "Pattern_1",
+    outlier = "positive",
+    nullSamples = 1000, includeSelf = TRUE,...){
     if (is.null(params)){
         sigmaPair <- 10
         kernelthreshold <- 4
@@ -109,6 +109,28 @@ findPatternHotspots <- function(
     region <- array(NA, length(Kact1))
     region[ind1] <- patternName
     return(region)
+}
+
+#===================
+#' @title Find hotSpots for all spatial patterns
+#' @description Convenience function to find hotspots for all spatial patterns
+#' @inheritParams findPatternHotspots
+#' @export
+
+findAllHotspots <- function(spPatterns, params = NULL, outlier = "positive",
+                        nullSamples = 1000, includeSelf = TRUE,...){
+    pattList <- setdiff(colnames(spPatterns),c("x","y","barcode"))
+    hotspots <- matrix(NA, nrow=nrow(spPatterns), ncol=length(pattList))
+    colnames(hotspots) <- pattList
+    for (patternName in pattList){
+        hotspots[,patternName] <- findPatternHotspots(
+            spPatterns = spPatterns, params = params[,patternName],
+            patternName = patternName, outlier = outlier,
+            nullSamples = nullSamples, includeSelf = includeSelf,...)
+    }
+    hotspots <- cbind(spPatterns[c("barcode","y","x")],hotspots)
+    row.names(hotspots) <- hotspots$barcode
+    return(as.data.frame(hotspots))
 }
 
 gettestMat <- function(data,reconstruction,mode){

@@ -6,10 +6,11 @@ process SPACEMARKERS {
   input:
     tuple val(meta), path(features), path(data)
   output:
-    tuple val(meta), path("${prefix}/spPatterns.rds"), val(source),   emit: spPatterns
-    tuple val(meta), path("${prefix}/optParams.rds"), val(source),    emit: optParams
-    tuple val(meta), path("${prefix}/spaceMarkers.rds"), val(source), emit: spaceMarkers
-    path  "versions.yml",                                             emit: versions
+    tuple val(meta), path("${prefix}/spPatterns.rds"), val(source),         emit: spPatterns
+    tuple val(meta), path("${prefix}/optParams.rds"), val(source),          emit: optParams
+    tuple val(meta), path("${prefix}/spaceMarkersObject.rds"), val(source), emit: spaceMarkers
+    tuple val(meta), path("${prexix}/hotSpots.rds"), val(source),           emit: hotSpots
+    path  "versions.yml",                                                   emit: versions
 
   stub:
     def args = task.ext.args ?: ''
@@ -19,7 +20,7 @@ process SPACEMARKERS {
     mkdir -p "${prefix}"
     touch "${prefix}/spPatterns.rds"
     touch "${prefix}/optParams.rds"
-    touch "${prefix}/spaceMarkers.rds"
+    touch "${prefix}/spaceMarkersObject.rds"
     cat <<-END_VERSIONS > versions.yml
       "${task.process}":
           SpaceMarkers: \$(Rscript -e 'print(packageVersion("SpaceMarkers"))' | awk '{print \$2}')
@@ -54,15 +55,20 @@ process SPACEMARKERS {
     optParams <- getSpatialParameters(spPatterns, visiumDir="$data");
     saveRDS(optParams, file = "${prefix}/optParams.rds")
 
+    #find hotspots in spatial patterns
+    hotSpots <- findAllHotspots(spPatterns);
+    saveRDS(hotSpots, file = "${prefix}/hotSpots.rds");
+
     #find genes that are differentially expressed in spatial patterns
     spaceMarkers <- getPairwiseInteractingGenes(data = dataMatrix,
                                                   optParams = optParams,
                                                   spPatterns = spPatterns,
+                                                  hotSpots = hotSpots,
                                                   mode = "DE",
                                                   analysis="enrichment",
 					                                        workers=$task.cpus)
 
-    saveRDS(spaceMarkers, file = "${prefix}/spaceMarkers.rds")
+    saveRDS(spaceMarkers, file = "${prefix}/spaceMarkersObject.rds")
 
     # Get the versions of the packages
     spaceMarkersVersion <- packageVersion("SpaceMarkers")
@@ -193,8 +199,8 @@ process SPACEMARKERS_IMSCORES {
   input:
     tuple val(meta), path(spaceMarkers), val(source)
   output:
-    tuple val(meta), path("${prefix}/imscores.csv"), emit: spacemarkers_imscores
-    path  "versions.yml",                            emit: versions
+    tuple val(meta), path("${prefix}/spaceMarkers.csv"), emit: spacemarkers_imscores
+    path  "versions.yml",                                   emit: versions
 
   script:
     def args = task.ext.args ?: ''
@@ -222,7 +228,7 @@ process SPACEMARKERS_IMSCORES {
         imscores <- data.frame(Gene=character(0))
     }
   
-    write.csv(imscores, file = "${prefix}/imscores.csv", row.names = FALSE)
+    write.csv(imscores, file = "${prefix}/spaceMarkers.csv", row.names = FALSE)
 
     # Get the versions of the packages
     spaceMarkersVersion <- packageVersion("SpaceMarkers")

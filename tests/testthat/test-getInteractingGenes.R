@@ -41,5 +41,5 @@ test_that("getInteracting genes return empty interacting_genes object when no in
 })
 
 test_that("test no interacting genes in nmf output", {
-    expect_no_error(getSpaceMarkersMetric(list()))
+    expect_true(is.list(getSpaceMarkersMetric(list())))
 })
