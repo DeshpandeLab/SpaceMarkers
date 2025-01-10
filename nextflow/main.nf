@@ -9,7 +9,7 @@ process SPACEMARKERS {
     tuple val(meta), path("${prefix}/spPatterns.rds"), val(source),         emit: spPatterns
     tuple val(meta), path("${prefix}/optParams.rds"), val(source),          emit: optParams
     tuple val(meta), path("${prefix}/spaceMarkersObject.rds"), val(source), emit: spaceMarkers
-    tuple val(meta), path("${prexix}/hotSpots.rds"), val(source),           emit: hotSpots
+    tuple val(meta), path("${prexix}/hotspots.rds"), val(source),           emit: hotspots
     path  "versions.yml",                                                   emit: versions
 
   stub:
@@ -56,14 +56,14 @@ process SPACEMARKERS {
     saveRDS(optParams, file = "${prefix}/optParams.rds")
 
     #find hotspots in spatial patterns
-    hotSpots <- findAllHotspots(spPatterns);
-    saveRDS(hotSpots, file = "${prefix}/hotSpots.rds");
+    hotspots <- findAllHotspots(spPatterns);
+    saveRDS(hotspots, file = "${prefix}/hotspots.rds");
 
     #find genes that are differentially expressed in spatial patterns
     spaceMarkers <- getPairwiseInteractingGenes(data = dataMatrix,
                                                   optParams = optParams,
                                                   spPatterns = spPatterns,
-                                                  hotSpots = hotSpots,
+                                                  hotspots = hotspots,
                                                   mode = "DE",
                                                   analysis="enrichment",
 					                                        workers=$task.cpus)
