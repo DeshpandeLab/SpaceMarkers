@@ -9,7 +9,7 @@ findPatternHotspots(
   params = NULL,
   patternName = "Pattern_1",
   outlier = "positive",
-  nullSamples = 100,
+  nullSamples = 1000,
   includeSelf = TRUE,
   ...
 )
@@ -78,7 +78,7 @@ hotspots <- findPatternHotspots(
 spPatterns = spPatterns,
 patternName = "Pattern_1",
 params = optParams[,"Pattern_1"],
-outlier = "positive",nullSamples = 100,includeSelf = TRUE)
+outlier = "positive",nullSamples = 1000,includeSelf = TRUE)
 #Remove present Directories if any
 unlink(basename(sp_url))
 unlink("spatial", recursive = TRUE)
