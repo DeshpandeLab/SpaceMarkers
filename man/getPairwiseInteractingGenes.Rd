@@ -22,21 +22,17 @@ getPairwiseInteractingGenes(
 \item{data}{original spatial data matrix.}
 
 \item{spPatterns}{A data frame that contains the spatial coordinates
-for each cell type. The column names must include 'x' and 'y' as well as a
-set of numbered columns named 'Pattern_1.....N'.}
+and metrics for spatial features (cell types/cell processes). The column
+names must include 'x' and 'y' as well as the spatially varying features.}
 
 \item{mode}{SpaceMarkers mode of operation. Possible values are
 "DE" (the default) or "residual".}
 
-\item{optParams}{a matrix with dimensions 2 X N,
-where N is the number
-of patterns with optimal parameters for outlier
-detection calculated from function getSpatialParameters(). The first row
-contains the kernel width sigmaOpt for each
-pattern, and the second row is the threshOpt (outlier threshold) for each
-pattern. Users can also input their
-preferred param values.
-The default value is NULL.}
+\item{optParams}{a matrix with dimensions 2 X N, where N is the number
+of spatial patterns with optimal parameters. The first row contains the
+kernel width 'sigmaOpt' for each pattern, and the second row is the
+threshOpt (outlier threshold) for each pattern. Users can also input their
+preferred param values. The default value is NULL.}
 
 \item{reconstruction}{reconstruction of the data matrix from latent
 spaces. Required for "residual" mode.}
@@ -120,7 +116,7 @@ colnames(optParams) <- c("Pattern_1","Pattern_3","Pattern_5")
 SpaceMarkersMode <- "DE"
 patternPairs <- matrix(c("Pattern_1", "Pattern_1", 
            "Pattern_3", "Pattern_5"), nrow=2)
-SpaceMarkers_test <- getPairwiseInteractingGenes(
+SpaceMarkers <- getPairwiseInteractingGenes(
     data=counts_matrix,reconstruction=NULL,
     optParams = optParams,
     spPatterns = spPatterns,
@@ -134,6 +130,7 @@ unlink(files)
 }
 \seealso{
 Other getIntGenes: 
+\code{\link{findPatternHotspots}()},
 \code{\link{getInteractingGenes}()}
 }
 \concept{getIntGenes}
