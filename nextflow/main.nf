@@ -97,10 +97,12 @@ process SPACEMARKERS_PLOTS {
   container 'ghcr.io/deshpandelab/spacemarkers:nextflow'
 
   input:
-  tuple val(meta), path(overlapScores), val(source)
+  tuple val(meta), path(overlapScores), path(spaceMarkers), val(source)
+
   output:
-  tuple val(meta), path("${prefix}/overlapScores.png"),     emit: overlapScores_plot
-  path  "versions.yml",                                     emit: versions
+  tuple val(meta), path("${prefix}/overlapScores.png"),         val(source)     emit: overlapScores_plot
+  tuple val(meta), path("${prefix}/*_interacting_genes.png"),   val(source)     emit: interaction_plots
+  path  "versions.yml",                                                         emit: versions
 
   script:
   def args = task.ext.args ?: ''
@@ -118,6 +120,14 @@ process SPACEMARKERS_PLOTS {
                                     levels = unique(overlaps[["pattern2"]]))
   plot <- plotOverlapScores(overlaps)
   ggplot2::ggsave("${prefix}/overlapScores.png", plot)
+
+  #plot interaction plots
+  sm <- readRDS("$spaceMarkers")
+  plot_names <- names(sm[,(tolower(names(sm))!="gene")])
+  for (plot_name in plot_names) {
+    plot <- plotIMScores(sm, plot_name)
+    ggplot2::ggsave(paste0("${prefix}/", plot_name, "_interacting_genes.png"), plot)
+  }
 
   # Get the versions of the packages
   spaceMarkersVersion <- packageVersion("SpaceMarkers")

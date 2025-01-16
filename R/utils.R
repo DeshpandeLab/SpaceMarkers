@@ -55,7 +55,7 @@ getOverlapScores <- function(hotspots,
 #' plotOverlapScores(df, "Overlap Scores", "overlapScores.png", 15)
 #' @import ggplot2
 #'
-plotOverlapScores <- function(df, title = "Spatial Overlap Scores", output_path = "overlapScores.png",fontsize = 15) {
+plotOverlapScores <- function(df, title = "Spatial Overlap Scores", out = NULL,fontsize = 15) {
     p <- ggplot2::ggplot(data = df, aes(pattern1, pattern2, fill = overlapScore)) +
         geom_tile(color = "black", size = 0.8) +
         geom_text(aes(label = round(overlapScore, 2)), size = 6) +  # Display values on the plot
@@ -73,7 +73,9 @@ plotOverlapScores <- function(df, title = "Spatial Overlap Scores", output_path 
             panel.grid.major = element_blank(),
             panel.border = element_blank()
         )
-
+    if(!is.null(out)){
+        ggplot2::ggsave(filename = out, plot = p)
+    }
     return(p)
 }
 
@@ -104,4 +106,46 @@ getIMScores <- function(SpaceMarkers){
         imscores <- data.frame(Gene=character(0))
     }
     return(imscores)
+}
+
+
+#' @title plotIMScores
+#' @description Plot the top SpaceMarkers IMScores
+#' @param df A data frame with columns Gene and SpaceMarkersMetric
+#' @param interaction The interaction to plot
+#' @param cutOff The cut off value for the plot
+#' @param nGenes The number of genes to plot
+#' @param geneText The font size for the gene text
+#' @param metricText The font size for the metric text
+#' @param increments The increments for the y-axis
+#' @param out The output path for the plot
+#' @export
+#' @examples 
+#' example(getPairwiseInteractingGenes)
+#' plotTopSpaceMarkers(getIMScores(SpaceMarkers), "PDAC", 0.5, 20, 12, 12, 1)
+#' 
+plotIMScores <- function(df, interaction, cutOff = 0, nGenes = 20,
+    geneText = 12, metricText = 12, increments = 1, out = NULL) {
+    df$genes <- df$Gene
+    df <- df[order(df[[interaction]], decreasing = TRUE),]
+    df <- head(df,nGenes)
+    df[[interaction]] <- round(df[[interaction]],2)
+    
+    p1 <- ggplot2::ggplot(df, ggplot2::aes(x = reorder(Gene,!!sym(interaction)), y = !!sym(interaction))) +
+                geom_bar(stat = "identity",
+                show.legend = FALSE,
+                fill = "blue",      # Background color
+                color = "blue") + 
+        theme(axis.text.x = element_text(size = metricText, angle=0), axis.text.y = element_text(angle = 0, size = geneText)) +
+        xlab("Genes") +
+        ylab("SpaceMarkers Metric") +
+        ggtitle(interaction) + 
+        scale_y_continuous(breaks= seq(0, max(df[[interaction]]),
+            by = increments),
+            limits = c(0, max(df[[interaction]]) + 0.2)) +
+        coord_flip()
+    if (!is.null(out)){
+        ggplot2::ggsave(filename = out,plot = p1)
+    }
+    return(p1)
 }

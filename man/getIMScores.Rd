@@ -18,4 +18,5 @@ Get the interaction scores for SpaceMarkers
 \examples{
 example(getPairwiseInteractingGenes)
 getIMScores(SpaceMarkers)
+
 }

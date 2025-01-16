@@ -7,7 +7,7 @@
 plotOverlapScores(
   df,
   title = "Spatial Overlap Scores",
-  output_path = "overlapScores.png",
+  out = NULL,
   fontsize = 15
 )
 }
@@ -16,9 +16,9 @@ plotOverlapScores(
 
 \item{title}{The title of the plot}
 
-\item{output_path}{The path to save the plot}
-
 \item{fontsize}{The font size of the plot}
+
+\item{output_path}{The path to save the plot}
 }
 \value{
 A ggplot object
