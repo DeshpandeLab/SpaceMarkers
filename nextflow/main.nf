@@ -81,7 +81,7 @@ process SPACEMARKERS {
 
     #save SpaceMarkers Interaction Scores
     IMScores <- getIMScores(spaceMarkers)
-    write.csv(IMScores, file = "${prefix}/SpaceMarkers.csv", row.names = FALSE)
+    write.csv(IMScores, file = "${prefix}/spaceMarkers.csv", row.names = FALSE)
 
     # Get the versions of the packages
     spaceMarkersVersion <- packageVersion("SpaceMarkers")
@@ -110,7 +110,7 @@ process SPACEMARKERS_PLOTS {
   dir.create("${prefix}", showWarnings = FALSE, recursive = TRUE)
   library("SpaceMarkers")
   overlaps <- read.csv("$overlapScores")
-  
+
   #getOverlapScores needs factors to be ordered
   overlaps[["pattern1"]] <- factor(overlaps[["pattern1"]], 
                                     levels = unique(overlaps[["pattern1"]]))
