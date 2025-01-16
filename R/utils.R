@@ -45,8 +45,8 @@ getOverlapScores <- function(hotspots,
 #' @description Plot the overlap scores between patterns in hotspots
 #' @param df A data frame with columns pattern1, pattern2 and overlapScore
 #' @param title The title of the plot
-#' @param output_path The path to save the plot
 #' @param fontsize The font size of the plot
+#' @param out The output path for the plot
 #' @return A ggplot object
 #' @export
 #' @examples
@@ -122,7 +122,7 @@ getIMScores <- function(SpaceMarkers){
 #' @export
 #' @examples 
 #' example(getPairwiseInteractingGenes)
-#' plotTopSpaceMarkers(getIMScores(SpaceMarkers), "PDAC", 0.5, 20, 12, 12, 1)
+#' plotIMScores(getIMScores(SpaceMarkers), "PDAC", 0.5, 20, 12, 12, 1)
 #' 
 plotIMScores <- function(df, interaction, cutOff = 0, nGenes = 20,
     geneText = 12, metricText = 12, increments = 1, out = NULL) {

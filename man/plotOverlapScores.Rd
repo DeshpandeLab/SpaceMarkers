@@ -16,9 +16,9 @@ plotOverlapScores(
 
 \item{title}{The title of the plot}
 
-\item{fontsize}{The font size of the plot}
+\item{out}{The output path for the plot}
 
-\item{output_path}{The path to save the plot}
+\item{fontsize}{The font size of the plot}
 }
 \value{
 A ggplot object

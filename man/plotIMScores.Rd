@@ -37,6 +37,6 @@ Plot the top SpaceMarkers IMScores
 }
 \examples{
 example(getPairwiseInteractingGenes)
-plotTopSpaceMarkers(getIMScores(SpaceMarkers), "PDAC", 0.5, 20, 12, 12, 1)
+plotIMScores(getIMScores(SpaceMarkers), "PDAC", 0.5, 20, 12, 12, 1)
 
 }
