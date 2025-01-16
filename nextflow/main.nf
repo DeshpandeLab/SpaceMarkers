@@ -110,6 +110,12 @@ process SPACEMARKERS_PLOTS {
   dir.create("${prefix}", showWarnings = FALSE, recursive = TRUE)
   library("SpaceMarkers")
   overlaps <- read.csv("$overlapScores")
+  
+  #getOverlapScores needs factors to be ordered
+  overlaps[["pattern1"]] <- factor(overlaps[["pattern1"]], 
+                                    levels = unique(overlaps[["pattern1"]]))
+  overlaps[["pattern2"]] <- factor(overlaps[["pattern2"]], 
+                                    levels = unique(overlaps[["pattern2"]]))
   plot <- plotOverlapScores(overlaps)
   ggplot2::ggsave("${prefix}/overlapScores.png", plot)
 
