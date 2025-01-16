@@ -122,7 +122,7 @@ getIMScores <- function(SpaceMarkers){
 #' @export
 #' @examples 
 #' example(getPairwiseInteractingGenes)
-#' plotIMScores(getIMScores(SpaceMarkers), "PDAC", 0.5, 20, 12, 12, 1)
+#' plotIMScores(getIMScores(SpaceMarkers), "Pattern_1_Pattern_3")
 #' 
 plotIMScores <- function(df, interaction, cutOff = 0, nGenes = 20,
     geneText = 12, metricText = 12, increments = 1, out = NULL) {
