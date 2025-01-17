@@ -93,20 +93,21 @@ process SPACEMARKERS {
 }
 
 process SPACEMARKERS_PLOTS {
+  tag "$meta.id"
   label 'process_low'
   container 'ghcr.io/deshpandelab/spacemarkers:nextflow'
 
   input:
-  tuple val(meta), path(overlapScores), path(spaceMarkers), val(source)
+  tuple val(meta), path(spaceMarkers), path(overlapScores), val(source)
 
   output:
-  tuple val(meta), path("${prefix}/overlapScores.png"),         val(source)     emit: overlapScores_plot
-  tuple val(meta), path("${prefix}/*_interacting_genes.png"),   val(source)     emit: interaction_plots
+  tuple val(meta), path("${prefix}/overlapScores.png"),         val(source),     emit: overlapScores_plot
+  tuple val(meta), path("${prefix}/*_interacting_genes.png"),   val(source),     emit: interaction_plots
   path  "versions.yml",                                                         emit: versions
 
   script:
   def args = task.ext.args ?: ''
-  prefix = task.ext.prefix ?: "${meta.id}/${source}"
+  prefix = task.ext.prefix ?: "${meta.id}/${source}/plots"
   """
   #!/usr/bin/env Rscript
   dir.create("${prefix}", showWarnings = FALSE, recursive = TRUE)
@@ -122,7 +123,7 @@ process SPACEMARKERS_PLOTS {
   ggplot2::ggsave("${prefix}/overlapScores.png", plot)
 
   #plot interaction plots
-  sm <- readRDS("$spaceMarkers")
+  sm <- read.csv("$spaceMarkers")
   plot_names <- names(sm[,(tolower(names(sm))!="gene")])
   for (plot_name in plot_names) {
     plot <- plotIMScores(sm, plot_name)
