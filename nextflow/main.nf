@@ -119,14 +119,14 @@ process SPACEMARKERS_PLOTS {
                                     levels = unique(overlaps[["pattern1"]]))
   overlaps[["pattern2"]] <- factor(overlaps[["pattern2"]], 
                                     levels = unique(overlaps[["pattern2"]]))
-  plot <- plotOverlapScores(overlaps)
+  plot <- plotOverlapScores(overlaps) + ggplot2::labs(subtitle="$meta.id")
   ggplot2::ggsave("${prefix}/overlapScores.png", plot)
 
   #plot interaction plots
   sm <- read.csv("$spaceMarkers")
   plot_names <- names(sm[,(tolower(names(sm))!="gene")])
   for (plot_name in plot_names) {
-    plot <- plotIMScores(sm, plot_name)
+    plot <- plotIMScores(sm, plot_name) + ggplot2::labs(subtitle="$meta.id")
     ggplot2::ggsave(paste0("${prefix}/", plot_name, "_interacting_genes.png"), plot)
   }
 
