@@ -396,7 +396,7 @@ getInteractingGenes <- function(data, spPatterns, refPattern="Pattern_1",
 #' SpaceMarkersMode <- "DE"
 #' patternPairs <- matrix(c("Pattern_1", "Pattern_1", 
 #'            "Pattern_3", "Pattern_5"), nrow=2)
-#' SpaceMarkers_test <- getPairwiseInteractingGenes(
+#' SpaceMarkers <- getPairwiseInteractingGenes(
 #'     data=counts_matrix,reconstruction=NULL,
 #'     optParams = optParams,
 #'     spPatterns = spPatterns,

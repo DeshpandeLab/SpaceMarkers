@@ -1,16 +1,18 @@
 process SPACEMARKERS {
   tag "$meta.id"
   label 'process_high_memory'
-  container 'ghcr.io/deshpandelab/spacemarkers:main'
+  container 'ghcr.io/deshpandelab/spacemarkers:nextflow'
 
   input:
     tuple val(meta), path(features), path(data)
   output:
-    tuple val(meta), path("${prefix}/spPatterns.rds"), val(source),         emit: spPatterns
-    tuple val(meta), path("${prefix}/optParams.rds"), val(source),          emit: optParams
-    tuple val(meta), path("${prefix}/spaceMarkersObject.rds"), val(source), emit: spaceMarkers
-    tuple val(meta), path("${prefix}/hotspots.rds"), val(source),           emit: hotspots
-    path  "versions.yml",                                                   emit: versions
+    tuple val(meta), path("${prefix}/spPatterns.rds"),         val(source),   emit: spPatterns
+    tuple val(meta), path("${prefix}/optParams.rds"),          val(source),   emit: optParams
+    tuple val(meta), path("${prefix}/spaceMarkersObject.rds"), val(source),   emit: spaceMarkers
+    tuple val(meta), path("${prefix}/spaceMarkers.csv"),       val(source),   emit: spaceMarkersScores
+    tuple val(meta), path("${prefix}/hotspots.rds"),           val(source),   emit: hotspots
+    tuple val(meta), path("${prefix}/overlapScores.csv"),      val(source),   emit: overlapScores
+    path  "versions.yml",                                                     emit: versions
 
   stub:
     def args = task.ext.args ?: ''
@@ -20,7 +22,10 @@ process SPACEMARKERS {
     mkdir -p "${prefix}"
     touch "${prefix}/spPatterns.rds"
     touch "${prefix}/optParams.rds"
+    touch "${prefix}/spaceMarkers.csv"
     touch "${prefix}/spaceMarkersObject.rds"
+    touch "${prefix}/hotspots.rds"
+    touch "${prefix}/overlapScores.csv"
     cat <<-END_VERSIONS > versions.yml
       "${task.process}":
           SpaceMarkers: \$(Rscript -e 'print(packageVersion("SpaceMarkers"))' | awk '{print \$2}')
@@ -59,16 +64,24 @@ process SPACEMARKERS {
     hotspots <- findAllHotspots(spPatterns);
     saveRDS(hotspots, file = "${prefix}/hotspots.rds");
 
+    #find regions of overlapping spatial patterns
+    overlaps <- getOverlapScores(hotspots);
+    write.csv(overlaps, file = "${prefix}/overlapScores.csv", row.names = FALSE);
+
     #find genes that are differentially expressed in spatial patterns
     spaceMarkers <- getPairwiseInteractingGenes(data = dataMatrix,
                                                   optParams = optParams,
                                                   spPatterns = spPatterns,
                                                   hotspots = hotspots,
                                                   mode = "DE",
-                                                  analysis="enrichment",
+                                                  analysis = "enrichment",
+                                                  minOverlap = 10,
 					                                        workers=$task.cpus)
-
     saveRDS(spaceMarkers, file = "${prefix}/spaceMarkersObject.rds")
+
+    #save SpaceMarkers Interaction Scores
+    IMScores <- getIMScores(spaceMarkers)
+    write.csv(IMScores, file = "${prefix}/spaceMarkers.csv", row.names = FALSE)
 
     # Get the versions of the packages
     spaceMarkersVersion <- packageVersion("SpaceMarkers")
@@ -79,10 +92,72 @@ process SPACEMARKERS {
     """
 }
 
+process SPACEMARKERS_PLOTS {
+  tag "$meta.id"
+  label 'process_low'
+  container 'ghcr.io/deshpandelab/spacemarkers:nextflow'
+
+  input:
+  tuple val(meta), path(spaceMarkers), path(overlapScores), val(source)
+
+  output:
+  tuple val(meta), path("${prefix}/overlapScores.png"),         val(source),     emit: overlapScores_plot
+  tuple val(meta), path("${prefix}/*_interacting_genes.png"),   val(source),     emit: interaction_plots
+  path  "versions.yml",                                                         emit: versions
+
+  script:
+  def args = task.ext.args ?: ''
+  prefix = task.ext.prefix ?: "${meta.id}/${source}/plots"
+  """
+  #!/usr/bin/env Rscript
+  dir.create("${prefix}", showWarnings = FALSE, recursive = TRUE)
+  library("SpaceMarkers")
+  overlaps <- read.csv("$overlapScores")
+
+  #getOverlapScores needs factors to be ordered
+  overlaps[["pattern1"]] <- factor(overlaps[["pattern1"]], 
+                                    levels = unique(overlaps[["pattern1"]]))
+  overlaps[["pattern2"]] <- factor(overlaps[["pattern2"]], 
+                                    levels = unique(overlaps[["pattern2"]]))
+  plot <- plotOverlapScores(overlaps) + ggplot2::labs(subtitle="$meta.id")
+  ggplot2::ggsave("${prefix}/overlapScores.png", plot)
+
+  #plot interaction plots
+  sm <- read.csv("$spaceMarkers")
+  plot_names <- names(sm[,(tolower(names(sm))!="gene")])
+  for (plot_name in plot_names) {
+    plot <- plotIMScores(sm, plot_name) + ggplot2::labs(subtitle="$meta.id")
+    ggplot2::ggsave(paste0("${prefix}/", plot_name, "_interacting_genes.png"), plot)
+  }
+
+  # Get the versions of the packages
+  spaceMarkersVersion <- packageVersion("SpaceMarkers")
+  rVersion <- packageVersion("base")
+  cat(sprintf('"%s":\n  SpaceMarkers: %s\n  R: %s\n', 
+        "${task.process}", spaceMarkersVersion, rVersion), 
+        file = "versions.yml")
+  """
+  stub: 
+  def args = task.ext.args ?: ''
+  source = overlapScores.simpleName
+  prefix = task.ext.prefix ?: "${meta.id}/${source}"
+  """
+  mkdir -p "${prefix}"
+  touch "${prefix}/overlapScores.png"
+
+  cat <<-END_VERSIONS > versions.yml
+    "${task.process}":
+        SpaceMarkers: \$(Rscript -e 'print(packageVersion("SpaceMarkers"))' | awk '{print \$2}')
+        R: \$(Rscript -e 'print(packageVersion("base"))' | awk '{print \$2}')
+  END_VERSIONS
+  """
+}
+
+
 process SPACEMARKERS_MQC {
   tag "$meta.id"
   label 'process_low'
-  container 'ghcr.io/deshpandelab/spacemarkers:main'
+  container 'ghcr.io/deshpandelab/spacemarkers:nextflow'
 
   input:
     tuple val(meta), path(spaceMarkers), val(source)
@@ -183,67 +258,6 @@ process SPACEMARKERS_MQC {
     """
     mkdir -p "${prefix}"
     touch "${prefix}/spacemarkers_mqc.json"
-    cat <<-END_VERSIONS > versions.yml
-      "${task.process}":
-          SpaceMarkers: \$(Rscript -e 'print(packageVersion("SpaceMarkers"))' | awk '{print \$2}')
-          R: \$(Rscript -e 'print(packageVersion("base"))' | awk '{print \$2}')
-    END_VERSIONS
-    """
-}
-
-process SPACEMARKERS_IMSCORES {
-  tag "$meta.id"
-  label 'process_low'
-  container 'ghcr.io/deshpandelab/spacemarkers:main'
-
-  input:
-    tuple val(meta), path(spaceMarkers), val(source)
-  output:
-    tuple val(meta), path("${prefix}/spaceMarkers.csv"), emit: spacemarkers_imscores
-    path  "versions.yml",                                   emit: versions
-
-  script:
-    def args = task.ext.args ?: ''
-    prefix = task.ext.prefix ?: "${meta.id}/${source}"
-    """
-    #!/usr/bin/env Rscript
-    dir.create("${prefix}", showWarnings = FALSE, recursive = TRUE)
-
-    sm <- readRDS("$spaceMarkers")
-    smi <- sm[which(sapply(sm, function(x) length(x[['interacting_genes']]))>0)]
-  
-    fields <- c('Gene', 'SpaceMarkersMetric')
-
-    imscores <- lapply(seq_along(smi), function(x) {
-        df <- smi[[x]][['interacting_genes']][[1]][,fields]
-        #rename to metric to its parent item name
-        setNames(df, c('Gene', names(smi)[x]))
-    })
-
-    imscores <- Reduce(function(x, y) {
-                merge(x, y, by="Gene", all=TRUE)
-            }, x=imscores, right=FALSE)
-    
-    if(is.null(imscores)) {
-        imscores <- data.frame(Gene=character(0))
-    }
-  
-    write.csv(imscores, file = "${prefix}/spaceMarkers.csv", row.names = FALSE)
-
-    # Get the versions of the packages
-    spaceMarkersVersion <- packageVersion("SpaceMarkers")
-    rVersion <- packageVersion("base")
-    cat(sprintf('"%s":\n  SpaceMarkers: %s\n  R: %s\n', 
-            "${task.process}", spaceMarkersVersion, rVersion), 
-        file = "versions.yml")
-    """
-
-    stub:
-    def args = task.ext.args ?: ''
-    prefix = task.ext.prefix ?: "${meta.id}/${source}"
-    """
-    mkdir -p "${prefix}"
-    touch "${prefix}/imscores.csv"
     cat <<-END_VERSIONS > versions.yml
       "${task.process}":
           SpaceMarkers: \$(Rscript -e 'print(packageVersion("SpaceMarkers"))' | awk '{print \$2}')
