@@ -1,7 +1,7 @@
 process SPACEMARKERS {
   tag "$meta.id"
   label 'process_high_memory'
-  container 'ghcr.io/deshpandelab/spacemarkers:nextflow'
+  container 'ghcr.io/deshpandelab/spacemarkers:main'
 
   input:
     tuple val(meta), path(features), path(data)
