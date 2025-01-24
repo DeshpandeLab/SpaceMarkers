@@ -55,10 +55,10 @@ getOverlapScores <- function(hotspots,
 #' plotOverlapScores(df, "Overlap Scores", "overlapScores.png", 15)
 #' @import ggplot2
 #'
-plotOverlapScores <- function(df, title = "Spatial Overlap Scores", out = NULL,fontsize = 15) {
+plotOverlapScores <- function(df, title = "Spatial Overlap Scores", out = NULL,fontsize = 15,scorefontsize=6) {
     p <- ggplot2::ggplot(data = df, aes(pattern1, pattern2, fill = overlapScore)) +
         geom_tile(color = "black", size = 0.8) +
-        geom_text(aes(label = round(overlapScore, 2)), size = 6) +  # Display values on the plot
+        geom_text(aes(label = round(overlapScore, 2)), size = scorefontsize) +  # Display values on the plot
         scale_fill_gradient2(low = "#FFF7EC", mid = "#FDBB84", high = "#D7301F", midpoint = 0.5) +
         scale_y_discrete(limits = rev, guide = guide_axis(angle = 45)) +
         theme_minimal() +
