@@ -17,4 +17,5 @@ test_that("findGenesOfInterest handles empty significant genes without error", {
 
     # Call the function and expect no errors
     expect_no_error(findGenesOfInterest(testMat, region = region, fdr.level = fdr))
+    expect_equal(length(findGenesOfInterest(testMat, region = region, fdr.level = fdr)), 0)
 })
