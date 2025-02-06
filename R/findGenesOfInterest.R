@@ -49,7 +49,7 @@ return(cbind(zVals,pvals))
 }
 
 #===================
-#' find_genes_of_interest
+#' findGenesOfInterest
 #' Identify genes associated with pattern interaction.
 #' This function identifies genes exhibiting significantly higher values of 
 #' testMat in the Interaction region of the two 
@@ -58,7 +58,7 @@ return(cbind(zVals,pvals))
 #' posthoc analysis using Dunn's Test to identify the genes.
 #'
 #' @usage
-#' find_genes_of_interest(testMat, goodGenes, region, fdr.level=0.05,
+#' findGenesOfInterest(testMat, goodGenes, region, fdr.level=0.05,
 #'        analysis=c("enrichment","overlap"),...)
 #' @param    testMat A matrix of counts with cells as columns and genes as rows
 #' @param    goodGenes A vector of user specified genes expected to interact 
@@ -74,7 +74,7 @@ return(cbind(zVals,pvals))
 #' the Interaction region of the two #' patterns compared to regions with 
 #' exclusive influence from either pattern.
 
-find_genes_of_interest<-function(
+findGenesOfInterest<-function(
         testMat,goodGenes=NULL,region, fdr.level=0.05,
         analysis=c("enrichment","overlap"),...) {
     
