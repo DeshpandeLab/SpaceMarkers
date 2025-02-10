@@ -122,7 +122,6 @@ findGenesOfInterest<-function(
     interactGenes <- buildInteractGenesdf(res_kruskal,res_dunn_test,ind,
                                           fdr.level,pattern1,pattern2,
                                           analysis)
-    }
 
     return(interactGenes)
 }
