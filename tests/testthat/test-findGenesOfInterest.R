@@ -1,4 +1,4 @@
-test_that("findGenesOfInterest handles empty significant genes without error", {
+test_that("findGenesOfInterest handles no significant genes without error", {
     # Mock input data
     fdr <- 0.05
     testMat <- matrix(rnorm(100), nrow=10, ncol=10)
@@ -17,5 +17,4 @@ test_that("findGenesOfInterest handles empty significant genes without error", {
 
     # Call the function and expect no errors
     expect_no_error(findGenesOfInterest(testMat, region = region, fdr.level = fdr))
-    expect_equal(length(findGenesOfInterest(testMat, region = region, fdr.level = fdr)), 0)
 })

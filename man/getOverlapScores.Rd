@@ -9,7 +9,8 @@ getOverlapScores(hotspots, patternList = NULL)
 \arguments{
 \item{hotspots}{A data frame with columns x, y, barcode and pattern names}
 
-\item{patternList}{A character vector of pattern names to calculate overlap scores for}
+\item{patternList}{A character vector of pattern names to calculate overlap
+scores for}
 }
 \value{
 A data frame with columns pattern1, pattern2 and overlapScore
@@ -18,7 +19,11 @@ A data frame with columns pattern1, pattern2 and overlapScore
 Calculate the overlap scores between patterns in hotspots
 }
 \examples{
-hotspots <- data.frame(x = c(1,2,3,4,5), y = c(1,2,3,4,5), barcode = c("A","B","C","D","E"), pattern1 = c(1,0,1,0,1), pattern2 = c(1,1,0,0,1))
+hotspots <- data.frame(x = c(1,2,3,4,5), 
+                        y = c(1,2,3,4,5), 
+                        barcode = c("A","B","C","D","E"), 
+                        pattern1 = c(1,0,1,0,1), 
+                        pattern2 = c(1,1,0,0,1))
 getOverlapScores(hotspots)   
 getOverlapScores(hotspots, c("pattern1","pattern2"))
 }

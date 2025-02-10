@@ -2,15 +2,22 @@
 #' @title getOverlapScores
 #' @description Calculate the overlap scores between patterns in hotspots
 #' @param hotspots A data frame with columns x, y, barcode and pattern names
-#' @param patternList A character vector of pattern names to calculate overlap scores for
+#' @param patternList A character vector of pattern names to calculate overlap 
+#' scores for
 #' @return A data frame with columns pattern1, pattern2 and overlapScore
 #' @export
 #' @examples
-#' hotspots <- data.frame(x = c(1,2,3,4,5), y = c(1,2,3,4,5), barcode = c("A","B","C","D","E"), pattern1 = c(1,0,1,0,1), pattern2 = c(1,1,0,0,1))
+#' hotspots <- data.frame(x = c(1,2,3,4,5), 
+#'                         y = c(1,2,3,4,5), 
+#'                         barcode = c("A","B","C","D","E"), 
+#'                         pattern1 = c(1,0,1,0,1), 
+#'                         pattern2 = c(1,1,0,0,1))
 #' getOverlapScores(hotspots)   
 #' getOverlapScores(hotspots, c("pattern1","pattern2"))
-#' @import ggplot2
-#' @import reshape2
+#' @importFrom ggplot2 ggplot geom_tile geom_text theme_minimal
+#' @importFrom reshape2 melt
+#' @importFrom stats complete.cases
+#' 
 getOverlapScores <- function(hotspots,
                              patternList = NULL) {
     if (is.null(patternList))
@@ -33,7 +40,7 @@ getOverlapScores <- function(hotspots,
   
   # Melt normalized Jaccard for output
   dfJacc <- reshape2::melt(normJaccard)
-  dfJacc <- dfJacc[complete.cases(dfJacc),]
+  dfJacc <- dfJacc[stats::complete.cases(dfJacc),]
   # Due to melting in lower triangular orientation, the column names are flipped
   colnames(dfJacc) <- c("pattern2", "pattern1", "overlapScore")
   dfJacc <- dfJacc[,c(2,1,3)]
@@ -87,7 +94,8 @@ plotOverlapScores <- function(df, title = "Spatial Overlap Scores", out = NULL,f
 #' @examples
 #' example(getPairwiseInteractingGenes)
 #' getIMScores(SpaceMarkers)
-#'
+#' @importFrom stats setNames
+#' 
 getIMScores <- function(SpaceMarkers){
     smi <- SpaceMarkers[which(sapply(SpaceMarkers, function(x) length(x[['interacting_genes']]))>0)]
     fields <- c('Gene', 'SpaceMarkersMetric')
@@ -95,7 +103,7 @@ getIMScores <- function(SpaceMarkers){
     imscores <- lapply(seq_along(smi), function(x) {
         df <- smi[[x]][['interacting_genes']][[1]][,fields]
         #rename to metric to its parent item name
-        setNames(df, c('Gene', names(smi)[x]))
+        stats::setNames(df, c('Gene', names(smi)[x]))
     })
 
     imscores <- Reduce(function(x, y) {
@@ -123,15 +131,17 @@ getIMScores <- function(SpaceMarkers){
 #' @examples 
 #' example(getPairwiseInteractingGenes)
 #' plotIMScores(getIMScores(SpaceMarkers), "Pattern_1_Pattern_3")
-#' 
+#' @import ggplot2
+#' @importFrom stats reorder
+#' @importFrom utils head
 plotIMScores <- function(df, interaction, cutOff = 0, nGenes = 20,
     geneText = 12, metricText = 12, increments = 1, out = NULL) {
     df$genes <- df$Gene
     df <- df[order(df[[interaction]], decreasing = TRUE),]
-    df <- head(df,nGenes)
+    df <- utils::head(df,nGenes)
     df[[interaction]] <- round(df[[interaction]],2)
     
-    p1 <- ggplot2::ggplot(df, ggplot2::aes(x = reorder(Gene,!!sym(interaction)), y = !!sym(interaction))) +
+    p1 <- ggplot2::ggplot(df, ggplot2::aes(x = stats::reorder(Gene,!!sym(interaction)), y = !!sym(interaction))) +
                 geom_bar(stat = "identity",
                 show.legend = FALSE,
                 fill = "blue",      # Background color
