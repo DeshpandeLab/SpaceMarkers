@@ -103,17 +103,20 @@ findGenesOfInterest<-function(
     res_dunn_test <- row.dunn.test(in.data=testMat, region=region,
                                         pattern1=pattern1, pattern2=pattern2)
     rownames(res_dunn_test) <- rownames(res_kruskal)
-    ind <- rownames(res_kruskal[which(res_kruskal$p.adj<fdr.level),])
 
-    #check if any gene passed the fdr threshold
-    if (length(ind)==0){
-    interactGenes <- list()
-    } else {
+    #adjust p-values for Dunn's test
     qDunn <- qvalue::qvalue(res_dunn_test[,4:6],
-                            fdr.level = fdr.level, pfdr = FALSE, pi0 = 1)
+        fdr.level = fdr.level, pfdr = FALSE, pi0 = 1)
+    
+    #check if any gene passed the fdr threshold for kruskal
+    ind <- rownames(res_kruskal[which(res_kruskal$p.adj<fdr.level),])
+    
+    #readjust p-values for Dunn's test for the genes that passed the kruskal test
+    if (length(ind)>0) {
     qq<-qvalue::qvalue(res_dunn_test[ind,4:6],
                        fdr.level=fdr.level,pfdr=FALSE,pi0 = 1)
     qDunn$qvalues[ind,] <- qq$qvalue
+    }
     res_dunn_test <- cbind(res_dunn_test,qDunn$qvalues)
     colnames(res_dunn_test)[7:9] <- paste0(colnames(res_dunn_test)[7:9],".adj")
     interactGenes <- buildInteractGenesdf(res_kruskal,res_dunn_test,ind,
