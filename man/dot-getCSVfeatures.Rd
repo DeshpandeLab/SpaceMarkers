@@ -2,13 +2,13 @@
 % Please edit documentation in R/preprocessing.R
 \name{.getCSVfeatures}
 \alias{.getCSVfeatures}
-\title{.getDfFeatures
+\title{.getCSVFeatures
 Load features from dataframe}
 \usage{
 .getCSVfeatures(obj)
 }
 \description{
-.getDfFeatures
+.getCSVFeatures
 Load features from dataframe
 }
 \keyword{internal}

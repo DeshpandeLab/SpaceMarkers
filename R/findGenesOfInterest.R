@@ -49,7 +49,7 @@ return(cbind(zVals,pvals))
 }
 
 #===================
-#' find_genes_of_interest
+#' findGenesOfInterest
 #' Identify genes associated with pattern interaction.
 #' This function identifies genes exhibiting significantly higher values of 
 #' testMat in the Interaction region of the two 
@@ -58,7 +58,7 @@ return(cbind(zVals,pvals))
 #' posthoc analysis using Dunn's Test to identify the genes.
 #'
 #' @usage
-#' find_genes_of_interest(testMat, goodGenes, region, fdr.level=0.05,
+#' findGenesOfInterest(testMat, goodGenes, region, fdr.level=0.05,
 #'        analysis=c("enrichment","overlap"),...)
 #' @param    testMat A matrix of counts with cells as columns and genes as rows
 #' @param    goodGenes A vector of user specified genes expected to interact 
@@ -74,7 +74,7 @@ return(cbind(zVals,pvals))
 #' the Interaction region of the two #' patterns compared to regions with 
 #' exclusive influence from either pattern.
 
-find_genes_of_interest<-function(
+findGenesOfInterest<-function(
         testMat,goodGenes=NULL,region, fdr.level=0.05,
         analysis=c("enrichment","overlap"),...) {
     
@@ -103,16 +103,25 @@ find_genes_of_interest<-function(
     res_dunn_test <- row.dunn.test(in.data=testMat, region=region,
                                         pattern1=pattern1, pattern2=pattern2)
     rownames(res_dunn_test) <- rownames(res_kruskal)
-    ind <- rownames(res_kruskal[which(res_kruskal$p.adj<fdr.level),])
+
+    #adjust p-values for Dunn's test
     qDunn <- qvalue::qvalue(res_dunn_test[,4:6],
-                            fdr.level = fdr.level, pfdr = FALSE, pi0 = 1)
-    qq<-qvalue::qvalue(
-        res_dunn_test[ind,4:6],fdr.level=fdr.level,pfdr=FALSE,pi0 = 1)
+        fdr.level = fdr.level, pfdr = FALSE, pi0 = 1)
+    
+    #check if any gene passed the fdr threshold for kruskal
+    ind <- rownames(res_kruskal[which(res_kruskal$p.adj<fdr.level),])
+    
+    #readjust p-values for Dunn's test for the genes that passed the kruskal test
+    if (length(ind)>0) {
+    qq<-qvalue::qvalue(res_dunn_test[ind,4:6],
+                       fdr.level=fdr.level,pfdr=FALSE,pi0 = 1)
     qDunn$qvalues[ind,] <- qq$qvalue
+    }
     res_dunn_test <- cbind(res_dunn_test,qDunn$qvalues)
     colnames(res_dunn_test)[7:9] <- paste0(colnames(res_dunn_test)[7:9],".adj")
-    interactGenes <- buildInteractGenesdf(res_kruskal,
-        res_dunn_test,ind,fdr.level, pattern1,pattern2,analysis)
+    interactGenes <- buildInteractGenesdf(res_kruskal,res_dunn_test,ind,
+                                          fdr.level,pattern1,pattern2,
+                                          analysis)
 
     return(interactGenes)
 }

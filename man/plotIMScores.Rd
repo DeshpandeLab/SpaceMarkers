@@ -38,5 +38,4 @@ Plot the top SpaceMarkers IMScores
 \examples{
 example(getPairwiseInteractingGenes)
 plotIMScores(getIMScores(SpaceMarkers), "Pattern_1_Pattern_3")
-
 }

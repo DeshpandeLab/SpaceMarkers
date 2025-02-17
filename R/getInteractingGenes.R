@@ -329,7 +329,7 @@ getInteractingGenes <- function(data, spPatterns, refPattern="Pattern_1",
         else {
             message("Calculating genes of interest for ",refPattern," and ",
                 pattern)
-            interacting_genes<-c(interacting_genes,find_genes_of_interest(
+            interacting_genes<-c(interacting_genes,findGenesOfInterest(
                     testMat = testMat, region=region,...))
         }
     }

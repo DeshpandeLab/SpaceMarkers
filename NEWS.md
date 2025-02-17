@@ -1,6 +1,8 @@
 # SpaceMarkers - unreleased
 
 * Added `findAllHotspots` to use with `getPairwiseInteractingGenes`
+* Return empty interacting genes list instead of failing with error
+when no genes pass fdr threshold.
 
 # SpaceMarkers 1.2.0
 
