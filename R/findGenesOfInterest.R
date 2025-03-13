@@ -125,7 +125,7 @@ findGenesOfInterest<-function(
     
     #readjust p-values for Dunn's test for the genes that passed the kruskal test
     if (length(ind)>0) {
-        if (length(ind)==1)
+        if (length(ind)==1) # no need of qvalue computation for one gene
             qDunn$qvalues[ind,] <- res_dunn_test[ind,4:6]
         else {
             qq<-qvalue::qvalue(res_dunn_test[ind,4:6],
