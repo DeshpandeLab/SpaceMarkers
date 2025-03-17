@@ -88,18 +88,30 @@ findGenesOfInterest<-function(
     
     pattern1 <- patnames[1]
     pattern2 <- patnames[2]
-    if (!is.null(goodGenes)){
-        subset_goodGenes <- intersect(rownames(testMat),goodGenes)
-        testMat <- testMat[subset_goodGenes,]
-        }
-
+    
     #we lose sparsity here, it is necessary for row tests (dunn, kruskal)
     testMat <- as.matrix(testMat)
+    
+    if (!is.null(goodGenes)){
+        subset_goodGenes <- intersect(rownames(testMat),goodGenes)
+    } else 
+        {
+        subset_goodGenes <- names(which(rowSums(testMat)>0))
+    }
+    testMat <- testMat[subset_goodGenes,]
 
     res_kruskal<- matrixTests::row_kruskalwallis(x=testMat,g=region)
+    
+    #adjust p-values for kruskal
     qq <- qvalue::qvalue(res_kruskal$pvalue,fdr.level = fdr.level,
                             pfdr = FALSE, pi0 = 1)
     res_kruskal <- cbind(res_kruskal,p.adj = qq$qvalues)
+    
+    #force res_kruskal statistics for zero variance genes to be 0 with p-value 1
+    zero_genes <- names(which(rowSums(testMat[,!is.na(region)])==0))
+    res_kruskal[zero_genes,c("df","statistic")] <- 0
+    res_kruskal[zero_genes,c("pvalue","p.adj")] <- 1
+    
     res_dunn_test <- row.dunn.test(in.data=testMat, region=region,
                                         pattern1=pattern1, pattern2=pattern2)
     rownames(res_dunn_test) <- rownames(res_kruskal)
@@ -113,12 +125,23 @@ findGenesOfInterest<-function(
     
     #readjust p-values for Dunn's test for the genes that passed the kruskal test
     if (length(ind)>0) {
-    qq<-qvalue::qvalue(res_dunn_test[ind,4:6],
-                       fdr.level=fdr.level,pfdr=FALSE,pi0 = 1)
-    qDunn$qvalues[ind,] <- qq$qvalue
+        if (length(ind)==1) # no need of qvalue computation for one gene
+            qDunn$qvalues[ind,] <- res_dunn_test[ind,4:6]
+        else {
+            qq<-qvalue::qvalue(res_dunn_test[ind,4:6],
+                fdr.level=fdr.level,pfdr=FALSE,pi0 = 1)
+            qDunn$qvalues[ind,] <- qq$qvalue   
+        }
     }
     res_dunn_test <- cbind(res_dunn_test,qDunn$qvalues)
     colnames(res_dunn_test)[7:9] <- paste0(colnames(res_dunn_test)[7:9],".adj")
+    
+    #force res_dunn_test statistics for zero genes to be 0 with p-values of 1.
+    res_dunn_test[zero_genes, c("zP1_Int","zP2_Int","zP2_P1")] <- 0
+    res_dunn_test[zero_genes, c("pval_1_Int","pval_2_Int","pval_2_1")] <- 1
+    res_dunn_test[zero_genes,c("pval_1_Int.adj",
+                                "pval_2_Int.adj",
+                                "pval_2_1.adj")] <- 1
     interactGenes <- buildInteractGenesdf(res_kruskal,res_dunn_test,ind,
                                           fdr.level,pattern1,pattern2,
                                           analysis)
