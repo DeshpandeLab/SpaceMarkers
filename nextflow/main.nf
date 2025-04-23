@@ -265,3 +265,30 @@ process SPACEMARKERS_MQC {
     END_VERSIONS
     """
 }
+
+
+// Nextflow pipeline to run SpaceMarkers
+workflow {
+    ch_versions = Channel.empty()
+
+    ch_sm_inputs = Channel.fromPath(params.input)
+    .splitCsv(header:true, sep: ",")
+    .map { row-> tuple(meta=[id:row.sample], features=file(row.annotation_file), data=file(row.data_dir)) }
+
+    //spacemarkers - main
+    SPACEMARKERS( ch_sm_inputs )
+    ch_versions = ch_versions.mix(SPACEMARKERS.out.versions)
+
+    //spacemarkers - plots
+    ch_plotting_input = SPACEMARKERS.out.spaceMarkersScores
+        .map { tuple(it[0], it[1]) }
+    ch_plotting_input = ch_plotting_input.join(SPACEMARKERS.out.overlapScores)
+        .map { tuple(it[0], it[1], it[2], it[3]) }
+    
+    SPACEMARKERS_PLOTS( ch_plotting_input)
+    ch_versions = ch_versions.mix(SPACEMARKERS_PLOTS.out.versions)
+
+    //collate versions
+    ch_versions
+      .collectFile(storeDir: "${params.outdir}/pipeline_info", name: 'versions.yml', sort: true, newLine: true)
+}
