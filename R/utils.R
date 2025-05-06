@@ -4,6 +4,11 @@
 #' @param hotspots A data frame with columns x, y, barcode and pattern names
 #' @param patternList A character vector of pattern names to calculate overlap 
 #' scores for
+#' @param method The method to calculate overlap scores. Options are
+#' "Szymkiewicz–Simpson", "Jaccard", "Sørensen–Dice", "Ochiai" and "absolute"
+#' @details The function calculates the overlap scores between patterns hotspots
+#' using the specified method. The default method is "Szymkiewicz–Simpson" 
+#' overlap coefficient.
 #' @return A data frame with columns pattern1, pattern2 and overlapScore
 #' @export
 #' @examples
@@ -17,35 +22,46 @@
 #' @importFrom ggplot2 ggplot geom_tile geom_text theme_minimal
 #' @importFrom reshape2 melt
 #' @importFrom stats complete.cases
-#' 
 getOverlapScores <- function(hotspots,
-                             patternList = NULL) {
+                             patternList = NULL, method = c("Szymkiewicz–Simpson",
+                                                            "Jaccard", "Sørensen–Dice", 
+                                                            "Ochiai", "absolute") ) {
     if (is.null(patternList))
         patternList <- setdiff(colnames(hotspots),c("x","y","barcode"))
     else if (!all(patternList %in% colnames(hotspots)))
         stop("Pattern names not found in hotspots")
-  binarized <- (!is.na(hotspots[,patternList]))*1
-  intersects <- t(binarized) %*% binarized
-  unions <- sapply(colnames(binarized),function(c) colSums((binarized[,c] + binarized)>0))
-  Jaccard <- intersects/unions
+    binarized <- (!is.na(hotspots[,patternList]))*1
+    intersects <- t(binarized) %*% binarized
+    nHotspots <- colSums(binarized)
+    nHotsP1 <- t(t(nHotspots)) %*% array(1, length(patternList))
+    nHotsP2 <- t(nHotsP1)
+    if ("Szymkiewicz–Simpson" %in% method) {
+        # Szymkiewicz–Simpson index
+        overlapScore <- intersects/pmin(nHotsP1,nHotsP2)
+    } else if ("Jaccard" %in% method) {
+        # Jaccard index
+        overlapScore <- intersects/(nHotsP1 + nHotsP2 - intersects)
+    } else if ("Sørensen–Dice" %in% method) {
+        # Sørensen–Dice index
+        overlapScore <- 2*intersects/(nHotsP1 + nHotsP2)
+    } else if ("Ochiai" %in% method) {
+        # Ochiai index
+        overlapScore <- intersects/sqrt(nHotsP1*nHotsP2)
+    } else if ("absolute" %in% method) {
+        # Absolute overlap
+        overlapScore <- intersects
+    } else
+        stop("Method not supported")
   
-  nHotspots <- colSums(binarized)
-  nHotsP1 <- t(t(nHotspots)) %*% array(1, length(patternList))
-  nHotsP2 <- t(nHotsP1)
-  bestJaccard <- pmin(nHotsP1,nHotsP2)/pmax(nHotsP1,nHotsP2)
+    overlapScore[upper.tri(overlapScore,diag = TRUE)] <- NA
   
-  Jaccard[upper.tri(Jaccard,diag = TRUE)] <- NA
-  normJaccard <- Jaccard/bestJaccard
-  normJaccard[upper.tri(normJaccard,diag = TRUE)] <- NA
-  
-  # Melt normalized Jaccard for output
-  dfJacc <- reshape2::melt(normJaccard)
-  dfJacc <- dfJacc[stats::complete.cases(dfJacc),]
-  # Due to melting in lower triangular orientation, the column names are flipped
-  colnames(dfJacc) <- c("pattern2", "pattern1", "overlapScore")
-  dfJacc <- dfJacc[,c(2,1,3)]
-
-  return(dfJacc)
+    # Melt normalized Jaccard for output
+    dfOverlap <- reshape2::melt(overlapScore)
+    dfOverlap <- dfOverlap[stats::complete.cases(dfOverlap),]
+    # Due to melting in lower triangular orientation, the column names are flipped
+    colnames(dfOverlap) <- c("pattern2", "pattern1", "overlapScore")
+    dfOverlap <- dfOverlap[,c(2,1,3)]
+    return(dfOverlap)
 }
 
 #' @title plotOverlapScores

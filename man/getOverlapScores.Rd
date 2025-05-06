@@ -4,19 +4,32 @@
 \alias{getOverlapScores}
 \title{getOverlapScores}
 \usage{
-getOverlapScores(hotspots, patternList = NULL)
+getOverlapScores(
+  hotspots,
+  patternList = NULL,
+  method = c("Szymkiewicz–Simpson", "Jaccard", "Sørensen–Dice", "Ochiai",
+    "absolute")
+)
 }
 \arguments{
 \item{hotspots}{A data frame with columns x, y, barcode and pattern names}
 
 \item{patternList}{A character vector of pattern names to calculate overlap
 scores for}
+
+\item{method}{The method to calculate overlap scores. Options are
+"Szymkiewicz–Simpson", "Jaccard", "Sørensen–Dice", "Ochiai" and "absolute"}
 }
 \value{
 A data frame with columns pattern1, pattern2 and overlapScore
 }
 \description{
 Calculate the overlap scores between patterns in hotspots
+}
+\details{
+The function calculates the overlap scores between patterns hotspots
+using the specified method. The default method is "Szymkiewicz–Simpson"
+overlap coefficient.
 }
 \examples{
 hotspots <- data.frame(x = c(1,2,3,4,5), 
