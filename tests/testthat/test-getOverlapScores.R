@@ -37,8 +37,8 @@ test_that("getOverlapScores works correctly", {
     # Test with patternList
     result_patternList <- getOverlapScores(hotspots, patternList = c("pattern1", "pattern2"))
     expect_equal(nrow(result_patternList), 1)
-    expect_equal(result_patternList$pattern1, "pattern1")
-    expect_equal(result_patternList$pattern2, "pattern2")
+    expect_equal(as.character(result_patternList$pattern1), "pattern1")
+    expect_equal(as.character(result_patternList$pattern2), "pattern2")
     expect_equal(result_patternList$overlapScore, 0.6666667,
                  tolerance = 1e-7)
 
@@ -49,4 +49,8 @@ test_that("getOverlapScores works correctly", {
     hotspots$pattern3 <- c(NA, "pattern3", "pattern3", NA, NA)
     result_multiple <- getOverlapScores(hotspots, patternList = c("pattern1", "pattern2", "pattern3"))
     expect_true(nrow(result_multiple) > 1)
+
+    # Test with multiple methods
+    expect_error(getOverlapScores(hotspots, method = c("Szymkiewicz–Simpson", "Jaccard")))
+
 })

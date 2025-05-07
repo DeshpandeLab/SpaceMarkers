@@ -26,6 +26,9 @@ getOverlapScores <- function(hotspots,
                              patternList = NULL, method = c("Szymkiewicz–Simpson",
                                                             "Jaccard", "Sørensen–Dice", 
                                                             "Ochiai", "absolute") ) {
+    match.arg(method, choices = c("Szymkiewicz–Simpson",
+                                    "Jaccard", "Sørensen–Dice", 
+                                    "Ochiai", "absolute"), several.ok = FALSE)
     if (is.null(patternList))
         patternList <- setdiff(colnames(hotspots),c("x","y","barcode"))
     else if (!all(patternList %in% colnames(hotspots)))
