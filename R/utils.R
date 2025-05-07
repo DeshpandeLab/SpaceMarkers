@@ -38,19 +38,19 @@ getOverlapScores <- function(hotspots,
     nHotspots <- colSums(binarized)
     nHotsP1 <- t(t(nHotspots)) %*% array(1, length(patternList))
     nHotsP2 <- t(nHotsP1)
-    if ("Szymkiewicz–Simpson" %in% method) {
+    if (method == "Szymkiewicz–Simpson") {
         # Szymkiewicz–Simpson index
         overlapScore <- intersects/pmin(nHotsP1,nHotsP2)
-    } else if ("Jaccard" %in% method) {
+    } else if (method == "Jaccard") {
         # Jaccard index
         overlapScore <- intersects/(nHotsP1 + nHotsP2 - intersects)
-    } else if ("Sørensen–Dice" %in% method) {
+    } else if (method == "Sørensen–Dice") {
         # Sørensen–Dice index
         overlapScore <- 2*intersects/(nHotsP1 + nHotsP2)
-    } else if ("Ochiai" %in% method) {
+    } else if (method == "Ochiai") {
         # Ochiai index
         overlapScore <- intersects/sqrt(nHotsP1*nHotsP2)
-    } else if ("absolute" %in% method) {
+    } else if (method == "absolute") {
         # Absolute overlap
         overlapScore <- intersects
     } else
