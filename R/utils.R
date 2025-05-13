@@ -5,17 +5,17 @@
 #' @param patternList A character vector of pattern names to calculate overlap 
 #' scores for
 #' @param method The method to calculate overlap scores. Options are
-#' "Szymkiewicz–Simpson", "Jaccard", "Sorensen–Dice", "Ochiai" and "absolute"
+#' "Szymkiewicz-Simpson", "Jaccard", "Sorensen-Dice", "Ochiai" and "absolute"
 #' @details The function calculates the overlap scores between patterns hotspots
-#' using the specified method. The default method is "Szymkiewicz–Simpson" 
+#' using the specified method. The default method is "Szymkiewicz-Simpson"
 #' overlap coefficient.
 #' @return A data frame with columns pattern1, pattern2 and overlapScore
 #' @export
 #' @examples
-#' hotspots <- data.frame(x = c(1,2,3,4,5), 
-#'                         y = c(1,2,3,4,5), 
-#'                         barcode = c("A","B","C","D","E"), 
-#'                         pattern1 = c(1,0,1,0,1), 
+#' hotspots <- data.frame(x = c(1,2,3,4,5),
+#'                         y = c(1,2,3,4,5),
+#'                         barcode = c("A","B","C","D","E"),
+#'                         pattern1 = c(1,0,1,0,1),
 #'                         pattern2 = c(1,1,0,0,1))
 #' getOverlapScores(hotspots)   
 #' getOverlapScores(hotspots, c("pattern1","pattern2"))
@@ -23,12 +23,12 @@
 #' @importFrom reshape2 melt
 #' @importFrom stats complete.cases
 getOverlapScores <- function(hotspots,
-                             patternList = NULL, method = c("Szymkiewicz–Simpson",
-                                                            "Jaccard", "Sorensen–Dice",
+                             patternList = NULL, method = c("Szymkiewicz-Simpson",
+                                                            "Jaccard", "Sorensen-Dice",
                                                             "Ochiai", "absolute") ) {
     
     #warn if more than one method is supplied, do not warn by default
-    if(length(method) > 1 && method[1] != '"Szymkiewicz–Simpson"')
+    if(length(method) > 1 && method[1] != '"Szymkiewicz-Simpson"')
         method <- method[1]
         warning("Only one method can be used at a time. Using ", method)
 
@@ -42,9 +42,9 @@ getOverlapScores <- function(hotspots,
     nHotsP1 <- t(t(nHotspots)) %*% array(1, length(patternList))
     nHotsP2 <- t(nHotsP1)
     overlapScore <- switch(method,
-        "Szymkiewicz–Simpson" = intersects/pmin(nHotsP1,nHotsP2),
+        "Szymkiewicz-Simpson" = intersects/pmin(nHotsP1,nHotsP2),
         "Jaccard" = intersects/(nHotsP1 + nHotsP2 - intersects),
-        "Sorensen–Dice" = 2*intersects/(nHotsP1 + nHotsP2),
+        "Sorensen-Dice" = 2*intersects/(nHotsP1 + nHotsP2),
         "Ochiai" = intersects/sqrt(nHotsP1*nHotsP2),
         "absolute" = intersects,
         stop("Method not supported")

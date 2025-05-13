@@ -7,7 +7,7 @@
 getOverlapScores(
   hotspots,
   patternList = NULL,
-  method = c("Szymkiewicz–Simpson", "Jaccard", "Sorensen–Dice", "Ochiai", "absolute")
+  method = c("Szymkiewicz-Simpson", "Jaccard", "Sorensen-Dice", "Ochiai", "absolute")
 )
 }
 \arguments{
@@ -17,7 +17,7 @@ getOverlapScores(
 scores for}
 
 \item{method}{The method to calculate overlap scores. Options are
-"Szymkiewicz–Simpson", "Jaccard", "Sorensen–Dice", "Ochiai" and "absolute"}
+"Szymkiewicz-Simpson", "Jaccard", "Sorensen-Dice", "Ochiai" and "absolute"}
 }
 \value{
 A data frame with columns pattern1, pattern2 and overlapScore
@@ -27,14 +27,14 @@ Calculate the overlap scores between patterns in hotspots
 }
 \details{
 The function calculates the overlap scores between patterns hotspots
-using the specified method. The default method is "Szymkiewicz–Simpson"
+using the specified method. The default method is "Szymkiewicz-Simpson"
 overlap coefficient.
 }
 \examples{
-hotspots <- data.frame(x = c(1,2,3,4,5), 
-                        y = c(1,2,3,4,5), 
-                        barcode = c("A","B","C","D","E"), 
-                        pattern1 = c(1,0,1,0,1), 
+hotspots <- data.frame(x = c(1,2,3,4,5),
+                        y = c(1,2,3,4,5),
+                        barcode = c("A","B","C","D","E"),
+                        pattern1 = c(1,0,1,0,1),
                         pattern2 = c(1,1,0,0,1))
 getOverlapScores(hotspots)   
 getOverlapScores(hotspots, c("pattern1","pattern2"))

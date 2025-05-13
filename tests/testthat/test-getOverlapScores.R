@@ -20,7 +20,7 @@ test_that("getOverlapScores works correctly", {
     expect_equal(nrow(result_jaccard), 1)
     expect_equal(result_jaccard$overlapScore, 0.4)
     # Test Sørensen–Dice method
-    result_sorensen <- getOverlapScores(hotspots, method = "Sorensen–Dice")
+    result_sorensen <- getOverlapScores(hotspots, method = "Sorensen-Dice")
     expect_equal(nrow(result_sorensen), 1)
     expect_equal(result_sorensen$overlapScore, 0.5714286,
                  tolerance = 1e-7)
