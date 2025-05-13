@@ -5,7 +5,7 @@
 #' @param patternList A character vector of pattern names to calculate overlap 
 #' scores for
 #' @param method The method to calculate overlap scores. Options are
-#' "Szymkiewicz–Simpson", "Jaccard", "Sørensen–Dice", "Ochiai" and "absolute"
+#' "Szymkiewicz–Simpson", "Jaccard", "Sorensen–Dice", "Ochiai" and "absolute"
 #' @details The function calculates the overlap scores between patterns hotspots
 #' using the specified method. The default method is "Szymkiewicz–Simpson" 
 #' overlap coefficient.

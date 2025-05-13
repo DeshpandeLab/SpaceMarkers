@@ -7,8 +7,7 @@
 getOverlapScores(
   hotspots,
   patternList = NULL,
-  method = c("Szymkiewicz–Simpson", "Jaccard", "Sørensen–Dice", "Ochiai",
-    "absolute")
+  method = c("Szymkiewicz–Simpson", "Jaccard", "Sorensen–Dice", "Ochiai", "absolute")
 )
 }
 \arguments{
@@ -18,7 +17,7 @@ getOverlapScores(
 scores for}
 
 \item{method}{The method to calculate overlap scores. Options are
-"Szymkiewicz–Simpson", "Jaccard", "Sørensen–Dice", "Ochiai" and "absolute"}
+"Szymkiewicz–Simpson", "Jaccard", "Sorensen–Dice", "Ochiai" and "absolute"}
 }
 \value{
 A data frame with columns pattern1, pattern2 and overlapScore
