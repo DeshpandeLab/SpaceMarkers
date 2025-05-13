@@ -51,6 +51,6 @@ test_that("getOverlapScores works correctly", {
     expect_true(nrow(result_multiple) > 1)
 
     # Test with multiple methods
-    expect_error(getOverlapScores(hotspots, method = c("Szymkiewicz–Simpson", "Jaccard")))
+    expect_warning(getOverlapScores(hotspots, method = c("Jaccard", "absolute")))
 
 })

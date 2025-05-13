@@ -24,11 +24,14 @@
 #' @importFrom stats complete.cases
 getOverlapScores <- function(hotspots,
                              patternList = NULL, method = c("Szymkiewicz–Simpson",
-                                                            "Jaccard", "Sørensen–Dice", 
+                                                            "Jaccard", "Sørensen–Dice",
                                                             "Ochiai", "absolute") ) {
-    match.arg(method, choices = c("Szymkiewicz–Simpson",
-                                    "Jaccard", "Sørensen–Dice", 
-                                    "Ochiai", "absolute"), several.ok = FALSE)
+    
+    #warn if more than one method is supplied, do not warn by default
+    if(length(method) > 1 && method[1] != '"Szymkiewicz–Simpson"')
+        method <- method[1]
+        warning("Only one method can be used at a time. Using ", method)
+
     if (is.null(patternList))
         patternList <- setdiff(colnames(hotspots),c("x","y","barcode"))
     else if (!all(patternList %in% colnames(hotspots)))
@@ -38,24 +41,15 @@ getOverlapScores <- function(hotspots,
     nHotspots <- colSums(binarized)
     nHotsP1 <- t(t(nHotspots)) %*% array(1, length(patternList))
     nHotsP2 <- t(nHotsP1)
-    if (method == "Szymkiewicz–Simpson") {
-        # Szymkiewicz–Simpson index
-        overlapScore <- intersects/pmin(nHotsP1,nHotsP2)
-    } else if (method == "Jaccard") {
-        # Jaccard index
-        overlapScore <- intersects/(nHotsP1 + nHotsP2 - intersects)
-    } else if (method == "Sørensen–Dice") {
-        # Sørensen–Dice index
-        overlapScore <- 2*intersects/(nHotsP1 + nHotsP2)
-    } else if (method == "Ochiai") {
-        # Ochiai index
-        overlapScore <- intersects/sqrt(nHotsP1*nHotsP2)
-    } else if (method == "absolute") {
-        # Absolute overlap
-        overlapScore <- intersects
-    } else
+    overlapScore <- switch(method,
+        "Szymkiewicz–Simpson" = intersects/pmin(nHotsP1,nHotsP2),
+        "Jaccard" = intersects/(nHotsP1 + nHotsP2 - intersects),
+        "Sørensen–Dice" = 2*intersects/(nHotsP1 + nHotsP2),
+        "Ochiai" = intersects/sqrt(nHotsP1*nHotsP2),
+        "absolute" = intersects,
         stop("Method not supported")
-  
+    )
+
     overlapScore[upper.tri(overlapScore,diag = TRUE)] <- NA
   
     # Melt normalized Jaccard for output
