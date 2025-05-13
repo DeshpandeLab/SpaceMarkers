@@ -24,7 +24,7 @@
 #' @importFrom stats complete.cases
 getOverlapScores <- function(hotspots,
                              patternList = NULL, method = c("Szymkiewicz–Simpson",
-                                                            "Jaccard", "Sørensen–Dice",
+                                                            "Jaccard", "Sorensen–Dice",
                                                             "Ochiai", "absolute") ) {
     
     #warn if more than one method is supplied, do not warn by default
@@ -44,7 +44,7 @@ getOverlapScores <- function(hotspots,
     overlapScore <- switch(method,
         "Szymkiewicz–Simpson" = intersects/pmin(nHotsP1,nHotsP2),
         "Jaccard" = intersects/(nHotsP1 + nHotsP2 - intersects),
-        "Sørensen–Dice" = 2*intersects/(nHotsP1 + nHotsP2),
+        "Sorensen–Dice" = 2*intersects/(nHotsP1 + nHotsP2),
         "Ochiai" = intersects/sqrt(nHotsP1*nHotsP2),
         "absolute" = intersects,
         stop("Method not supported")
