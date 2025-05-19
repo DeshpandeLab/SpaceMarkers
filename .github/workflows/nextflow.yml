@@ -29,4 +29,4 @@ jobs:
           sudo mv nextflow /usr/local/bin/
 
       - name: stub run
-        run: nextflow run main.nf --input ./samplesheet.csv -stub -profile test --max_cpus 1 --max_memory '8GB'
+        run: nextflow run nf/main.nf --input nf/samplesheet.csv -stub -profile test --max_cpus 1 --max_memory '8GB'
