@@ -28,9 +28,9 @@ getOverlapScores <- function(hotspots,
                                                             "Ochiai", "absolute") ) {
     
     #warn if more than one method is supplied, do not warn by default
-    if(length(method) > 1 && method[1] != '"Szymkiewicz-Simpson"')
+    if(length(method) > 1 && method[1] != '"Szymkiewicz-Simpson"'){
         method <- method[1]
-        warning("Only one method can be used at a time. Using ", method)
+        warning("Only one method can be used at a time. Using ", method)}
 
     if (is.null(patternList))
         patternList <- setdiff(colnames(hotspots),c("x","y","barcode"))
