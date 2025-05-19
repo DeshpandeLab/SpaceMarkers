@@ -103,7 +103,21 @@ process SPACEMARKERS_PLOTS {
   output:
   tuple val(meta), path("${prefix}/overlapScores.png"),         val(source),     emit: overlapScores_plot
   tuple val(meta), path("${prefix}/*_interacting_genes.png"),   val(source),     emit: interaction_plots
-  path  "versions.yml",                                                         emit: versions
+  path  "versions.yml",                                                          emit: versions
+
+  stub:
+  def args = task.ext.args ?: ''
+  prefix = task.ext.prefix ?: "${meta.id}/${source}"
+  """
+  mkdir -p "${prefix}"
+  touch "${prefix}/overlapScores.png"
+  touch "${prefix}/my_interacting_genes.png"
+  cat <<-END_VERSIONS > versions.yml
+    "${task.process}":
+        SpaceMarkers: \$(Rscript -e 'print(packageVersion("SpaceMarkers"))' | awk '{print \$2}')
+        R: \$(Rscript -e 'print(packageVersion("base"))' | awk '{print \$2}')
+  END_VERSIONS
+  """
 
   script:
   def args = task.ext.args ?: ''
@@ -136,20 +150,6 @@ process SPACEMARKERS_PLOTS {
   cat(sprintf('"%s":\n  SpaceMarkers: %s\n  R: %s\n', 
         "${task.process}", spaceMarkersVersion, rVersion), 
         file = "versions.yml")
-  """
-  stub: 
-  def args = task.ext.args ?: ''
-  source = overlapScores.simpleName
-  prefix = task.ext.prefix ?: "${meta.id}/${source}"
-  """
-  mkdir -p "${prefix}"
-  touch "${prefix}/overlapScores.png"
-
-  cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        SpaceMarkers: \$(Rscript -e 'print(packageVersion("SpaceMarkers"))' | awk '{print \$2}')
-        R: \$(Rscript -e 'print(packageVersion("base"))' | awk '{print \$2}')
-  END_VERSIONS
   """
 }
 
