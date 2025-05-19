@@ -140,7 +140,8 @@ getSpatialParamsMoransI <- function(spatialPatterns,...){
 #' @param threshold A numeric value specifying how many standard deviations 
 #' above the mean of a null distribution to use an outlier threshold for
 #' identifying 'hotspots'
-#' @param resolution A string specifying image resolution
+#' @param resolution A string specifying image resolution to be used for spot 
+#' diameter. Can take values of "fullres" (default), "lowres" or "hires".
 #' @param ... Arguments passed to methods
 #' @return a numeric matrix of sigmaOpts - the optimal width of the gaussian 
 #' distribution, and the threshOpt - outlier threshold around the set of spots 
@@ -167,7 +168,10 @@ getSpatialParameters <- function(spatialPatterns,visiumDir = ".",
                                          pattern = "scalefactors_json.json",
                                          sigma = NULL,threshold = 4,
                                          resolution = 
-                                           c("lowres","hires","fullres"), ...) {
+                                           c("fullres","lowres","hires"), ...) {
+    #resolve resolution parameter
+    resolution <- match.arg(resolution, several.ok = FALSE)
+    message("resolution: ", resolution)
     patternList <- setdiff(colnames(spatialPatterns),c("barcode","x","y"))
     if (!is.null(sigma)) {
       sigmaOpt <- sigma

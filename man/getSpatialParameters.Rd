@@ -12,7 +12,7 @@ getSpatialParameters(
   pattern = "scalefactors_json.json",
   sigma = NULL,
   threshold = 4,
-  resolution = c("lowres", "hires", "fullres"),
+  resolution = c("fullres", "lowres", "hires"),
   ...
 )
 }
@@ -36,7 +36,8 @@ estimate to be used for smoothing}
 above the mean of a null distribution to use an outlier threshold for
 identifying 'hotspots'}
 
-\item{resolution}{A string specifying image resolution}
+\item{resolution}{A string specifying image resolution to be used for spot
+diameter. Can take values of "fullres" (default), "lowres" or "hires".}
 
 \item{...}{Arguments passed to methods}
 }

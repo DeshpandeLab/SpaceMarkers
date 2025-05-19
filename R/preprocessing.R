@@ -74,7 +74,7 @@ load10XExpr<- function(visiumDir=NULL,
 #' and must contain files 'scalefactors_json.json' 
 #' and 'tissue_positions_list.csv.'
 #' @param resolution A string specifying which values to look for in the .json 
-#' object. Can be either lowres or highres.
+#' object. Can be either fullres (default), lowres or hires.
 #' @param version A string specifying the version of the spaceranger data.
 #' @return a data frame of the spatial coordinates 
 #' ( x and y) for each spot/cell
@@ -92,19 +92,23 @@ load10XExpr<- function(visiumDir=NULL,
 #' unlink("Visium_Human_Breast_Cancer_spatial.tar.gz")
 #' 
 
-load10XCoords <- function(visiumDir, resolution = "lowres", version = NULL){
+load10XCoords <- function(visiumDir, resolution = c("fullres","lowres","hires"), version = NULL){
+
+    #resolve resolution parameter
+    resolution <- match.arg(resolution, several.ok = FALSE)
+    message("resolution: ", resolution)
     #determine spacerager version
     if(is.null(version)){
         message("Version not provided. Trying to infer.")
         if("probe_set.csv" %in% dir(visiumDir)){
             config_line <- readLines(paste0(visiumDir,"/probe_set.csv"), 1)
             version <- strsplit(config_line, "=")[[1]][2]
-        } else if ("tissue_positions.parquet" %in% dir(
-          visiumDir,"binned_outputs/square_008um/spatial")) {
+        } else if ("tissue_positions.parquet" %in% 
+        dir(file.path(visiumDir,"spatial"))) {
           version <- "HD"
-          visiumDir <- file.path(visiumDir,"binned_outputs/square_008um")
+          visiumDir <- file.path(visiumDir)
           message(".parquet file found.
-                  Assuming VisiumHD with 008um resolution as default")
+                  Detected VisiumHD.")
         } else {
             message(
               "probe_set.csv or .parquet not found.Assuming version 1.0.")
@@ -133,7 +137,12 @@ load10XCoords <- function(visiumDir, resolution = "lowres", version = NULL){
     scale_json <- dir(spatial_dir,
                         pattern = "scalefactors_json.json",full.names = TRUE)
     scale_values <- jsonlite::read_json(scale_json)
-    scale_factor <- scale_values[grepl(resolution, names(scale_values))][[1]]
+    if (resolution == "fullres"){
+        scale_factor <- 1
+    } else {
+        scale_factor <- scale_values[grepl(resolution, names(scale_values))][[1]]
+    }
+    
     coord_values <- coord_values[,c(1,5,6)]
     coord_values[,2:3] <- coord_values[,2:3]*scale_factor
     names(coord_values) <- c("barcode","y","x")
