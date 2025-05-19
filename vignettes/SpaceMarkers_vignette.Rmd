@@ -116,7 +116,8 @@ pattern interact in 2D space. The data can be extracted with the
 ```{r}
 download.file(sp_url, file.path(data_dir,basename(sp_url)), mode = "wb")
 untar(file.path(data_dir,basename(sp_url)), exdir = file.path(data_dir))
-spCoords <- load10XCoords(visiumDir = data_dir, version = "1.0")
+spCoords <- load10XCoords(visiumDir = data_dir, 
+                          resolution="lowres", version = "1.0")
 rownames(spCoords) <- spCoords$barcode
 spCoords <- spCoords[barcodes,]
 spPatterns <- cbind(spCoords,slot(cogaps_result,"sampleFactors")[barcodes,])
