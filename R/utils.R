@@ -28,14 +28,16 @@ getOverlapScores <- function(hotspots,
                                                             "Ochiai", "absolute") ) {
     
     #warn if more than one method is supplied, do not warn by default
-    if(length(method) > 1 && method[1] != "Szymkiewicz-Simpson"){
+    if(length(method) > 1){
         method <- method[1]
-        warning("Only one method can be used at a time. Using ", method)}
+        message("Only one method can be used at a time. Using ", method)}
 
-    if (is.null(patternList))
+    if (is.null(patternList)) {
         patternList <- setdiff(colnames(hotspots),c("x","y","barcode"))
-    else if (!all(patternList %in% colnames(hotspots)))
+    } else if (!all(patternList %in% colnames(hotspots))) {
         stop("Pattern names not found in hotspots")
+    }
+
     binarized <- (!is.na(hotspots[,patternList]))*1
     intersects <- t(binarized) %*% binarized
     nHotspots <- colSums(binarized)

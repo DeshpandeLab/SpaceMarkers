@@ -51,6 +51,6 @@ test_that("getOverlapScores works correctly", {
     expect_true(nrow(result_multiple) > 1)
 
     # Test with multiple methods
-    expect_warning(getOverlapScores(hotspots, method = c("Jaccard", "absolute")))
+    expect_message(getOverlapScores(hotspots, method = c("Jaccard", "absolute")),"Only one method")
 
 })
