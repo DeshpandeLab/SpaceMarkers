@@ -4,7 +4,11 @@
 \alias{load10XCoords}
 \title{Load 10x Visium Spatial Coordinates}
 \usage{
-load10XCoords(visiumDir, resolution = "lowres", version = NULL)
+load10XCoords(
+  visiumDir,
+  resolution = c("fullres", "lowres", "hires"),
+  version = NULL
+)
 }
 \arguments{
 \item{visiumDir}{A string path to the location of the folder containing the
@@ -13,7 +17,7 @@ and must contain files 'scalefactors_json.json'
 and 'tissue_positions_list.csv.'}
 
 \item{resolution}{A string specifying which values to look for in the .json
-object. Can be either lowres or highres.}
+object. Can be either fullres (default), lowres or hires.}
 
 \item{version}{A string specifying the version of the spaceranger data.}
 }

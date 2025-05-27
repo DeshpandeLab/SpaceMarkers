@@ -74,28 +74,32 @@ create_visium_mock <- function(version = "1.0", probe_set = TRUE) {
 
 test_that("load10XCoords returns the expected output for spaceranger v1.0", {
   expected_output <- create_visium_mock(version = "1.0")
-  output <- load10XCoords("mock_visiumDir", version = "1.0")
+  output <- load10XCoords("mock_visiumDir", 
+            resolution="lowres",
+            version = "1.0")
   expect_equal(output, expected_output)
   unlink("mock_visiumDir", recursive = TRUE)
 })
 
 test_that("load10XCoords returns the expected output for spaceranger v2.0", {
   expected_output <- create_visium_mock(version = "2.0")
-  output <- load10XCoords("mock_visiumDir", version = "2.0")
+  output <- load10XCoords("mock_visiumDir", resolution="lowres",
+  version = "2.0")
   expect_equal(output, expected_output)
   unlink("mock_visiumDir", recursive = TRUE)
 })
 
 test_that("load10XCoords returns the expected output for visium HD", {
   expected_output <- create_visium_mock(version = "HD")
-  output <- load10XCoords("mock_visiumDir", version = "HD")
+  output <- load10XCoords("mock_visiumDir", resolution="lowres",
+                          version = "HD")
   expect_equal(as.data.frame(output), expected_output)
   unlink("mock_visiumDir", recursive = TRUE)
 })
 
 test_that("load10XCoords returns the expected output without probe_set file", {
   expected_output <- create_visium_mock(version = "1.0", probe_set = FALSE)
-  output <- load10XCoords("mock_visiumDir")
+  output <- load10XCoords("mock_visiumDir", resolution="lowres")
   expect_equal(output, expected_output)
   unlink("mock_visiumDir", recursive = TRUE)
 })

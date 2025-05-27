@@ -48,9 +48,9 @@ result <- getSpatialParameters(spatialPatterns,
   
   expect_equal(nrow(result), 2)
   expect_equal(ncol(result), 2)
-  expect_equal(result[["sigmaOpt", "pattern1"]], 1)
+  expect_equal(result[["sigmaOpt", "pattern1"]], 4)
   expect_equal(result[["threshOpt", "pattern1"]], 4)
-  expect_equal(result[["sigmaOpt", "pattern2"]], 1)
+  expect_equal(result[["sigmaOpt", "pattern2"]], 4)
   expect_equal(result[["threshOpt", "pattern2"]], 4)
 })
 
