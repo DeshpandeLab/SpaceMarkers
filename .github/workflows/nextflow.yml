@@ -25,11 +25,11 @@ jobs:
 
       - name: install nextflow
         run: |
-          cd ..
+          cd /usr/local/bin/
           wget -qO- get.nextflow.io | bash
-          sudo mv nextflow /usr/local/bin/
+          cd --
 
       - name: stub run
         run: |
-          nextflow run SpaceMarkers/nextflow/main.nf --input SpaceMarkers/nextflow/samplesheet.csv -c SpaceMarkers/nextflow/nextflow.config -stub -profile test --max_cpus 1 --max_memory '8GB'
+          nextflow run nextflow/main.nf --input nextflow/samplesheet.csv -c nextflow/nextflow.config -stub -profile test --max_cpus 1 --max_memory '8GB'
 
