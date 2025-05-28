@@ -30,5 +30,6 @@ jobs:
           sudo mv nextflow /usr/local/bin/
 
       - name: stub run
-        run: 
+        run: |
           nextflow run spacemarkers/nextflow/main.nf --input spacemarkers/nextflow/samplesheet.csv -c spacemarkers/nextflow/nextflow.config -stub -profile test --max_cpus 1 --max_memory '8GB'
+
