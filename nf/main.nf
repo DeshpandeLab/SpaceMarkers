@@ -102,7 +102,7 @@ process SPACEMARKERS_PLOTS {
 
   output:
   tuple val(meta), path("${prefix}/overlapScores.png"),         val(source),     emit: overlapScores_plot
-  tuple val(meta), path("${prefix}/*_interacting_genes.png"),   val(source),     emit: interaction_plots
+  tuple val(meta), path("${prefix}/*_interacting_genes.png"),   val(source),     emit: interaction_plots,  optional: true
   path  "versions.yml",                                                          emit: versions
 
   stub:
