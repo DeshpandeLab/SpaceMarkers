@@ -8,7 +8,8 @@ plotOverlapScores(
   df,
   title = "Spatial Overlap Scores",
   out = NULL,
-  fontsize = 15
+  fontsize = 15,
+  tiletext = 6
 )
 }
 \arguments{
@@ -19,6 +20,8 @@ plotOverlapScores(
 \item{out}{The output path for the plot}
 
 \item{fontsize}{The font size of the plot}
+
+\item{tiletext}{The font size within the tile}
 }
 \value{
 A ggplot object
