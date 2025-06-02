@@ -7,13 +7,11 @@
 calcThresholds(df, minval = 0.01, maxval = 0.99)
 }
 \arguments{
-\item{df}{A data frame containing x, y coordinates and pattern name}
+\item{df}{A vector containing pattern values}
 
 \item{minval}{Minimum value for quantile threshold}
 
 \item{maxval}{Maximum value for quantile threshold}
-
-\item{pat}{The name of the pattern to analyze}
 }
 \value{
 A list containing the computed thresholds

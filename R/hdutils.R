@@ -1,7 +1,10 @@
 #' @title Compute the spatial influence of a spatial feature
 #' @description This function computes the spatial influence of a specified pattern
 #' @param spPatterns A data frame containing x, y coordinates and pattern name
-#' @param patternName The name of the pattern to analyze
+#' @param optParams A data frame with optimal parameters for the pattern
+#' @param ... Additional parameters for the Smooth function
+#' @return A data frame with the spatial influence of the specified pattern
+#' @export
 calcInfluence <- function(spPatterns, optParams,...) {
  
     patnames <- setdiff(colnames(spPatterns),
@@ -37,8 +40,7 @@ calcInfluence <- function(spPatterns, optParams,...) {
 #' @title Compute the threshold for identifying outlier values or hotspots
 #' @description This function computes the threshold for identifying outlier 
 #' values or hotspots by fitting a normal mixture model to the data.
-#' @param df A data frame containing x, y coordinates and pattern name
-#' @param pat The name of the pattern to analyze
+#' @param df A vector containing pattern values
 #' @param minval Minimum value for quantile threshold
 #' @param maxval Maximum value for quantile threshold
 #' @return A list containing the computed thresholds
@@ -63,8 +65,9 @@ return(thresh)
 #' object.
 #' @param df A data frame with pattern values (optionally 
 #' with x, y, barcode columns)
-#' @param minval Minimum value for quantile threshold
-#' @param maxval Maximum value for quantile threshold
+#' @param minvals Minimum value for quantile threshold
+#' @param maxvals Maximum value for quantile threshold
+#' @param ... Additional parameters to pass to lower level functions
 #' @return A list containing the computed thresholds for each pattern
 #' @export 
 calcAllThresholds <- function(df, minvals = 0.01, maxvals = 0.99,...) {
@@ -80,13 +83,11 @@ calcAllThresholds <- function(df, minvals = 0.01, maxvals = 0.99,...) {
   if ((length(minvals) == length(maxvals)) && (ncol(df)==length(minvals)))
         stop("minvals and maxvals must be scalar or vectors of 
               the length ncol(df)")
-    
-patnames
-# Calculate thresholds for all patterns
-thresholds <- sapply(patnames, function(pat) {
-    calcThresholds(df[,pat], minval=minvals[pat], maxval=maxvals[pat],...)
-  })
-  return(thresholds)
+    # Calculate thresholds for all patterns
+    thresholds <- sapply(patnames, function(pat) {
+        calcThresholds(df[,pat], minval=minvals[pat], maxval=maxvals[pat],...)
+    })
+    return(thresholds)
 }
 
 
@@ -154,6 +155,7 @@ return(df)
 #' @param in.data A numeric matrix. Rows represent features, columns represent samples.
 #' @param region A factor or vector indicating the group membership for each column of `in.data`.
 #'                Must have exactly two levels/unique values. Its length must equal `ncol(in.data)`.
+#' @param ... Additional arguments passed to the t-test function.
 #' @return A matrix with rows corresponding to the features and columns:
 #'          - `statistic`: The calculated t-statistic.
 #'          - `p.value`: The calculated two-sided p-value.
@@ -205,12 +207,12 @@ calcIMscores.HD <- function(data, patHotspots, infHotspots, patternpair) {
 #' @param data A numeric matrix with genes as rows and barcodes as columns.
 #' @param patHotspots A data frame with pattern hotspots, containing columns for x, y, and barcode.
 #' @param infHotspots A data frame with influence hotspots, containing columns for x, y, and barcode.
-#' @param patternpairs A data frame with pattern pairs to calculate interaction scores for.
+#' @param patternPairs A data frame with pattern pairs to calculate interaction scores for.
 #' @return A data frame with interaction scores for all pattern pairs.
 #' @export
-calcAllIMscores.HD <- function(data, patHotspots, infHotspots, patternpairs) {
-    if (is.null(patternpairs)) {
-        patternpairs <- utils::combn(setdiff(colnames(patHotspots), c("x", "y", "barcode")), 2, simplify = FALSE)
+calcAllIMscores.HD <- function(data, patHotspots, infHotspots, patternPairs=NULL) {
+    if (is.null(patternPairs)) {
+        patternPairs <- utils::combn(setdiff(colnames(patHotspots), c("x", "y", "barcode")), 2, simplify = FALSE)
     }
     if (requireNamespace("BiocParallel", quietly = TRUE) && BiocParallel::bpparam()$workers > 1) {
         bpp <- BiocParallel::bpparam()

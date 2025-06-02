@@ -9,7 +9,12 @@ calcInfluence(spPatterns, optParams, ...)
 \arguments{
 \item{spPatterns}{A data frame containing x, y coordinates and pattern name}
 
-\item{patternName}{The name of the pattern to analyze}
+\item{optParams}{A data frame with optimal parameters for the pattern}
+
+\item{...}{Additional parameters for the Smooth function}
+}
+\value{
+A data frame with the spatial influence of the specified pattern
 }
 \description{
 This function computes the spatial influence of a specified pattern

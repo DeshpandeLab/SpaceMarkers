@@ -34,7 +34,8 @@ Imports:
     utils,
     methods,
     ggplot2,
-    reshape2
+    reshape2,
+    mixtools
 Suggests: 
     data.table,
     devtools,

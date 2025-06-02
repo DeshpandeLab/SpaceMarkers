@@ -11,6 +11,8 @@ row.t.test(in.data, region, ...)
 
 \item{region}{A factor or vector indicating the group membership for each column of \code{in.data}.
 Must have exactly two levels/unique values. Its length must equal \code{ncol(in.data)}.}
+
+\item{...}{Additional arguments passed to the t-test function.}
 }
 \value{
 A matrix with rows corresponding to the features and columns:

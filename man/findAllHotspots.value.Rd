@@ -12,6 +12,8 @@ with x, y, barcode columns)}
 
 \item{threshold}{a scalar or vector of thresholds for each column in the data frame.
 Either user provided or the output of @calcAllThresholds}
+
+\item{...}{Additional parameters to pass to lower level functions}
 }
 \value{
 a data frame with the same dimensions as the input data frame.

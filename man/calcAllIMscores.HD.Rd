@@ -4,7 +4,7 @@
 \alias{calcAllIMscores.HD}
 \title{Calculate interaction scores for all pattern pairs}
 \usage{
-calcAllIMscores.HD(data, patHotspots, infHotspots, patternpairs)
+calcAllIMscores.HD(data, patHotspots, infHotspots, patternPairs = NULL)
 }
 \arguments{
 \item{data}{A numeric matrix with genes as rows and barcodes as columns.}
@@ -13,7 +13,7 @@ calcAllIMscores.HD(data, patHotspots, infHotspots, patternpairs)
 
 \item{infHotspots}{A data frame with influence hotspots, containing columns for x, y, and barcode.}
 
-\item{patternpairs}{A data frame with pattern pairs to calculate interaction scores for.}
+\item{patternPairs}{A data frame with pattern pairs to calculate interaction scores for.}
 }
 \value{
 A data frame with interaction scores for all pattern pairs.

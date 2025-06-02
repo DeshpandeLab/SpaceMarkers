@@ -10,9 +10,11 @@ calcAllThresholds(df, minvals = 0.01, maxvals = 0.99, ...)
 \item{df}{A data frame with pattern values (optionally
 with x, y, barcode columns)}
 
-\item{minval}{Minimum value for quantile threshold}
+\item{minvals}{Minimum value for quantile threshold}
 
-\item{maxval}{Maximum value for quantile threshold}
+\item{maxvals}{Maximum value for quantile threshold}
+
+\item{...}{Additional parameters to pass to lower level functions}
 }
 \value{
 A list containing the computed thresholds for each pattern
