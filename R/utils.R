@@ -51,15 +51,12 @@ getOverlapScores <- function(hotspots,
         "absolute" = intersects,
         stop("Method not supported")
     )
-
-    overlapScore[upper.tri(overlapScore,diag = TRUE)] <- NA
-  
     # Melt normalized Jaccard for output
     dfOverlap <- reshape2::melt(overlapScore)
     dfOverlap <- dfOverlap[stats::complete.cases(dfOverlap),]
     # Due to melting in lower triangular orientation, the column names are flipped
-    colnames(dfOverlap) <- c("pattern2", "pattern1", "overlapScore")
-    dfOverlap <- dfOverlap[,c(2,1,3)]
+    colnames(dfOverlap) <- c("pattern1", "pattern2", "overlapScore")
+    dfOverlap <- dfOverlap[,c(1,2,3)]
     return(dfOverlap)
 }
 
@@ -68,6 +65,7 @@ getOverlapScores <- function(hotspots,
 #' @param df A data frame with columns pattern1, pattern2 and overlapScore
 #' @param title The title of the plot
 #' @param fontsize The font size of the plot
+#' @param tiletext The font size within the tile
 #' @param out The output path for the plot
 #' @return A ggplot object
 #' @export
@@ -79,10 +77,11 @@ getOverlapScores <- function(hotspots,
 #' plotOverlapScores(df, "Overlap Scores", "overlapScores.png", 15)
 #' @import ggplot2
 #'
-plotOverlapScores <- function(df, title = "Spatial Overlap Scores", out = NULL,fontsize = 15) {
+plotOverlapScores <- function(df, title = "Spatial Overlap Scores", out = NULL,
+                              fontsize = 15, tiletext = 6) {
     p <- ggplot2::ggplot(data = df, aes(pattern1, pattern2, fill = overlapScore)) +
         geom_tile(color = "black", size = 0.8) +
-        geom_text(aes(label = round(overlapScore, 2)), size = 6) +  # Display values on the plot
+        geom_text(aes(label = round(overlapScore, 2)), size = tiletext) +  # Display values on the plot
         scale_fill_gradient2(low = "#FFF7EC", mid = "#FDBB84", high = "#D7301F", midpoint = 0.5) +
         scale_y_discrete(limits = rev, guide = guide_axis(angle = 45)) +
         theme_minimal() +
