@@ -29,8 +29,8 @@ NULL
 
 #' Curated Ligand-receptor interaction genes
 #' A list of vectors with genes associated with ligand-receptor interactions from CellChat database
-#' @name lrlist
-#' @format A list of length 3234 with each element being a vector of genes
+#' @name lrdf
+#' @format A data frame with LR interaction genes
 #' @return A list of vectors of LR genes
 #' 
 NULL

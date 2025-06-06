@@ -161,6 +161,7 @@ return(df)
 #'          - `p.value`: The calculated two-sided p-value.
 #'         - `n1`: Number of non-missing observations in group 1 for that row.
 #'         - `n2`: Number of non-missing observations in group 2 for that row.
+#' @importFrom stats t.test
 row.t.test <- function(in.data,region,...){
     if (!is.factor(region)) {
         region <- factor(region)
@@ -248,4 +249,71 @@ calcAllIMscores.HD <- function(data, patHotspots, infHotspots, patternPairs=NULL
         }
     }
     return(IMscores)
+}
+
+#' @title getOverlapScores.HD
+#' @description Calculate the overlap scores between patterns in hotspots
+#' @param patHotspots A data frame with columns x, y, barcode and pattern names
+#' @param infHotspots A data frame with columns x, y, barcode and pattern names
+#' @param method The method to calculate overlapping abundance scores. Options are
+#' "relative-abundance", "differential-abundance" and "absolute"
+#' @param patternList A character vector of pattern names to calculate overlap 
+#' scores for. If NULL, all patterns in patHotspots and infHotspots will be used.
+#' @details The function calculates the overlap scores between patterns hotspots
+#' using the specified method. The default method is "relative-abundance"
+#' @return A data frame with columns pattern, influence and overlapping abundance
+#' @export
+#' @examples
+#' hotspots <- data.frame(x = c(1,2,3,4,5),
+#'                         y = c(1,2,3,4,5),
+#'                         barcode = c("A","B","C","D","E"),
+#'                         pattern1 = c(1,0,1,0,1),
+#'                         pattern2 = c(1,1,0,0,1))
+#' getOverlapScores(hotspots)   
+#' getOverlapScores(hotspots, c("pattern1","pattern2"))
+#' @importFrom ggplot2 ggplot geom_tile geom_text theme_minimal
+#' @importFrom reshape2 melt
+#' @importFrom stats complete.cases
+getOverlapScores.HD <- function(patHotspots, infHotspots,
+                             patternList = NULL, method = c("relative-abundance",
+                                                            "differential-abundance",
+                                                             "absolute") ) {
+    
+    #warn if more than one method is supplied, do not warn by default
+    if(length(method) > 1){
+        method <- method[1]
+        message("Only one method can be used at a time. Using ", method)}
+
+    if (is.null(patternList)) {
+        patternList <- setdiff(colnames(patHotspots),c("x","y","barcode"))
+    } else if (!all(patternList %in% colnames(patHotspots))) {
+        stop("Pattern names not found in hotspots")
+    }
+
+    patBinarized <- (!is.na(patHotspots[,patternList]))*1
+    infBinarized <- (!is.na(infHotspots[,patternList]))*1
+    intersects <- t(patBinarized) %*% infBinarized
+    #nHotspots <- colSums(binarized)
+    nHotsP1 <- t(t(colSums(patBinarized))) %*% array(1, length(patternList))
+    nHotsP2 <- matrix(1, nrow=length(patternList),ncol=1) %*% colSums(infBinarized)
+    colnames(nHotsP1) <- patternList
+    colnames(nHotsP2) <- patternList
+    rownames(nHotsP2) <- patternList
+    overlapScore <- switch(method,
+        "relative-abundance" = intersects/nHotsP2/(nHotsP1[,1]/nrow(patBinarized)),
+        "differential-abundance" = intersects/nHotsP2 - (nHotsP1 - intersects)/(nrow(patBinarized) - nHotsP2),
+        "absolute" = intersects,
+        stop("Method not supported")
+    )
+
+    diag(overlapScore) <- NA
+    colnames(overlapScore) <- paste0("near.",colnames(overlapScore))
+    #overlapScore[upper.tri(overlapScore,diag = TRUE)] <- NA
+  
+    # Melt normalized Jaccard for output
+    dfOverlap <- reshape2::melt(overlapScore)
+    dfOverlap <- dfOverlap[stats::complete.cases(dfOverlap),]
+    # Due to melting in lower triangular orientation, the column names are flipped
+    colnames(dfOverlap) <- c("pattern", "influence", "relAbundance")
+    return(dfOverlap)
 }
