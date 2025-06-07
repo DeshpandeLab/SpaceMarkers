@@ -68,10 +68,10 @@ findPatternHotspots <- function(
     outlier = "positive",
     nullSamples = 1000, includeSelf = TRUE,...){
     if (is.null(params)){
-        sigmaPair <- 10
+        sigma <- 10
         kernelthreshold <- 4
     } else {
-        sigmaPair <- params["sigmaOpt"]
+        sigma <- params["sigmaOpt"]
         kernelthreshold <- params["threshOpt"]
     }
     
@@ -82,7 +82,7 @@ findPatternHotspots <- function(
     X <-spatstat.geom::ppp(
         x=spPatterns$x,y = spPatterns$y, window = allwin,marks = patternVector)
     Kact1 <- spatstat.explore::Smooth(
-        X, at = "points", sigma = sigmaPair[1], ...)
+        X, at = "points", sigma = sigma[1], ...)
     if (includeSelf == TRUE){
       Kact1 <- spPatterns[,patternName] + Kact1
     } else {
@@ -92,7 +92,7 @@ findPatternHotspots <- function(
         Xr<-X;
         spatstat.geom::marks(Xr) <- sample(spatstat.geom::marks(X));
         temp <- spatstat.explore::Smooth(
-                    Xr, at="points", sigma = sigmaPair[1], ...); 
+                    Xr, at="points", sigma = sigma, ...); 
                 return(temp)}, numeric(length(Kact1)))
     Karr1 <- unlist(Karr1)
     mKvec <- mean(Karr1)
