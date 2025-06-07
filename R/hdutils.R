@@ -31,7 +31,7 @@ calcInfluence <- function(spPatterns, optParams,...) {
     return(Kact1)
     })
     spInfluence <- as.data.frame(spInfluence)
-    colnames(spInfluence) <- paste0("inf",patnames)
+    colnames(spInfluence) <- patnames
     spInfluence <- cbind(spPatterns[,c("barcode","x", "y")], spInfluence)
 
     return(spInfluence)
