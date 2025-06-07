@@ -195,12 +195,18 @@
                                        molecule_segment_border_col,
                                        use_individual_molecule_colors,
                                        default_ligand_color,
-                                       default_receptor_color) {
+                                       default_receptor_color,
+                                       show_score_legend = TRUE) {
     circlize::circos.clear()
     circlize::circos.par(
         gap.after = stats::setNames(rep(gap_degree_after_sector, length(plot_cell_order)), plot_cell_order),
-        start.degree = 90, track.margin = c(0.01, 0.01), cell.padding = c(0.02, 0, 0.02, 0)
-    )
+        start.degree = 90, 
+        track.margin = c(0.01, 0.01), 
+        cell.padding = c(0.02, 0, 0.02, 0),
+        canvas.xlim = c(-1.1, 1.1), # Ensure full circle
+        canvas.ylim = c(-1.1, 1.1),
+        points.overflow.warning = FALSE
+        )
     sector_xlim_df <- stats::aggregate(end ~ cell_type, data = bed_data, FUN = max, na.rm = TRUE)
     ordered_sector_xlim <- data.frame(cell_type = plot_cell_order, stringsAsFactors = FALSE)
     ordered_sector_xlim <- merge(ordered_sector_xlim, sector_xlim_df, by = "cell_type", all.x = TRUE, sort=FALSE) # Keep order
@@ -272,6 +278,26 @@
                 arr.col = link_cols_vec[i], 
                 arr.width = link_arrowhead_width, 
                 arr.length = link_arrowhead_length
+            )
+        }
+    }
+        # After the main plot is drawn but BEFORE circos.clear()
+    if (show_score_legend && !is.null(score_color_palette_fun) && is.function(score_color_palette_fun)) {
+        
+        # This check is to avoid trying to make a legend if there's no color function
+        if(!requireNamespace("ComplexHeatmap", quietly = TRUE)) {
+            warning("Package 'ComplexHeatmap' is needed to show the legend. Please install it.")
+        } else {
+            lgd_links = ComplexHeatmap::Legend(
+                col_fun = score_color_palette_fun,
+                title = "Interaction Score",
+                direction = "vertical"
+            )
+            ComplexHeatmap::draw(
+                lgd_links,
+                x = grid::unit(1, "npc") - grid::unit(5, "mm"), # Adjusted position
+                y = grid::unit(5, "mm"),
+                just = c("right", "bottom")
             )
         }
     }
@@ -620,7 +646,7 @@ plotSourceToTargetCircos <- function(lr_interactions_df,
         link_arrowhead_width=link_arrowhead_width, link_arrowhead_length=link_arrowhead_length,
         score_color_palette_fun=score_color_palette_fun, molecule_segment_border_col=molecule_segment_border_col,
         use_individual_molecule_colors=use_individual_molecule_colors,
-        default_ligand_color=default_ligand_color, default_receptor_color=default_receptor_color
+        default_ligand_color=default_ligand_color, default_receptor_color=default_receptor_color,
     )
     return(invisible(NULL))
 }

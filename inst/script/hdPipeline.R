@@ -1,8 +1,5 @@
 #' @title HD Pipeline for Cell-Cell Interactions
 #' @description This script processes spatial transcriptomics data to identify and visualize cell-cell interactions using the HD method.
-#'
-#' 
-
 ## @author Atul Deshpande
 #' @date 2025-06-07
 #' 
@@ -15,7 +12,7 @@ data_dir <- "~/01_Projects/20_BTC/DPT/HDsample/binned_outputs/square_016um/"
 patternpath <- "~/Downloads/rctd_cell_types-2.csv"
 
 # limit the analysis to specific cell types
-include_cells <- c("FIBROBLASTS","CYCLING.DUCTAL", "DUCTAL", "TNK", "B.CELLS", "CYCLING.TNK", "MAST", "CYCLING.MYELOID")
+include_cells <- c("FIBROBLASTS","CYCLING.DUCTAL", "DUCTAL","MYELOID", "TNK", "B.CELLS", "CYCLING.TNK", "MAST", "CYCLING.MYELOID")
 reference_cells <- c("FIBROBLASTS", "CYCLING.DUCTAL")
 
 # limit the analysis to ligand-receptor genes
@@ -116,7 +113,7 @@ topinteractions <- topinteractions %>%
     arrange(desc(score))
 
 # Save the top interactions to a CSV file
-write.csv(topinteractions, file = paste0("top_",top_n_table,"_pairwise_LR_interactions.csv", row.names = FALSE)
+write.csv(topinteractions, file = paste0("top_",top_n_table,"_pairwise_LR_interactions.csv", row.names = FALSE))
 
 score_pal <- circlize::colorRamp2(
   breaks = c(min(topinteractions$score), 
@@ -179,12 +176,12 @@ for(source_cell in reference_cells) {
   # Create a plot for the current source cell type
   png_filename <- paste0("circos_interactions_", source_cell, "_source.png")
   png(png_filename, width = 2000, height = 2000, res = 300)
+  par(mar = c(3, 3, 3, 3)) # Provides 2 lines of margin on all sides
   plot.new() # If not in RStudio or if you get "R newBella page" error
   plotSourceToTargetCircos(
   filtered_interactions,
   source_cell_name = source_cell,
   target_cell_names = target_cells,
-  cell_order = all_plot_cells,
   # Balance sector sizes by transforming score for width
   scale_link_width_by_score = TRUE,
   score_transform_for_width = function(s) log1p(s) + 0.2, # Key change!
@@ -206,25 +203,9 @@ for(source_cell in reference_cells) {
   link_arrowhead_length = 0.05,
   link_arrowhead_width = 0.1
 )
-lgd_links = ComplexHeatmap::Legend(
-  col_fun = score_pal, # Use the *exact same* color function
-  title = "Interaction Score",
-  direction = "vertical" # Can also be "horizontal"
-)
-
-ComplexHeatmap::draw(
-  lgd_links,
-  x = unit(1, "npc") - unit(2, "mm"), # 2mm from the right edge
-  y = unit(2, "mm"),                  # 2mm from the bottom edge
-  just = c("right", "bottom")         # Justification of the legend box
-)
   dev.off()
 }
 
-# Correct way to create a three-color gradient
-
-target_cells <- setdiff(include_cells, source_cell)
-all_plot_cells <- c("FIBROBLASTS", target_cells)
 
 for (target_cell in reference_cells) {
   print(paste("Processing target cell type:", target_cell))
@@ -250,6 +231,7 @@ for (target_cell in reference_cells) {
  
   png_filename <- paste0("circos_interactions_", target_cell, "_target.png")
   png(png_filename, width = 2000, height = 2000, res = 300)
+  par(mar = c(1, 1, 1, 1)) # Provides 2 lines of margin on all sides
 
   all_plot_cells <- c(source_cells, target_cell)
   custom_gaps <- setNames(rep(2, length(all_plot_cells)), all_plot_cells)
@@ -259,7 +241,6 @@ for (target_cell in reference_cells) {
     topinteractions,
     target_cell_name = target_cell,
     source_cell_names = source_cells,
-    cell_order = all_plot_cells,
     # Balance sector sizes by transforming score for width
     scale_link_width_by_score = TRUE,
     score_transform_for_width = function(s) log1p(s) + 0.2, # Key change!
@@ -272,7 +253,7 @@ for (target_cell in reference_cells) {
     # Enhance link and layout aesthetics
     score_color_palette_fun = score_pal,
     gap_degree_after_sector = custom_gaps,
-    link_connection_rou = 0.8, # Slightly more curve
+    link_connection_rou = 0.9, # Slightly more curve
     link_transparency = 0.4, # Set to 0 if transparency is in the colorRamp2 function
 
     # Keep other successful parameters
@@ -281,18 +262,5 @@ for (target_cell in reference_cells) {
     link_arrowhead_length = 0.05,
     link_arrowhead_width = 0.1
   )
-
-  lgd_links = ComplexHeatmap::Legend(
-  col_fun = score_pal, # Use the *exact same* color function
-  title = "Interaction Score",
-  direction = "vertical" # Can also be "horizontal"
-  )
-
-ComplexHeatmap::draw(
-  lgd_links,
-  x = unit(1, "npc") - unit(2, "mm"), # 2mm from the right edge
-  y = unit(2, "mm"),                  # 2mm from the bottom edge
-  just = c("right", "bottom")         # Justification of the legend box
-)
   dev.off()
 }
