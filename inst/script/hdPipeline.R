@@ -72,9 +72,8 @@ if (use.ligand.receptor.genes) {
 }
 
 # Calculate interaction scores for all pattern pairs
-tictoc::tic()
 IMscores <- calcAllIMscores.HD(data, patHotspots, infHotspots, patternPairs)
-tictoc::toc()
+
 
 saveRDS(IMscores, file = "IMscores.rds")
 
