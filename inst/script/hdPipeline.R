@@ -6,10 +6,15 @@
 #' 
 # Load necessary libraries
 library(dplyr)
+devtools::load_all()
 
-# setup the environment. Replace with your own paths
-data_dir <- "~/01_Projects/20_BTC/DPT/HDsample/binned_outputs/square_016um/"
-patternpath <- "~/Downloads/rctd_cell_types-2.csv"
+# read data_dir and patternpath form arguments
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) < 2) {
+    stop("Please provide the data directory and pattern path as arguments.")
+}
+data_dir <- args[1]    # example: /HDsample/binned_outputs/square_016um/
+patternpath <- args[2] # example: /rctd_cell_types-2.csv
 
 # limit the analysis to specific cell types
 include_cells <- c("FIBROBLASTS","CYCLING.DUCTAL", "DUCTAL","MYELOID", "TNK", "B.CELLS", "CYCLING.TNK", "MAST", "CYCLING.MYELOID")
