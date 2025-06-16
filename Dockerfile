@@ -10,7 +10,8 @@ RUN sudo apt-get update -y && \
     apt-get install libhdf5-dev build-essential patch -y
 
 RUN Rscript -e 'install.packages("BiocManager");\
-                BiocManager::install("CoGAPS")'
+                BiocManager::install("CoGAPS");\
+                BiocManager::install("ComplexHeatmap")'
 
 RUN Rscript -e 'devtools::install_deps()'
 

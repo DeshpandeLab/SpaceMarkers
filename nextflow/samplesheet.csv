@@ -1,0 +1,2 @@
+sample,data_dir,annotation_file
+sample1,breastcancer/,breastcancerCODA/tissue_positions_cellular_compositions.csv
