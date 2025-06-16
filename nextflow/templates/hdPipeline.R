@@ -1,3 +1,12 @@
+#!/usr/bin/env Rscript
+# @dimalvovs: template to be able to run SpaceMarkers as part of
+# btc-spatial-pipelines while it is in dev and until it is added
+# to she SpaceMarkers package
+# run example:
+# nextflow run nextflow/visiumhd.nf --input nextflow/hd-samplesheet.csv -profile docker -c nextflow/nextflow.config -resume
+
+
+# script start
 #' @title HD Pipeline for Cell-Cell Interactions
 #' @description This script processes spatial transcriptomics data to identify and visualize cell-cell interactions using the HD method.
 ## @author Atul Deshpande
@@ -5,16 +14,18 @@
 #' 
 #' 
 # Load necessary libraries
-library(dplyr)
+
+library("dplyr")
 devtools::load_all()
 
 # read data_dir and patternpath form arguments
-args <- commandArgs(trailingOnly = TRUE)
-if (length(args) < 2) {
-    stop("Please provide the data directory and pattern path as arguments.")
-}
-data_dir <- args[1]    # example: /HDsample/binned_outputs/square_016um/
-patternpath <- args[2] # example: /rctd_cell_types-2.csv
+data_dir <- "${data}"           # example: /HDsample/binned_outputs/square_016um/
+patternpath <- "${features}"    # example: /rctd_cell_types-2.csv
+output_dir <- "${prefix}"       # example: /HDsample/hd_pipeline_output/
+figure_dir <- file.path(output_dir, "figures")
+
+dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+dir.create(figure_dir, showWarnings = FALSE)
 
 # limit the analysis to specific cell types
 include_cells <- c("FIBROBLASTS","CYCLING.DUCTAL", "DUCTAL","MYELOID", "TNK", "B.CELLS", "CYCLING.TNK", "MAST", "CYCLING.MYELOID")
@@ -30,7 +41,7 @@ use.ligand.receptor.genes <- TRUE
 top_n_table <- 25
 top_n_plots <- 10
 coords <- load10XCoords(data_dir)
-rownames(coords) <- coords$barcode
+rownames(coords) <- coords[["barcode"]]
 
 spPatterns <- getSpatialFeatures(patternpath)
 barcodes <- intersect(rownames(coords), rownames(spPatterns))
@@ -55,9 +66,9 @@ data <- load10XExpr(data_dir)
 data <- data[,barcodes]
 
 data(lrdf)
-lrpairs <- lrdf$interaction[,c("ligand.symbol","receptor.symbol")]
-ligands <- sapply(lrpairs$ligand.symbol,function(i) strsplit(i,split=", "))
-receptors <- sapply(lrpairs$receptor.symbol,function(i) strsplit(i,split=", "))
+lrpairs <- lrdf[["interaction"]][,c("ligand.symbol","receptor.symbol")]
+ligands <- sapply(lrpairs[["ligand.symbol"]],function(i) strsplit(i,split=", "))
+receptors <- sapply(lrpairs[["receptor.symbol"]],function(i) strsplit(i,split=", "))
 
 lrgenes <- union(unlist(ligands),unlist(receptors))
 
@@ -75,7 +86,7 @@ if (use.ligand.receptor.genes) {
 IMscores <- calcAllIMscores.HD(data, patHotspots, infHotspots, patternPairs)
 
 
-saveRDS(IMscores, file = "IMscores.rds")
+saveRDS(IMscores, file = sprintf("%s/IMscores.rds", output_dir))
 
 LScores <- getGeneSetScore(IMscores,genes = ligands)
 RScores <- getGeneSetScore(IMscores,genes = receptors)
@@ -90,7 +101,7 @@ rownames(LR2) <- rownames(lrpairs)
 LRcomb <- cbind(LR1,LR2)
 apply(LRcomb, 2, function(x) x[!is.na(x)])
 
-saveRDS(LRcomb, file = "LRscores.rds")
+saveRDS(LRcomb, file = sprintf("%s/LRscores.rds", output_dir))
 # Select top entries from each column
 top_entries <- lapply(colnames(LRcomb), function(cc) { x<- LRcomb[,cc];
     if (length(x) < top_n_table) {
@@ -117,12 +128,14 @@ topinteractions <- topinteractions %>%
     arrange(desc(score))
 
 # Save the top interactions to a CSV file
-write.csv(topinteractions, file = paste0("top_",top_n_table,"_pairwise_LR_interactions.csv", row.names = FALSE))
+write.csv(topinteractions, 
+          file = sprintf("%s/top_%s_pairwise_LR_interactions.csv", output_dir, top_n_table),
+          row.names = FALSE)
 
 score_pal <- circlize::colorRamp2(
-  breaks = c(min(topinteractions$score), 
-            median(topinteractions$score), 
-            max(topinteractions$score)), # Vector of length 3
+  breaks = c(min(topinteractions[["score"]]), 
+            median(topinteractions[["score"]]), 
+            max(topinteractions[["score"]])), # Vector of length 3
   colors = c("grey90", "orange", "red"),                 # Vector of length 3
   transparency = 0.4
 )
@@ -140,7 +153,8 @@ summarized_interactions <- topNinteractions %>%
     summarise(score = sum(score)) %>%
     arrange(desc(score))
 png_filename <- paste0("circos_top_",top_n_plots,".png")
-  png(png_filename, width = 2000, height = 2000, res = 300)
+png_path <- file.path(figure_dir, png_filename)
+  png(png_path, width = 2000, height = 2000, res = 300)
 plot.new() # If not in RStudio or if you get "R newBella page" error
   plotCellInteractionCircos(topNinteractions,
                             link_buffer_fraction = 0.05,
@@ -168,9 +182,9 @@ for(source_cell in reference_cells) {
   }
 
   score_pal <- circlize::colorRamp2(
-    breaks = c(min(filtered_interactions$score), 
-    median(filtered_interactions$score), 
-    max(filtered_interactions$score)), # Vector of length 3
+    breaks = c(min(filtered_interactions[["score"]]), 
+    median(filtered_interactions[["score"]]), 
+    max(filtered_interactions[["score"]])), # Vector of length 3
   colors = c("grey90", "orange", "red"),                 # Vector of length 3
   transparency = 0.4
   )
@@ -179,7 +193,8 @@ for(source_cell in reference_cells) {
   custom_gaps[length(custom_gaps)] <- 20 
   # Create a plot for the current source cell type
   png_filename <- paste0("circos_interactions_", source_cell, "_source.png")
-  png(png_filename, width = 2000, height = 2000, res = 300)
+  png_filename <- file.path(figure_dir, png_filename)
+  png(png_path, width = 2000, height = 2000, res = 300)
   par(mar = c(3, 3, 3, 3)) # Provides 2 lines of margin on all sides
   plot.new() # If not in RStudio or if you get "R newBella page" error
   plotSourceToTargetCircos(
@@ -226,15 +241,16 @@ for (target_cell in reference_cells) {
   }
   
   score_pal <- circlize::colorRamp2(
-    breaks = c(min(filtered_interactions$score), 
-              median(filtered_interactions$score), 
-              max(filtered_interactions$score)), # Vector of length 3
+    breaks = c(min(filtered_interactions[["score"]]), 
+              median(filtered_interactions[["score"]]), 
+              max(filtered_interactions[["score"]])), # Vector of length 3
     colors = c("grey90", "orange", "red"),                 # Vector of length 3
     transparency = 0.4
   )
  
   png_filename <- paste0("circos_interactions_", target_cell, "_target.png")
-  png(png_filename, width = 2000, height = 2000, res = 300)
+  png_path <- file.path(figure_dir, png_filename)
+  png(png_path, width = 2000, height = 2000, res = 300)
   par(mar = c(1, 1, 1, 1)) # Provides 2 lines of margin on all sides
 
   all_plot_cells <- c(source_cells, target_cell)
@@ -268,3 +284,15 @@ for (target_cell in reference_cells) {
   )
   dev.off()
 }
+
+#output versions
+#versions
+message("reading session info")
+sinfo <- sessionInfo()
+versions <- lapply(sinfo[["otherPkgs"]], function(x) {sprintf("  %s: %s",x[["Package"]],x[["Version"]])})
+versions[['R']] <- sprintf("  R: %s
+",packageVersion("base"))
+cat(paste0("process",":
+"), file="versions.yml")
+cat(unlist(versions), file="versions.yml", append=TRUE, sep="
+")

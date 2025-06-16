@@ -8,7 +8,6 @@ process SPACEMARKERS_HD {
   output:
     tuple val(meta), path("${prefix}/IMscores.rds"),       val(source),   emit: IMscores
     tuple val(meta), path("${prefix}/LRscores.rds"),       val(source),   emit: LRscores
-    tuple val(meta), path("${prefix}/spPatterns.rds"),     val(source),   emit: spPatterns
     tuple val(meta), path("${prefix}/top*.csv"),           val(source),   emit: top_interactions
     tuple val(meta), path("${prefix}/**.png"),             val(source),   emit: figures
     path  "versions.yml",                                                 emit: versions
@@ -21,7 +20,6 @@ process SPACEMARKERS_HD {
     mkdir -p "${prefix}"
     touch "${prefix}/IMscores.rds"
     touch "${prefix}/LRscores.rds"
-    touch "${prefix}/spPatterns.rds"
     touch "${prefix}/top_25_interactions.csv"
     mkdir -p "${prefix}/figures"
     touch "${prefix}/figures/circos_plot.png"
@@ -33,6 +31,14 @@ process SPACEMARKERS_HD {
           R: \$(Rscript -e 'print(packageVersion("base"))' | awk '{print \$2}')
     END_VERSIONS
     """
+
+   script:
+     def args = task.ext.args ?: ''
+     source = features.simpleName
+     prefix = task.ext.prefix ?: "${meta.id}/${source}"
+     template 'hdPipeline.R'
+
+
 }
 
 // Nextflow pipeline to run SpaceMarkers
