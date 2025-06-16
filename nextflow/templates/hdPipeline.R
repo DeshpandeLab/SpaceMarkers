@@ -154,7 +154,7 @@ summarized_interactions <- topNinteractions %>%
     arrange(desc(score))
 png_filename <- paste0("circos_top_",top_n_plots,".png")
 png_path <- file.path(figure_dir, png_filename)
-  png(png_path, width = 2000, height = 2000, res = 300)
+png(png_path, width = 2000, height = 2000, res = 300)
 plot.new() # If not in RStudio or if you get "R newBella page" error
   plotCellInteractionCircos(topNinteractions,
                             link_buffer_fraction = 0.05,
@@ -193,7 +193,7 @@ for(source_cell in reference_cells) {
   custom_gaps[length(custom_gaps)] <- 20 
   # Create a plot for the current source cell type
   png_filename <- paste0("circos_interactions_", source_cell, "_source.png")
-  png_filename <- file.path(figure_dir, png_filename)
+  png_path <- file.path(figure_dir, png_filename)
   png(png_path, width = 2000, height = 2000, res = 300)
   par(mar = c(3, 3, 3, 3)) # Provides 2 lines of margin on all sides
   plot.new() # If not in RStudio or if you get "R newBella page" error
