@@ -27,7 +27,7 @@ getOverlapScores <- function(hotspots,
                                                             "Jaccard", "Sorensen-Dice",
                                                             "Ochiai", "absolute") ) {
     
-    #warn if more than one method is supplied, do not warn by default
+    #stop if more than one method is supplied, do not warn by default
     if(length(method) > 1){
         method <- method[1]
         message("Only one method can be used at a time. Using ", method)}
@@ -175,4 +175,26 @@ plotIMScores <- function(df, interaction, cutOff = 0, nGenes = 20,
         ggplot2::ggsave(filename = out,plot = p1)
     }
     return(p1)
+}
+
+#' @title getGeneSetScore
+#' @description Calculate the mean interaction score for a set of genes
+#' @param IMscores A matrix of interaction scores
+#' @param genes A list of gene sets, where each set is a vector of gene names
+#' @return A vector of mean interaction scores for each gene set
+#' @export
+getGeneSetScore <- function(IMscores, genes) {
+    scores <- sapply(genes, function(geneSet) {
+        if (length(geneSet) == 0) return(NA)
+        geneSet <- intersect(geneSet, rownames(IMscores))
+        if (length(geneSet) == 0) return(NA)
+        if (length(geneSet) == 1) {
+            return(IMscores[geneSet, , drop = FALSE])
+        } else
+            if (length(geneSet) > 1) {
+                return(colMeans(IMscores[geneSet, , drop = FALSE], na.rm = TRUE))
+            }
+    })
+    scores <- Reduce(rbind, scores)
+    return(scores)
 }

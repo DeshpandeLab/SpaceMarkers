@@ -34,14 +34,16 @@ Imports:
     utils,
     methods,
     ggplot2,
-    reshape2
+    reshape2,
+    RColorBrewer,
+    circlize,
+    mixtools
 Suggests: 
     data.table,
     devtools,
     dplyr,
     hrbrthemes,
     knitr,
-    RColorBrewer,
     cowplot,
     readbitmap,
     rjson,
