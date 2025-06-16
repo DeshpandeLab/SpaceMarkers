@@ -16,7 +16,7 @@
 # Load necessary libraries
 
 library("dplyr")
-devtools::load_all()
+library("SpaceMarkers")
 
 # read data_dir and patternpath form arguments
 data_dir <- "${data}"           # example: /HDsample/binned_outputs/square_016um/
