@@ -232,7 +232,7 @@ calcAllIMscores.HD <- function(data, patHotspots, infHotspots, patternPairs=NULL
             seq_len(nrow(patternPairs)),
             function(i) {
                 patternpair <- patternPairs[i,]
-                IMscores.pair <- calcIMscores.HD(data, patHotspots, infHotspots, patternpair)
+                IMscores.pair <- calcIMscores.HD(data, patHotspots, infHotspots, patternpair,...)
                 colnames(IMscores.pair) <- c(
                     paste0("t_", patternpair[1], "_near_", patternpair[2]),
                     paste0("t_", patternpair[2], "_near_", patternpair[1])
@@ -247,7 +247,7 @@ calcAllIMscores.HD <- function(data, patHotspots, infHotspots, patternPairs=NULL
         IMscores <- c()
         for (i in 1:nrow(patternPairs)) {
             patternpair <- patternPairs[i,]
-            IMscores.pair <- calcIMscores.HD(data, patHotspots, infHotspots, patternpair)
+            IMscores.pair <- calcIMscores.HD(data, patHotspots, infHotspots, patternpair,...)
             IMscores <- cbind(IMscores, IMscores.pair)
             colnames(IMscores)[(ncol(IMscores)-1):ncol(IMscores)] <- c(
                 paste0("t_", patternpair[1], "_near_", patternpair[2]),
