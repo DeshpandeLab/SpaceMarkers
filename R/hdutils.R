@@ -195,13 +195,13 @@ row.t.test <- function(in.data,region,min_bins=50,...){
     return(temp)
 }
 
-calcIMscores.HD <- function(data, patHotspots, infHotspots, patternpair) {
+calcIMscores.HD <- function(data, patHotspots, infHotspots, patternpair,...) {
         spotClass <- classifySpots(patHotspots, infHotspots, patternpair = patternpair)
         pat1 <- patternpair[1]
         pat2 <- patternpair[2]
         t1table <- row.t.test(data, spotClass[,1])
         colnames(t1table)[1] <- paste0("t_", pat1, "_near_", pat2)
-        t2table <- row.t.test(data, spotClass[,2])
+        t2table <- row.t.test(data, spotClass[,2],...)
         colnames(t2table)[1] <- paste0("t_", pat2, "_near_", pat1)
         tscores <- cbind(t1table[,1], t2table[,1])
         colnames(tscores) <- c(paste0("t_", pat1, "_near_", pat2), paste0("t_", pat2, "_near_", pat1))
@@ -217,7 +217,7 @@ calcIMscores.HD <- function(data, patHotspots, infHotspots, patternpair) {
 #' @param patternPairs A data frame with pattern pairs to calculate interaction scores for.
 #' @return A data frame with interaction scores for all pattern pairs.
 #' @export
-calcAllIMscores.HD <- function(data, patHotspots, infHotspots, patternPairs=NULL) {
+calcAllIMscores.HD <- function(data, patHotspots, infHotspots, patternPairs=NULL,...) {
     if (is.null(patternPairs)) {
         patternPairs <- utils::combn(setdiff(colnames(patHotspots), c("x", "y", "barcode")), 2, simplify = FALSE)
     }
