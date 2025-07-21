@@ -162,7 +162,7 @@ return(df)
 #'         - `n1`: Number of non-missing observations in group 1 for that row.
 #'         - `n2`: Number of non-missing observations in group 2 for that row.
 #' @importFrom stats t.test
-row.t.test <- function(in.data,region,...){
+row.t.test <- function(in.data,region,min_bins=50,...){
     if (!is.factor(region)) {
         region <- factor(region)
     }
@@ -175,17 +175,23 @@ row.t.test <- function(in.data,region,...){
     patname <- group_levels[-int]
     idx_pat <- which(region == patname)
     idx_int <- which(region == interacting)
-
+    if (length(idx_pat) >= min_bins || length(idx_int) >= min_bins) {
     temp <- sapply(rownames(in.data), function(r) {
-        x <- in.data[r, idx_pat]
-        y <- in.data[r, idx_int]
-        tmp <- t.test(x=x, y=y, 
+        pat <- in.data[r, idx_pat]
+        int <- in.data[r, idx_int]
+    if (length(x) < min_bins || length(y) < min_bins) {
+            return(c(statistic=NA, p.value=NA, n1=0, n2=0))
+        }
+        tmp <- t.test(x=int, y=pat, 
                       alternative = "two.sided", var.equal = FALSE, 
                       na.action = na.omit, ...)
         return(c(statistic=tmp$statistic, p.value=tmp$p.value, n1=length(x), n2=length(y)))
     })
+    } else {
+        temp <- matrix(NA, nrow = nrow(in.data), ncol = 4)
+        return(c(statistic=array(NA, dim=nrow(in.data)),p.value=array(NA, dim=nrow(in.data)), n1=0, n2=0))
+    }
     temp <- t(temp)
-    gc()
     return(temp)
 }
 
