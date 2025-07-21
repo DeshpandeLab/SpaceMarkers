@@ -156,7 +156,6 @@ return(df)
 #' @param region A factor or vector indicating the group membership for each column of `in.data`.
 #'                Must have exactly two levels/unique values. Its length must equal `ncol(in.data)`.
 #' @param min_bins Minimum number of non-missing observations required in each group to perform the t-test.
-#' @param ... Additional arguments passed to the t-test function.
 #' @return A matrix with rows corresponding to the features and columns:
 #'          - `statistic`: The calculated t-statistic.
 #'          - `p.value`: The calculated two-sided p-value.
@@ -179,14 +178,14 @@ row.t.test <- function(in.data,region,min_bins=50,...){
     if (length(idx_pat) >= min_bins || length(idx_int) >= min_bins) {
     temp <- sapply(rownames(in.data), function(r) {
         pat <- in.data[r, idx_pat]
-        int <- in.data[r, idx_int]
-    if (length(x) < min_bins || length(y) < min_bins) {
+        inter <- in.data[r, idx_int]
+    if (length(pat) < min_bins || length(inter) < min_bins) {
             return(c(statistic=NA, p.value=NA, n1=0, n2=0))
         }
-        tmp <- t.test(x=int, y=pat, 
+        tmp <- t.test(x=inter, y=pat, 
                       alternative = "two.sided", var.equal = FALSE, 
-                      na.action = na.omit, ...)
-        return(c(statistic=tmp$statistic, p.value=tmp$p.value, n1=length(x), n2=length(y)))
+                      na.action = na.omit)
+        return(c(statistic=tmp$statistic, p.value=tmp$p.value, n1=length(inter), n2=length(pat)))
     })
     } else {
         temp <- matrix(NA, nrow = nrow(in.data), ncol = 4)
@@ -200,7 +199,7 @@ calcIMscores.HD <- function(data, patHotspots, infHotspots, patternpair,...) {
         spotClass <- classifySpots(patHotspots, infHotspots, patternpair = patternpair)
         pat1 <- patternpair[1]
         pat2 <- patternpair[2]
-        t1table <- row.t.test(data, spotClass[,1])
+        t1table <- row.t.test(data, region=spotClass[,1],...)
         colnames(t1table)[1] <- paste0("t_", pat1, "_near_", pat2)
         t2table <- row.t.test(data, spotClass[,2],...)
         colnames(t2table)[1] <- paste0("t_", pat2, "_near_", pat1)
