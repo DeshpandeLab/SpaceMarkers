@@ -178,6 +178,7 @@
 
 # @import circlize
 # @import RColorBrewer
+# @import ComplexHeatmap
 # --- Helper Function 3: Drawing Circlize Elements ---
 .draw_circos_plot_elements <- function(bed_data,
                                        links_data,
@@ -283,11 +284,6 @@
     }
         # After the main plot is drawn but BEFORE circos.clear()
     if (show_score_legend && !is.null(score_color_palette_fun) && is.function(score_color_palette_fun)) {
-        
-        # This check is to avoid trying to make a legend if there's no color function
-        if(!requireNamespace("ComplexHeatmap", quietly = TRUE)) {
-            warning("Package 'ComplexHeatmap' is needed to show the legend. Please install it.")
-        } else {
             lgd_links = ComplexHeatmap::Legend(
                 col_fun = score_color_palette_fun,
                 title = "Interaction Score",
@@ -299,7 +295,6 @@
                 y = grid::unit(5, "mm"),
                 just = c("right", "bottom")
             )
-        }
     }
     circlize::circos.clear()
 }

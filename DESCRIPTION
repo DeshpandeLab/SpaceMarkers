@@ -51,7 +51,8 @@ Suggests:
     BiocStyle,
     testthat (>= 3.0.0),
     viridis,
-    CoGAPS
+    CoGAPS,
+    ComplexHeatmap
 Enhances: 
     BiocParallel
 VignetteBuilder: 

@@ -83,7 +83,7 @@ if (use.ligand.receptor.genes) {
 }
 
 # Calculate interaction scores for all pattern pairs
-IMscores <- calcAllIMscores.HD(data, patHotspots, infHotspots, patternPairs)
+IMscores <- calcAllIMscores.HD(data, patHotspots, infHotspots, patternPairs,min_bins = 50)
 
 
 saveRDS(IMscores, file = sprintf("%s/IMscores.rds", output_dir))

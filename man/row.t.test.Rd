@@ -4,13 +4,15 @@
 \alias{row.t.test}
 \title{Perform row-wise t-tests from scratch}
 \usage{
-row.t.test(in.data, region, ...)
+row.t.test(in.data, region, min_bins = 50, ...)
 }
 \arguments{
 \item{in.data}{A numeric matrix. Rows represent features, columns represent samples.}
 
 \item{region}{A factor or vector indicating the group membership for each column of \code{in.data}.
 Must have exactly two levels/unique values. Its length must equal \code{ncol(in.data)}.}
+
+\item{min_bins}{Minimum number of non-missing observations required in each group to perform the t-test.}
 
 \item{...}{Additional arguments passed to the t-test function.}
 }
