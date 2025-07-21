@@ -155,6 +155,7 @@ return(df)
 #' @param in.data A numeric matrix. Rows represent features, columns represent samples.
 #' @param region A factor or vector indicating the group membership for each column of `in.data`.
 #'                Must have exactly two levels/unique values. Its length must equal `ncol(in.data)`.
+#' @param min_bins Minimum number of non-missing observations required in each group to perform the t-test.
 #' @param ... Additional arguments passed to the t-test function.
 #' @return A matrix with rows corresponding to the features and columns:
 #'          - `statistic`: The calculated t-statistic.
@@ -214,7 +215,11 @@ calcIMscores.HD <- function(data, patHotspots, infHotspots, patternpair,...) {
 #' @param data A numeric matrix with genes as rows and barcodes as columns.
 #' @param patHotspots A data frame with pattern hotspots, containing columns for x, y, and barcode.
 #' @param infHotspots A data frame with influence hotspots, containing columns for x, y, and barcode.
-#' @param patternPairs A data frame with pattern pairs to calculate interaction scores for.
+#' @param patternPairs A data frame with pattern pairs to calculate interaction scores for. If NULL, 
+#' all combinations of patterns in `patHotspots` will be used.
+#' If provided, it should have two columns with pattern names. 
+#' Each row should represent a pair of patterns for which interaction scores will be calculated.
+#' @param ... Additional parameters to pass to lower level functions.
 #' @return A data frame with interaction scores for all pattern pairs.
 #' @export
 calcAllIMscores.HD <- function(data, patHotspots, infHotspots, patternPairs=NULL,...) {
