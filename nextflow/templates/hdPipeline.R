@@ -19,12 +19,9 @@ library("dplyr")
 library("SpaceMarkers")
 
 # read data_dir and patternpath form arguments
-#data_dir <- "${data}"           # example: /HDsample/binned_outputs/square_016um/
-data_dir <- "~/Downloads/binned_outputs/square_016um/" # example: /HDsample/binned_outputs/square_016um/
-#patternpath <- "${features}"    # example: /rctd_cell_types-2.csv
-patternpath <- "~/Downloads/rctd_cell_types-2.csv" # example: /rctd_cell_types-2.csv
-#output_dir <- "${prefix}"       # example: /HDsample/hd_pipeline_output/
-output_dir <- "~/Downloads/hd_pipeline_output/" # example: /HDsample/hd_pipeline_output/
+data_dir <- "${data}"           # example: /HDsample/binned_outputs/square_016um/
+patternpath <- "${features}"    # example: /rctd_cell_types-2.csv
+output_dir <- "${prefix}"       # example: /HDsample/hd_pipeline_output/
 figure_dir <- file.path(output_dir, "figures")
 
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
