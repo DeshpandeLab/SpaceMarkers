@@ -87,7 +87,7 @@ IMscores <- calcAllIMscores.HD(data=data,
                                 patHotspots=patHotspots, 
                                 infHotspots=infHotspots, 
                                 patternPairs=patternPairs,
-                                min_bins=50)
+                                min_bins=100)
 
 saveRDS(IMscores, file = sprintf("%s/IMscores.rds", output_dir))
 
@@ -102,7 +102,6 @@ LR2 <- LScores[,ind2] + RScores[,ind1]
 rownames(LR2) <- rownames(lrpairs)
 
 LRcomb <- cbind(LR1,LR2)
-apply(LRcomb, 2, function(x) x[!is.na(x)])
 
 saveRDS(LRcomb, file = sprintf("%s/LRscores.rds", output_dir))
 # Select top entries from each column
@@ -127,8 +126,10 @@ top_entries <- lapply(colnames(LRcomb), function(cc) { x<- LRcomb[,cc];
 })
 topinteractions <- Reduce(rbind,top_entries)
 
+# order the interactions by score
+
 topinteractions <- topinteractions %>%
-    arrange(desc(score))
+    dplyr::arrange(desc(score))
 
 # Save the top interactions to a CSV file
 write.csv(topinteractions, 

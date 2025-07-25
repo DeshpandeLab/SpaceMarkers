@@ -196,6 +196,9 @@ row.t.test <- function(in.data,region,min_bins=50,...){
 }
 
 calcIMscores.HD <- function(data, patHotspots, infHotspots, patternpair,...) {
+        
+        print("min_bins:", min_bins)
+
         spotClass <- classifySpots(patHotspots, infHotspots, patternpair = patternpair)
         pat1 <- patternpair[1]
         pat2 <- patternpair[2]
@@ -252,9 +255,9 @@ calcAllIMscores.HD <- function(data, patHotspots, infHotspots, patternPairs=NULL
                 paste0("t_", patternpair[1], "_near_", patternpair[2]),
                 paste0("t_", patternpair[2], "_near_", patternpair[1])
             )
-            message("Processed pattern pair:", patternpair[1], " and ", patternpair[2], "\n")
+            message("Processed pattern pair: ", patternpair[1], " and ", patternpair[2], "\n")
             if (i %% 10 == 0) {
-                message("Processed", i, "pattern pairs so far.\n")
+                message("Processed ", i, "pattern pairs so far.\n")
             }
         }
     }
