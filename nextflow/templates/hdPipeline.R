@@ -86,8 +86,7 @@ if (use.ligand.receptor.genes) {
 IMscores <- calcAllIMscores.HD(data=data, 
                                 patHotspots=patHotspots, 
                                 infHotspots=infHotspots, 
-                                patternPairs=patternPairs,
-                                min_bins=100)
+                                patternPairs=patternPairs)
 
 saveRDS(IMscores, file = sprintf("%s/IMscores.rds", output_dir))
 
