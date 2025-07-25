@@ -156,13 +156,14 @@ return(df)
 #' @param region A factor or vector indicating the group membership for each column of `in.data`.
 #'                Must have exactly two levels/unique values. Its length must equal `ncol(in.data)`.
 #' @param min_bins Minimum number of non-missing observations required in each group to perform the t-test.
+#' @param ... Additional parameters to pass to the t-test function.
 #' @return A matrix with rows corresponding to the features and columns:
 #'          - `statistic`: The calculated t-statistic.
 #'          - `p.value`: The calculated two-sided p-value.
 #'         - `n1`: Number of non-missing observations in group 1 for that row.
 #'         - `n2`: Number of non-missing observations in group 2 for that row.
 #' @importFrom stats t.test
-row.t.test <- function(in.data,region,min_bins=50,...){
+row.t.test <- function(in.data, region, min_bins=50, ...){
     if (!is.factor(region)) {
         region <- factor(region)
     }
@@ -176,7 +177,7 @@ row.t.test <- function(in.data,region,min_bins=50,...){
     idx_pat <- which(region == patname)
     idx_int <- which(region == interacting)
     if (length(idx_pat) >= min_bins || length(idx_int) >= min_bins) {
-    temp <- sapply(rownames(in.data), function(r) {
+    t_scores <- sapply(rownames(in.data), function(r) {
         pat <- in.data[r, idx_pat]
         inter <- in.data[r, idx_int]
     if (length(pat) < min_bins || length(inter) < min_bins) {
@@ -184,15 +185,15 @@ row.t.test <- function(in.data,region,min_bins=50,...){
         }
         tmp <- t.test(x=inter, y=pat, 
                       alternative = "two.sided", var.equal = FALSE, 
-                      na.action = na.omit)
+                      na.action = na.omit,...)
         return(c(statistic=tmp$statistic, p.value=tmp$p.value, n1=length(inter), n2=length(pat)))
     })
     } else {
-        temp <- matrix(NA, nrow = nrow(in.data), ncol = 4)
-        return(c(statistic=array(NA, dim=nrow(in.data)),p.value=array(NA, dim=nrow(in.data)), n1=0, n2=0))
+        t_scores <- c(statistic=array(NA, dim=nrow(in.data)),p.value=array(NA, dim=nrow(in.data)), n1=0, n2=0)
+        return(t_scores)
     }
-    temp <- t(temp)
-    return(temp)
+    t_scores <- t(t_scores)
+    return(t_scores)
 }
 
 calcIMscores.HD <- function(data, patHotspots, infHotspots, patternpair,...) {
@@ -228,7 +229,7 @@ calcAllIMscores.HD <- function(data, patHotspots, infHotspots, patternPairs=NULL
     if (is.null(patternPairs)) {
         patternPairs <- utils::combn(setdiff(colnames(patHotspots), c("x", "y", "barcode")), 2, simplify = FALSE)
     }
-    if (requireNamespace("BiocParallel", quietly = TRUE) && BiocParallel::bpparam()$workers > 1) {
+    if (requireNamespace("BiocParallel", quietly = TRUE) && BiocParallel::bpparam()$workers > 1 & 0) {
         bpp <- BiocParallel::bpparam()
         IMscores_list <- BiocParallel::bplapply(
             seq_len(nrow(patternPairs)),

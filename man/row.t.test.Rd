@@ -14,7 +14,7 @@ Must have exactly two levels/unique values. Its length must equal \code{ncol(in.
 
 \item{min_bins}{Minimum number of non-missing observations required in each group to perform the t-test.}
 
-\item{...}{Additional arguments passed to the t-test function.}
+\item{...}{Additional parameters to pass to the t-test function.}
 }
 \value{
 A matrix with rows corresponding to the features and columns:
