@@ -16,12 +16,12 @@
 # Load necessary libraries
 
 library("dplyr")
-devtools::load_all(".")
+library(SpaceMarkers)
 
 # read data_dir and patternpath form arguments
-data_dir <- "~/Downloads/HCC03/binned_outputs/square_016um" # "${data}"           # example:
-patternpath <- "~/Downloads/HCC03/rctd_cell_types.csv" # "${features}"    # example: 
-output_dir <- "~/Downloads/HCC03/hd_pipeline_output/" #"${prefix}"       # example: 
+data_dir <- "${data}"           # example: "sample1/binned_outputs/"
+patternpath <- "${features}"    # example: "rctd_cell_types.csv" # 
+output_dir <- "${prefix}"       # example: "hd_pipeline_output" # 
 figure_dir <- file.path(output_dir, "figures")
 
 
