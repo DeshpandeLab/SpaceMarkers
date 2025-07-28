@@ -226,7 +226,7 @@ calcAllIMscores.HD <- function(data, patHotspots, infHotspots, patternPairs=NULL
     if (is.null(patternPairs)) {
         patternPairs <- utils::combn(setdiff(colnames(patHotspots), c("x", "y", "barcode")), 2, simplify = FALSE)
     }
-    if (requireNamespace("BiocParallel", quietly = TRUE) && BiocParallel::bpparam()$workers > 1 && 0) {
+    if (requireNamespace("BiocParallel", quietly = TRUE) && BiocParallel::bpparam()$workers > 1) {
         bpp <- BiocParallel::bpparam()
         IMscores_list <- BiocParallel::bplapply(
             seq_len(nrow(patternPairs)),
