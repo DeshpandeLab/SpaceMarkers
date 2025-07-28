@@ -16,13 +16,14 @@
 # Load necessary libraries
 
 library("dplyr")
-library("SpaceMarkers")
+devtools::load_all(".")
 
 # read data_dir and patternpath form arguments
-data_dir <- "${data}"           # example: /HDsample/binned_outputs/square_016um/
-patternpath <- "${features}"    # example: /rctd_cell_types-2.csv
-output_dir <- "${prefix}"       # example: /HDsample/hd_pipeline_output/
+data_dir <- "~/Downloads/HCC03/binned_outputs/square_016um" # "${data}"           # example:
+patternpath <- "~/Downloads/HCC03/rctd_cell_types.csv" # "${features}"    # example: 
+output_dir <- "~/Downloads/HCC03/hd_pipeline_output/" #"${prefix}"       # example: 
 figure_dir <- file.path(output_dir, "figures")
+
 
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(figure_dir, showWarnings = FALSE)
@@ -86,7 +87,8 @@ if (use.ligand.receptor.genes) {
 IMscores <- calcAllIMscores.HD(data=data, 
                                 patHotspots=patHotspots, 
                                 infHotspots=infHotspots, 
-                                patternPairs=patternPairs)
+                                patternPairs=patternPairs,
+                                min_bins=1000)
 
 saveRDS(IMscores, file = sprintf("%s/IMscores.rds", output_dir))
 
@@ -101,6 +103,9 @@ LR2 <- LScores[,ind2] + RScores[,ind1]
 rownames(LR2) <- rownames(lrpairs)
 
 LRcomb <- cbind(LR1,LR2)
+keep_pairs <- which(apply(LRcomb,2, function(cc) any(!is.na(cc))))
+keep_ints <- which(apply(LRcomb,1, function(cc) any(!is.na(cc))))
+LRcomb <- LRcomb[keep_ints,keep_pairs]
 
 saveRDS(LRcomb, file = sprintf("%s/LRscores.rds", output_dir))
 # Select top entries from each column
