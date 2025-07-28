@@ -180,7 +180,7 @@ row.t.test <- function(in.data, region, min_bins=50, ...){
     t_scores <- sapply(rownames(in.data), function(r) {
         pat <- in.data[r, idx_pat]
         inter <- in.data[r, idx_int]
-    if (length(pat) < min_bins || length(inter) < min_bins) {
+        if (length(pat) < min_bins || length(inter) < min_bins) {
             return(c(statistic=NA, p.value=NA, n1=0, n2=0))
         }
         tmp <- t.test(x=inter, y=pat, 
@@ -197,9 +197,6 @@ row.t.test <- function(in.data, region, min_bins=50, ...){
 }
 
 calcIMscores.HD <- function(data, patHotspots, infHotspots, patternpair,...) {
-        
-        print("min_bins:", min_bins)
-
         spotClass <- classifySpots(patHotspots, infHotspots, patternpair = patternpair)
         pat1 <- patternpair[1]
         pat2 <- patternpair[2]
@@ -229,7 +226,7 @@ calcAllIMscores.HD <- function(data, patHotspots, infHotspots, patternPairs=NULL
     if (is.null(patternPairs)) {
         patternPairs <- utils::combn(setdiff(colnames(patHotspots), c("x", "y", "barcode")), 2, simplify = FALSE)
     }
-    if (requireNamespace("BiocParallel", quietly = TRUE) && BiocParallel::bpparam()$workers > 1 & 0) {
+    if (requireNamespace("BiocParallel", quietly = TRUE) && BiocParallel::bpparam()$workers > 1 && 0) {
         bpp <- BiocParallel::bpparam()
         IMscores_list <- BiocParallel::bplapply(
             seq_len(nrow(patternPairs)),
