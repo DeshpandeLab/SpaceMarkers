@@ -29,8 +29,8 @@ dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(figure_dir, showWarnings = FALSE)
 
 # limit the analysis to specific cell types
-include_cells <- c("FIBROBLASTS","CYCLING.DUCTAL", "DUCTAL","MYELOID", "TNK", "B.CELLS", "CYCLING.TNK", "MAST", "CYCLING.MYELOID")
-reference_cells <- c("FIBROBLASTS", "CYCLING.DUCTAL")
+include_cells <- c("FIBROBLASTS", "PDAC", "MYELOID", "TNK", "B.CELLS", "CYCLING.TNK", "MAST", "CYCLING.MYELOID")
+reference_cells <- c("FIBROBLASTS", "PDAC")
 
 # limit the analysis to ligand-receptor genes
 use.ligand.receptor.genes <- TRUE
