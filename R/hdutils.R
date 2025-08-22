@@ -197,16 +197,29 @@ row.t.test <- function(in.data, region, min_bins=50, ...){
 }
 
 calcIMscores.HD <- function(data, patHotspots, infHotspots, patternpair,...) {
-        spotClass <- classifySpots(patHotspots, infHotspots, patternpair = patternpair)
-        pat1 <- patternpair[1]
-        pat2 <- patternpair[2]
-        t1table <- row.t.test(data, region=spotClass[,1],...)
+    spotClass <- classifySpots(patHotspots, infHotspots, patternpair = patternpair)
+    pat1 <- patternpair[1]
+    pat2 <- patternpair[2]
+    region <- spotClass[,1]
+    if (sum(!is.na(unique(region)))==2){
+        t1table <- row.t.test(data, region=region, ...)
         colnames(t1table)[1] <- paste0("t_", pat1, "_near_", pat2)
-        t2table <- row.t.test(data, spotClass[,2],...)
+    } else {
+       t1table <- matrix(NA, nrow=nrow(data), ncol=4)
+       colnames(t1table) <- c("statistic", "p.value", "n1", "n2")
+    }
+
+    region <- spotClass[,2]
+    if (sum(!is.na(unique(region)))==2){
+        t2table <- row.t.test(data, region=region)
         colnames(t2table)[1] <- paste0("t_", pat2, "_near_", pat1)
-        tscores <- cbind(t1table[,1], t2table[,1])
-        colnames(tscores) <- c(paste0("t_", pat1, "_near_", pat2), paste0("t_", pat2, "_near_", pat1))
-        return(tscores)
+    } else {
+        t2table <- matrix(NA, nrow=nrow(data), ncol=4)
+        colnames(t2table) <- c("statistic", "p.value", "n1", "n2")
+    }
+    tscores <- cbind(t1table[,1], t2table[,1])
+    colnames(tscores) <- c(paste0("t_", pat1, "_near_", pat2), paste0("t_", pat2, "_near_", pat1))
+    return(tscores)
 }
 
 #' @title Calculate interaction scores for all pattern pairs
@@ -247,7 +260,7 @@ calcAllIMscores.HD <- function(data, patHotspots, infHotspots, patternPairs=NULL
         IMscores <- c()
         for (i in 1:nrow(patternPairs)) {
             patternpair <- patternPairs[i,]
-            IMscores.pair <- calcIMscores.HD(data, patHotspots, infHotspots, patternpair,...)
+            IMscores.pair <- calcIMscores.HD(data, patHotspots, infHotspots, patternpair)
             IMscores <- cbind(IMscores, IMscores.pair)
             colnames(IMscores)[(ncol(IMscores)-1):ncol(IMscores)] <- c(
                 paste0("t_", patternpair[1], "_near_", patternpair[2]),
