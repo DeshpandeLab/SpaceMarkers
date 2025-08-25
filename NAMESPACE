@@ -2,6 +2,7 @@
 
 export(calcAllIMscores.HD)
 export(calcAllThresholds)
+export(calcIMscores.HD)
 export(calcInfluence)
 export(calcThresholds)
 export(findAllHotspots)

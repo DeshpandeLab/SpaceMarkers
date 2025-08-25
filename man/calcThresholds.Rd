@@ -4,7 +4,7 @@
 \alias{calcThresholds}
 \title{Compute the threshold for identifying outlier values or hotspots}
 \usage{
-calcThresholds(df, minval = 0.01, maxval = 0.99)
+calcThresholds(df, minval = 0.01, maxval = 0.99, method = c("abs", "pct"))
 }
 \arguments{
 \item{df}{A vector containing pattern values}
@@ -12,6 +12,8 @@ calcThresholds(df, minval = 0.01, maxval = 0.99)
 \item{minval}{Minimum value for quantile threshold}
 
 \item{maxval}{Maximum value for quantile threshold}
+
+\item{method}{Method to use for threshold calculation. Options are "abs" for absolute (default) and "pct" for percentile.}
 }
 \value{
 A list containing the computed thresholds

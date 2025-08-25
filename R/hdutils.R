@@ -43,18 +43,25 @@ calcInfluence <- function(spPatterns, optParams,...) {
 #' @param df A vector containing pattern values
 #' @param minval Minimum value for quantile threshold
 #' @param maxval Maximum value for quantile threshold
+#' @param method Method to use for threshold calculation. Options are "abs" for absolute (default) and "pct" for percentile.
 #' @return A list containing the computed thresholds
 #' @importFrom mixtools normalmixEM
 #' @export
-calcThresholds <- function(df, minval = 0.01, maxval = 0.99) {
-
+calcThresholds <- function(df, minval = 0.01, maxval = 0.99, method=c("abs","pct")) {
+if (method[1]=="pct"){
+    minthresh <- quantile(df,minval)
+    maxthresh <- quantile(df,maxval)
+} else {
+   minthresh <- minval
+   maxthresh <- maxval
+}
 #Calculate the two compmonents of the normal mixture model
 comps <- mixtools::normalmixEM(df,k=2)
 
 # Identify smaller component
 small <- which.min(comps$mu)
-minthresh <- quantile(df,minval)
-maxthresh <- quantile(df,maxval)
+
+
 thresh <- min(max(comps$mu[small] + (comps$sigma[small] * 4), minthresh),maxthresh)
 
 return(thresh)
@@ -176,7 +183,6 @@ row.t.test <- function(in.data, region, min_bins=50, ...){
     patname <- group_levels[-int]
     idx_pat <- which(region == patname)
     idx_int <- which(region == interacting)
-    if (length(idx_pat) >= min_bins || length(idx_int) >= min_bins) {
     t_scores <- sapply(rownames(in.data), function(r) {
         pat <- in.data[r, idx_pat]
         inter <- in.data[r, idx_int]
@@ -188,21 +194,30 @@ row.t.test <- function(in.data, region, min_bins=50, ...){
                       na.action = na.omit,...)
         return(c(statistic=tmp$statistic, p.value=tmp$p.value, n1=length(inter), n2=length(pat)))
     })
-    } else {
-        t_scores <- c(statistic=array(NA, dim=nrow(in.data)),p.value=array(NA, dim=nrow(in.data)), n1=0, n2=0)
-        return(t_scores)
-    }
+
     t_scores <- t(t_scores)
     return(t_scores)
 }
-
-calcIMscores.HD <- function(data, patHotspots, infHotspots, patternpair,...) {
+#' @title Calculate interaction scores for a specific pattern pair
+#' @description This function calculates interaction scores for a specific pattern pair
+#' using the `classifySpots` function to determine the region of each spot.
+#' @param data A numeric matrix with genes as rows and barcodes as columns.
+#' @param patHotspots A data frame with pattern hotspots, containing columns for x, y, and barcode.
+#' @param infHotspots A data frame with influence hotspots, containing columns for x, y, and barcode.
+#' @param patternpair A character vector of length 2 specifying the pattern pair to analyze.
+#' @param avoid_confounders Logical (default=FALSE) indicating whether to avoid confounding effects due to colocalization.
+#' @param ... Additional parameters to pass to lower level functions.
+#' @return A data frame with interaction scores for the specified pattern pair.
+#' @export
+calcIMscores.HD <- function(data, patHotspots, infHotspots, patternpair, avoid_confounders=FALSE,...) {
     spotClass <- classifySpots(patHotspots, infHotspots, patternpair = patternpair)
     pat1 <- patternpair[1]
     pat2 <- patternpair[2]
     region <- spotClass[,1]
+    if (avoid_confounders==TRUE)
+        region[which(region=='Interacting'&!is.na(spotClass[,2]))] <- NA
     if (sum(!is.na(unique(region)))==2){
-        t1table <- row.t.test(data, region=region, ...)
+        t1table <- row.t.test(data, region=region)
         colnames(t1table)[1] <- paste0("t_", pat1, "_near_", pat2)
     } else {
        t1table <- matrix(NA, nrow=nrow(data), ncol=4)
@@ -210,6 +225,8 @@ calcIMscores.HD <- function(data, patHotspots, infHotspots, patternpair,...) {
     }
 
     region <- spotClass[,2]
+    if (avoid_confounders==TRUE)
+        region[which(region=='Interacting'&!is.na(spotClass[,1]))] <- NA
     if (sum(!is.na(unique(region)))==2){
         t2table <- row.t.test(data, region=region)
         colnames(t2table)[1] <- paste0("t_", pat2, "_near_", pat1)
@@ -250,7 +267,7 @@ calcAllIMscores.HD <- function(data, patHotspots, infHotspots, patternPairs=NULL
                     paste0("t_", patternpair[1], "_near_", patternpair[2]),
                     paste0("t_", patternpair[2], "_near_", patternpair[1])
                 )
-                IMscores.pair
+                return(IMscores.pair)
             },
             BPPARAM = bpp
         )
@@ -260,7 +277,7 @@ calcAllIMscores.HD <- function(data, patHotspots, infHotspots, patternPairs=NULL
         IMscores <- c()
         for (i in 1:nrow(patternPairs)) {
             patternpair <- patternPairs[i,]
-            IMscores.pair <- calcIMscores.HD(data, patHotspots, infHotspots, patternpair)
+            IMscores.pair <- calcIMscores.HD(data, patHotspots, infHotspots, patternpair,avoid_confounders = TRUE)
             IMscores <- cbind(IMscores, IMscores.pair)
             colnames(IMscores)[(ncol(IMscores)-1):ncol(IMscores)] <- c(
                 paste0("t_", patternpair[1], "_near_", patternpair[2]),

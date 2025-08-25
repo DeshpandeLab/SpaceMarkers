@@ -53,11 +53,11 @@ patnames <- setdiff(colnames(spPatterns),c("x","y","barcode"))
 
 # Calculate hotspots and influence for each pattern
 print("Calculating hotspots and influence for each pattern...")
-patthresholds <- calcAllThresholds(spPatterns)
+patthresholds <- calcAllThresholds(spPatterns, minvals=0.1, maxvals=0.8)
 patHotspots <- findAllHotspots.value(spPatterns, threshold=patthresholds)
 
 spInfluence <- calcInfluence(spPatterns,optParams)
-infthresholds <- calcAllThresholds(spInfluence)
+infthresholds <- calcAllThresholds(spInfluence, minvals=0.01, maxvals=0.5)
 infHotspots <- findAllHotspots.value(spInfluence, threshold=infthresholds)
 
 #create a table of pattern pairs
@@ -87,7 +87,8 @@ if (use.ligand.receptor.genes) {
 IMscores <- calcAllIMscores.HD(data=data, 
                                 patHotspots=patHotspots, 
                                 infHotspots=infHotspots, 
-                                patternPairs=patternPairs)
+                                patternPairs=patternPairs,
+                                avoid_confounders=TRUE)
 
 saveRDS(IMscores, file = sprintf("%s/IMscores.rds", output_dir))
 
