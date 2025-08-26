@@ -8,8 +8,6 @@ process SPACEMARKERS_HD {
   output:
     tuple val(meta), path("${prefix}/IMscores.rds"),       val(source),   emit: IMscores
     tuple val(meta), path("${prefix}/LRscores.rds"),       val(source),   emit: LRscores
-    tuple val(meta), path("${prefix}/top*.csv"),           val(source),   emit: top_interactions
-    tuple val(meta), path("${prefix}/**.png"),             val(source),   emit: figures
     path  "versions.yml",                                                 emit: versions
 
   stub:
@@ -41,6 +39,33 @@ process SPACEMARKERS_HD {
 
 }
 
+process SPACEMARKERS_HD_PLOTS{
+  tag "$meta.id"
+  label 'process_low'
+  container 'ghcr.io/deshpandelab/spacemarkers:hdutils'
+
+  input:
+    tuple val(meta), path(lrscores), val(source)
+  output:
+    tuple val(meta), path("${prefix}/top*.csv"),           val(source),   emit: top_interactions
+    tuple val(meta), path("${prefix}/**.png"),             val(source),   emit: figures
+    path  "versions.yml",                                                 emit: versions
+
+  stub:
+    def args = task.ext.args ?: ''
+    prefix = task.ext.prefix ?: "${meta.id}/${source}"
+    """
+    mkdir -p "${prefix}/figures"
+    touch "${prefix}/figures/circos_plot.png"
+    touch "${prefix}/figures/circos_top10.png"
+    """
+
+   script:
+     def args = task.ext.args ?: ''
+     prefix = task.ext.prefix ?: "${meta.id}/${source}"
+     template 'hdPlotting.R'
+}
+
 // Nextflow pipeline to run SpaceMarkers
 workflow {
     ch_versions = Channel.empty()
@@ -53,6 +78,8 @@ workflow {
     SPACEMARKERS_HD( ch_sm_inputs )
     ch_versions = ch_versions.mix(SPACEMARKERS_HD.out.versions)
 
+    SPACEMARKERS_HD_PLOTS( SPACEMARKERS_HD.out.LRscores )
+    ch_versions = ch_versions.mix(SPACEMARKERS_HD_PLOTS.out.versions)
 
     //collate versions
     ch_versions
