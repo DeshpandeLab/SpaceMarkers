@@ -47,9 +47,9 @@ process SPACEMARKERS_HD_PLOTS{
   input:
     tuple val(meta), path(lrscores), val(source)
   output:
-    tuple val(meta), path("${prefix}/top*.csv"),           val(source),   emit: top_interactions
-    tuple val(meta), path("${prefix}/**.png"),             val(source),   emit: figures
-    path  "versions.yml",                                                 emit: versions
+    tuple val(meta), path("${prefix}/top*.csv"),           val(source),   emit: top_interactions, optional: true
+    tuple val(meta), path("${prefix}/**.png"),             val(source),   emit: figures,          optional: true
+    path  "versions.yml",                                                 emit: versions,         optional: true
 
   stub:
     def args = task.ext.args ?: ''

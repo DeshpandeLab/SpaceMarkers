@@ -12,6 +12,11 @@ top_n_plots <- 10
 
 LRcomb <- readRDS("${lrscores}")  # example: "sample1/binned_outputs/hdLR_combined.rds"
 
+if (all(dim(LRcomb)==0)){
+    message("No ligand-receptor interactions found. Exiting script.")
+    quit(status = 0)
+}
+
 output_dir <- "${prefix}"         # example: "hd_pipeline_output" #
 figure_dir <- file.path(output_dir, "figures")
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
@@ -41,8 +46,6 @@ top_entries <- lapply(colnames(LRcomb), function(cc) { x<- LRcomb[,cc];
     }
 })
 topinteractions <- Reduce(rbind,top_entries)
-
-# order the interactions by score
 
 topinteractions <- topinteractions %>%
     dplyr::arrange(desc(score))
