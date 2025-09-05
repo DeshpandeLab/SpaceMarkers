@@ -273,7 +273,7 @@ workflow {
 
     ch_sm_inputs = Channel.fromPath(params.input)
     .splitCsv(header:true, sep: ",")
-    .map { row-> tuple(meta=[id:row.sample], features=file(row.annotation_file), data=file(row.data_dir)) }
+    .map { row-> tuple(meta:[id:row.sample], features:file(row.annotation_file), data:file(row.data_dir)) }
 
     //spacemarkers - main
     SPACEMARKERS( ch_sm_inputs )
