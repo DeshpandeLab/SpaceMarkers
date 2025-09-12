@@ -31,5 +31,4 @@ df <- data.frame(pattern1 = c("pattern1","pattern1","pattern2","pattern2"),
                  pattern2 = c("pattern1","pattern2","pattern1","pattern2"),
                  overlapScore = c(0.5,0.7,0.3,0.9))
 plotOverlapScores(df)
-plotOverlapScores(df, "Overlap Scores", "overlapScores.png", 15)
 }

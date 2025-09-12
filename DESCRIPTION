@@ -37,22 +37,26 @@ Imports:
     reshape2,
     RColorBrewer,
     circlize,
-    mixtools
+    mixtools,
+    dplyr,
+    fgsea,
+    ggplotify,
+    pheatmap,
+    readbitmap,
+    viridis
 Suggests: 
     data.table,
     devtools,
-    dplyr,
     hrbrthemes,
     knitr,
     cowplot,
-    readbitmap,
     rjson,
     rmarkdown,
     BiocStyle,
     testthat (>= 3.0.0),
-    viridis,
     CoGAPS,
-    ComplexHeatmap
+    ComplexHeatmap,
+    clusterProfiler
 Enhances: 
     BiocParallel
 VignetteBuilder: 

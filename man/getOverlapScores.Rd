@@ -6,12 +6,18 @@
 \usage{
 getOverlapScores(
   hotspots,
+  in_hotspots = NULL,
+  pat_hotspots = NULL,
   patternList = NULL,
   method = c("Szymkiewicz-Simpson", "Jaccard", "Sorensen-Dice", "Ochiai", "absolute")
 )
 }
 \arguments{
 \item{hotspots}{A data frame with columns x, y, barcode and pattern names}
+
+\item{in_hotspots}{Hotspots from the influence of patterns, Default: NULL}
+
+\item{pat_hotspots}{Hotspots from the pattern itself, Default: NULL}
 
 \item{patternList}{A character vector of pattern names to calculate overlap
 scores for}
@@ -31,11 +37,16 @@ using the specified method. The default method is "Szymkiewicz-Simpson"
 overlap coefficient.
 }
 \examples{
-hotspots <- data.frame(x = c(1,2,3,4,5),
-                        y = c(1,2,3,4,5),
-                        barcode = c("A","B","C","D","E"),
-                        pattern1 = c(1,0,1,0,1),
-                        pattern2 = c(1,1,0,0,1))
-getOverlapScores(hotspots)   
-getOverlapScores(hotspots, c("pattern1","pattern2"))
+in_hotspots <- data.frame(x = c(1,2,3,4,5),
+                          y = c(1,2,3,4,5),
+                          barcode = c("A","B","C","D","E"),
+                          pattern1 = c(1,0,1,0,1),
+                          pattern2 = c(1,1,0,0,1))
+pat_hotspots <- data.frame(x = c(1,2,3,4,5),y = c(1,2,3,4,5),
+                          barcode = c("A","B","C","D","E"),
+                           pattern1 = c(0.3,1,0,0,1),
+                           pattern3 = c(0,NA,1,0,NA))
+getOverlapScores(hotspots = NULL, in_hotspots = in_hotspots, 
+pat_hotspots = pat_hotspots, method = "absolute")
+
 }
