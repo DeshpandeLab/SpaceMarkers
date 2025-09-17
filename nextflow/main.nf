@@ -22,6 +22,7 @@ process SPACEMARKERS {
     #!/usr/bin/env Rscript
     dir.create("${prefix}", showWarnings = FALSE, recursive = TRUE)
     library("SpaceMarkers")
+    set.seed(${params.seed})
     
     #load spatial coords from tissue positions, deconvolved patterns, and expression
     coords <- load10XCoords("$data")
@@ -114,6 +115,8 @@ process SPACEMARKERS_PLOTS {
   library("SpaceMarkers")
   overlaps <- read.csv("$overlapScores")
 
+  set.seed(${params.seed})
+
   #getOverlapScores needs factors to be ordered
   overlaps[["pattern1"]] <- factor(overlaps[["pattern1"]], 
                                     levels = unique(overlaps[["pattern1"]]))
@@ -172,6 +175,8 @@ process SPACEMARKERS_MQC {
     """
     #!/usr/bin/env Rscript
     dir.create("${prefix}", showWarnings = FALSE, recursive = TRUE)
+
+    set.seed(${params.seed})
 
     #[['']] notation needed to allow nextflow var susbtitution
 
