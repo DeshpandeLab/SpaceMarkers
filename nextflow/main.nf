@@ -22,6 +22,7 @@ process SPACEMARKERS {
     #!/usr/bin/env Rscript
     dir.create("${prefix}", showWarnings = FALSE, recursive = TRUE)
     library("SpaceMarkers")
+    set.seed(${params.seed})
     
     #load spatial coords from tissue positions, deconvolved patterns, and expression
     coords <- load10XCoords("$data")
@@ -114,6 +115,8 @@ process SPACEMARKERS_PLOTS {
   library("SpaceMarkers")
   overlaps <- read.csv("$overlapScores")
 
+  set.seed(${params.seed})
+
   #getOverlapScores needs factors to be ordered
   overlaps[["pattern1"]] <- factor(overlaps[["pattern1"]], 
                                     levels = unique(overlaps[["pattern1"]]))
@@ -172,6 +175,8 @@ process SPACEMARKERS_MQC {
     """
     #!/usr/bin/env Rscript
     dir.create("${prefix}", showWarnings = FALSE, recursive = TRUE)
+
+    set.seed(${params.seed})
 
     #[['']] notation needed to allow nextflow var susbtitution
 
@@ -273,7 +278,7 @@ workflow {
 
     ch_sm_inputs = Channel.fromPath(params.input)
     .splitCsv(header:true, sep: ",")
-    .map { row-> tuple(meta=[id:row.sample], features=file(row.annotation_file), data=file(row.data_dir)) }
+    .map { row-> tuple(meta:[id:row.sample], features:file(row.annotation_file), data:file(row.data_dir)) }
 
     //spacemarkers - main
     SPACEMARKERS( ch_sm_inputs )

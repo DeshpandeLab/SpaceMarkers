@@ -10,6 +10,12 @@ process SPACEMARKERS_HD {
     tuple val(meta), path("${prefix}/LRscores.rds"),       val(source),   emit: LRscores
     path  "versions.yml",                                                 emit: versions
 
+   script:
+     def args = task.ext.args ?: ''
+     source = features.simpleName
+     prefix = task.ext.prefix ?: "${meta.id}/${source}"
+     template 'hdPipeline.R'
+
   stub:
     def args = task.ext.args ?: ''
     source = features.simpleName
@@ -30,13 +36,6 @@ process SPACEMARKERS_HD {
     END_VERSIONS
     """
 
-   script:
-     def args = task.ext.args ?: ''
-     source = features.simpleName
-     prefix = task.ext.prefix ?: "${meta.id}/${source}"
-     template 'hdPipeline.R'
-
-
 }
 
 process SPACEMARKERS_HD_PLOTS{
@@ -51,7 +50,11 @@ process SPACEMARKERS_HD_PLOTS{
     tuple val(meta), path("${prefix}/**.png"),             val(source),   emit: figures,          optional: true
     path  "versions.yml",                                                 emit: versions,         optional: true
 
-  stub:
+   script:
+     def args = task.ext.args ?: ''
+     prefix = task.ext.prefix ?: "${meta.id}/${source}"
+     template 'hdPlotting.R'
+   stub:
     def args = task.ext.args ?: ''
     prefix = task.ext.prefix ?: "${meta.id}/${source}"
     """
@@ -59,11 +62,6 @@ process SPACEMARKERS_HD_PLOTS{
     touch "${prefix}/figures/circos_plot.png"
     touch "${prefix}/figures/circos_top10.png"
     """
-
-   script:
-     def args = task.ext.args ?: ''
-     prefix = task.ext.prefix ?: "${meta.id}/${source}"
-     template 'hdPlotting.R'
 }
 
 // Nextflow pipeline to run SpaceMarkers
@@ -72,7 +70,7 @@ workflow {
 
     ch_sm_inputs = Channel.fromPath(params.input)
     .splitCsv(header:true, sep: ",")
-    .map { row-> tuple(meta=[id:row.sample], features=file(row.annotation_file), data=file(row.data_dir)) }
+    .map { row-> tuple(meta:[id:row.sample], features:file(row.annotation_file), data:file(row.data_dir)) }
 
     //spacemarkers - main
     SPACEMARKERS_HD( ch_sm_inputs )
