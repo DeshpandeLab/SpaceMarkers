@@ -198,3 +198,115 @@ getGeneSetScore <- function(IMscores, genes) {
     scores <- Reduce(rbind, scores)
     return(scores)
 }
+
+
+#' @title pickImage
+#' @description The function picks the appropriate histology image file from the
+#' spatial directory based on the specified resolution.
+#' @param sp_dir path to the spatial directory
+#' @param res a character string specifying the resolution of the image
+#' @return a character string of the image file name
+pickImage <- function(sp_dir, res) {
+  files <- list.files(sp_dir, full.names = TRUE)
+  low   <- grep("^tissue_.*lowres.*\\.(png|jpg|jpeg|tif|tiff)$",
+                basename(files), ignore.case = TRUE, value = TRUE)
+  high  <- grep("^tissue_.*hires.*\\.(png|jpg|jpeg|tif|tiff)$",
+                basename(files), ignore.case = TRUE, value = TRUE)
+  anyi  <- grep("\\.(png|jpg|jpeg|tif|tiff)$",
+                basename(files), ignore.case = TRUE, value = TRUE)
+  want <- switch(res,lowres = low,hires  = high,fullres = high)
+  if (!length(want)) want <- if (res == "lowres") high else low
+  if (!length(want)) want <- anyi
+  if (!length(want)) stop("No histology image found in ", sp_dir)
+  return(file.path(sp_dir, want[[1]]))
+}
+
+#' @title plotSpatialDataOverImage
+#' @description This function plots spatial data over the complementary 
+#' histology image of varing resolutions
+#' @param visiumDir directory with a spatial folder containing 
+#' scalefactors_json.json, images (lowres,or hires), and 
+#' coordinates (tissue_positons_(list).csv or probe.csv)
+#' @param df a dataframe with the features of interest. For example,
+#' can behotspots (character), and/or influence (numeric))
+#' @param feature_col feature to plot over spots, Default: NULL
+#' @param barcode_col barcode column name to match with coordinates,
+#' Default: 'barcode'
+#' @param resolution Image resoultion to scale coordinates too, 
+#' Default: c("lowres", "hires", "fullres")
+#' @param version Visium version. Automatically infers from load10XCoords if 
+#' NULL,Default: NULL
+#' @param colors colors to be displayed over spots. If set to NULL, it
+#' automatically colors the spots red for character values and uses viridis for 
+#' numeric values. Default: NULL
+#' @param point_size size of spots displayed on the plot, Default: 2.5
+#' @param stroke thickness of spot outline, Default: 0.05
+#' @param alpha Transparency of the spots, Default: 0.5
+#' @param title Title displayed on the plot, Default: 'Spatial Heatmap'
+#' @param bg_color background color of ggplot box, Default: NULL
+#' @param crop crop spatial plot to a zoomed in window, Default: TRUE
+#' @param text_size size of text on the plot, Default: 15
+#' @return a ggplot object
+#
+#' @export 
+#' @importFrom rlang sym
+#' @importFrom SpaceMarkers load10XCoords
+#' @importFrom readbitmap read.bitmap
+#' @importFrom viridis scale_fill_viridis
+#' @importFrom stats na.omit setNames
+#' @importFrom RColorBrewer brewer.pal
+
+plotSpatialDataOverImage <- function(
+    visiumDir, df, feature_col, barcode_col="barcode",
+    resolution=c("lowres","hires","fullres"), version=NULL, colors=NULL,
+    point_size=2.5, stroke=0.05, alpha=0.5, title="Spatial Heatmap",
+    bg_color=NULL, crop=TRUE, text_size = 15) {
+  gg <- getNamespace("ggplot2"); dp <- getNamespace("dplyr")
+  resolution <- match.arg(resolution)
+  if (is.null(barcode_col)) {
+    if (!is.null(rownames(df))) df$barcode <- rownames(df) else
+      stop("barcode_col is NULL and df has no rownames.")
+  } else if (barcode_col != "barcode") df <- dp$rename(
+    df, barcode = !!rlang::sym(barcode_col))
+  pos <- SpaceMarkers::load10XCoords(visiumDir, resolution, version)
+  names(pos) <- c("barcode","y","x"); df <- merge(
+    df[, c("barcode", feature_col)], pos, by="barcode")
+  img <- readbitmap::read.bitmap(pickImage(
+    file.path(visiumDir, "spatial"), resolution))
+  if (crop) {xr <- range(df$x, na.rm=TRUE); yr <- range(df$y, na.rm=TRUE)
+  xmin <- max(1L, floor(xr[1])); xmax <- min(ncol(img), ceiling(xr[2]))
+  ymin <- max(1L, floor(yr[1])); ymax <- min(nrow(img), ceiling(yr[2]))
+  img <- img[ymin:ymax, xmin:xmax,, drop=FALSE]
+  df <- dp$mutate(df, x_c=x-xmin+1L, y_c=y-ymin+1L)
+  xl <- c(0, xmax-xmin+1L); yl <- c(0, ymax-ymin+1L)
+  } else {
+    df <- dp$mutate(df, x_c=x, y_c=y);xl<-c(0, ncol(img));yl<-c(0, nrow(img))}
+    p <- gg$ggplot() +
+      gg$annotation_raster(as.raster(img), 0, diff(xl), 0, diff(yl)) +
+      gg$geom_point(
+        data = df,
+        gg$aes(x_c, yl[2] - y_c, fill = .data[[feature_col]]),
+        shape = 21, color = "black", size = point_size,
+        stroke = stroke, alpha = alpha
+      ) +
+      gg$coord_fixed(xlim = xl, ylim = yl, expand = FALSE) +
+      gg$labs(fill = feature_col, x = NULL, y = NULL, title = title) +
+      gg$theme_bw(text_size) +
+      gg$theme(
+        plot.background = if (!is.null(bg_color))
+          gg$element_rect(fill = bg_color, color = NA)
+        else gg$element_blank()
+      )
+  if (is.numeric(df[[feature_col]])) {
+    p <- p + (if (!is.null(colors)) gg$scale_fill_gradientn(colours=colors)
+              else viridis::scale_fill_viridis())
+  } else {
+    vals <- unique(stats::na.omit(df[[feature_col]]))
+    p <- p + if (!is.null(colors)) gg$scale_fill_manual(values=colors) else
+      if (length(vals) > 1) gg$scale_fill_manual(values = stats::setNames(
+        RColorBrewer::brewer.pal(max(3, min(length(vals), 9)), "Set1")
+        [seq_along(vals)], vals)) else gg$scale_fill_manual(values="red")
+  }
+  return(p)
+}
+
