@@ -452,8 +452,8 @@ print(head(top))
 ## Code Setup
 
 The plotSpatialDataOverImage function allows you to look at the 
-deconvoluted patterns on the tissue image.We can compare these spatial maps to
-the expression of genes identifiedinteracting genes on violin plots. 
+deconvoluted patterns on the tissue image. We can compare these spatial maps to
+the expression of genes identified interacting genes on violin plots. 
 
 ```{r}
 createInteractCol <- function(spHotspots, 
