@@ -298,7 +298,12 @@ getSpatialFeatures <- function(filePath, method = NULL, featureNames = "."){
     if ("barcode" %in% colnames(spFeatures)){
         rownames(spFeatures) <- spFeatures$barcode
     } else {
-        rownames(spFeatures) <- spFeatures[,"X"]
+        if(!colnames(spFeatures)[1]=="X"){
+            stop("No barcode column found and first colname is not blank.
+                    Stopping.")
+        } else {
+            rownames(spFeatures) <- spFeatures[,"X"]
+        }
     }
     removeCols <- c("NA","barcode","in_tissue","array_row","array_col","pxl_col_in_fullres","pxl_row_in_fullres")
     spFeatures <- spFeatures[,-which(startsWith(colnames(spFeatures),"X") | colnames(spFeatures) %in% removeCols)]
