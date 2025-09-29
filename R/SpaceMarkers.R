@@ -2,19 +2,19 @@
 #' @description This function is the main dispatcher for SpaceMarkers. It takes a features object/path and a cell by gene matrix and returns IMScores.
 #' @param features A path to a features file.
 #' @param data A path to a Visium directory.
-#' @param supervised Type of analysis to run, supervised (TRUE) or unsupervised (FALSE).
+#' @param directed Type of analysis to run, directed (TRUE) or undirected (FALSE).
 #' 
-SpaceMarkers <- function(features, counts, supervised = FALSE, ...) {
-  if (supervised)  {
-    return(.supervised_SpaceMarkers(features, data, ...))
-  } else if (!supervised) {
-    return(.unsupervised_SpaceMarkers(features, data, ...))
+SpaceMarkers <- function(features, counts, directed = FALSE, ...) {
+  if (directed)  {
+    return(.directed_SpaceMarkers(features, data, ...))
+  } else if (!directed) {
+    return(.undirected_SpaceMarkers(features, data, ...))
   } else {
-    stop("Check input: supervised must be TRUE or FALSE.")
+    stop("Check input: directed must be TRUE or FALSE.")
   }
 }
 
-.unsupervised_SpaceMarkers <- function(features, data, cpus,...) {
+.undirected_SpaceMarkers <- function(features, data, cpus,...) {
     #load spatial coords from tissue positions, deconvolved patterns, and expression
     message("Loading data...")
     coords <- load10XCoords(data)
@@ -62,7 +62,7 @@ SpaceMarkers <- function(features, counts, supervised = FALSE, ...) {
     return(IMScores)
 }
 
-.supervised_SpaceMarkers <- function(features, data, ...) {
+.directed_SpaceMarkers <- function(features, data, ...) {
     # limit the analysis to ligand-receptor genes
     use.ligand.receptor.genes <- TRUE
 
@@ -113,7 +113,7 @@ SpaceMarkers <- function(features, counts, supervised = FALSE, ...) {
                                    patHotspots = patHotspots,
                                    infHotspots = infHotspots,
                                    patternPairs = patternPairs,
-                                   avoid_confounders = TRUE)
+                                   ...)
 
 
 
