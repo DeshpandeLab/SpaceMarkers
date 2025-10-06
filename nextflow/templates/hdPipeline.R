@@ -17,6 +17,7 @@
 
 library("dplyr")
 library(SpaceMarkers)
+library(effsize)
 
 # read data_dir and patternpath form arguments
 data_dir <- "${data}"           # example: "sample1/binned_outputs/"
@@ -85,22 +86,14 @@ IMscores <- calcAllIMscores.HD(data=data,
 
 saveRDS(IMscores, file = sprintf("%s/IMscores.rds", output_dir))
 
-LScores <- getGeneSetScore(IMscores,genes = ligands)
-RScores <- getGeneSetScore(IMscores,genes = receptors)
+ligand_scores <- calculate_gene_set_score(IMscores,gene_sets = ligands, weighted = TRUE, method = "arithmetic_mean")
+receptor_scores <- calculate_gene_set_specificity(data, spPatterns, gene_sets=receptors, weighted = TRUE, method = "arithmetic_mean")
 
-ind1 <- seq(1,ncol(LScores),by=2)
-ind2 <- seq(2,ncol(LScores),by=2)
-LR1 <- LScores[,ind1] + RScores[,ind2]
-rownames(LR1) <- rownames(lrpairs)
-LR2 <- LScores[,ind2] + RScores[,ind1]
-rownames(LR2) <- rownames(lrpairs)
+lr_scores <- calculate_lr_scores(ligand_scores,receptor_scores,lr_pairs=lrpairs, method = "geometric_mean", weighted = TRUE)
 
-LRcomb <- cbind(LR1,LR2)
-keep_pairs <- which(apply(LRcomb,2, function(cc) any(!is.na(cc))))
-keep_ints <- which(apply(LRcomb,1, function(cc) any(!is.na(cc))))
-LRcomb <- LRcomb[keep_ints,keep_pairs]
-
-saveRDS(LRcomb, file = sprintf("%s/LRscores.rds", output_dir))
+saveRDS(ligand_scores, file = sprintf("%s/ligand_scores.rds", output_dir))
+saveRDS(receptor_scores, file = sprintf("%s/receptor_scores.rds", output_dir))
+saveRDS(lr_scores, file = sprintf("%s/LRscores.rds", output_dir))
 
 
 #output versions
