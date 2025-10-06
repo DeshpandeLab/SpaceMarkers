@@ -170,6 +170,7 @@ return(df)
 #'         - `n1`: Number of non-missing observations in group 1 for that row.
 #'         - `n2`: Number of non-missing observations in group 2 for that row.
 #' @importFrom stats t.test
+#' @importFrom effsize cohen.d
 row.t.test <- function(in.data, region, min_bins=50, ...){
     if (!is.factor(region)) {
         region <- factor(region)
@@ -187,15 +188,17 @@ row.t.test <- function(in.data, region, min_bins=50, ...){
         pat <- in.data[r, idx_pat]
         inter <- in.data[r, idx_int]
         if (length(pat) < min_bins || length(inter) < min_bins) {
-            return(c(statistic=NA, p.value=NA, n1=0, n2=0))
+            return(c(statistic=NA, p.value=NA, n1=0, n2=0, effect_size=NA))
         }
         tmp <- t.test(x=inter, y=pat, 
                       alternative = "two.sided", var.equal = FALSE, 
-                      na.action = na.omit,...)
-        return(c(statistic=tmp$statistic, p.value=tmp$p.value, n1=length(inter), n2=length(pat)))
+                      na.action = na.omit)
+        effect_size <- effsize::cohen.d(inter, pat)$estimate
+        return(c(statistic=tmp$statistic, p.value=tmp$p.value, n1=length(inter), n2=length(pat), effect_size=effect_size))
     })
 
     t_scores <- t(t_scores)
+    colnames(t_scores) <- c("statistic", "p.value", "n1", "n2", "effect_size")
     return(t_scores)
 }
 #' @title Calculate interaction scores for a specific pattern pair
@@ -215,27 +218,33 @@ calcIMscores.HD <- function(data, patHotspots, infHotspots, patternpair, avoid_c
     pat2 <- patternpair[2]
     region <- spotClass[,1]
     if (avoid_confounders==TRUE)
-        region[which(region=='Interacting'&!is.na(spotClass[,2]))] <- NA
+        region[which(!is.na(spotClass[,2]))] <- NA
     if (sum(!is.na(unique(region)))==2){
         t1table <- row.t.test(data, region=region)
-        colnames(t1table)[1] <- paste0("t_", pat1, "_near_", pat2)
+
     } else {
-       t1table <- matrix(NA, nrow=nrow(data), ncol=4)
-       colnames(t1table) <- c("statistic", "p.value", "n1", "n2")
+       t1table <- matrix(NA, nrow=nrow(data), ncol=5)
+       colnames(t1table) <- c("statistic", "p.value", "n1", "n2", "effect_size")
     }
+    t1table <- as.data.frame(t1table)
+    t1table$gene <- rownames(t1table)
+    t1table$cell_interaction <- paste0(pat1, "_near_", pat2)
 
     region <- spotClass[,2]
     if (avoid_confounders==TRUE)
-        region[which(region=='Interacting'&!is.na(spotClass[,1]))] <- NA
+        region[which(!is.na(spotClass[,1]))] <- NA
     if (sum(!is.na(unique(region)))==2){
         t2table <- row.t.test(data, region=region)
-        colnames(t2table)[1] <- paste0("t_", pat2, "_near_", pat1)
     } else {
-        t2table <- matrix(NA, nrow=nrow(data), ncol=4)
-        colnames(t2table) <- c("statistic", "p.value", "n1", "n2")
+        t2table <- matrix(NA, nrow=nrow(data), ncol=5)
+        colnames(t2table) <- c("statistic", "p.value", "n1", "n2", "effect_size")
     }
-    tscores <- cbind(t1table[,1], t2table[,1])
-    colnames(tscores) <- c(paste0("t_", pat1, "_near_", pat2), paste0("t_", pat2, "_near_", pat1))
+    t2table <- as.data.frame(t2table)
+    t2table$gene <- rownames(t2table)
+    t2table$cell_interaction <- paste0(pat2, "_near_", pat1)
+
+    tscores <- rbind(t1table, t2table)
+    tscores$p.adj <- p.adjust(tscores$p.value, method = "BH")
     return(tscores)
 }
 
@@ -263,26 +272,18 @@ calcAllIMscores.HD <- function(data, patHotspots, infHotspots, patternPairs=NULL
             function(i) {
                 patternpair <- patternPairs[i,]
                 IMscores.pair <- calcIMscores.HD(data, patHotspots, infHotspots, patternpair,...)
-                colnames(IMscores.pair) <- c(
-                    paste0("t_", patternpair[1], "_near_", patternpair[2]),
-                    paste0("t_", patternpair[2], "_near_", patternpair[1])
-                )
                 return(IMscores.pair)
             },
             BPPARAM = bpp
         )
-        IMscores <- do.call(cbind, IMscores_list)
+        IMscores <- do.call(rbind, IMscores_list)
         message("Processed all pattern pairs in parallel.\n")
     } else {
         IMscores <- c()
         for (i in 1:nrow(patternPairs)) {
             patternpair <- patternPairs[i,]
-            IMscores.pair <- calcIMscores.HD(data, patHotspots, infHotspots, patternpair,avoid_confounders = TRUE)
-            IMscores <- cbind(IMscores, IMscores.pair)
-            colnames(IMscores)[(ncol(IMscores)-1):ncol(IMscores)] <- c(
-                paste0("t_", patternpair[1], "_near_", patternpair[2]),
-                paste0("t_", patternpair[2], "_near_", patternpair[1])
-            )
+            IMscores.pair <- calcIMscores.HD(data, patHotspots, infHotspots, patternpair,...)
+            IMscores <- rbind(IMscores, IMscores.pair)
             message("Processed pattern pair: ", patternpair[1], " and ", patternpair[2], "\n")
             if (i %% 10 == 0) {
                 message("Processed ", i, "pattern pairs so far.\n")
