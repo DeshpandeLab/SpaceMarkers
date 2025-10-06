@@ -2,6 +2,8 @@
 library("dplyr")
 library("SpaceMarkers")
 
+set.seed(${params.seed})
+
 # limit the analysis to specific cell types
 include_cells <- c("FIBROBLASTS", "PDAC", "MYELOID", "TNK", "B.CELLS", "CYCLING.TNK", "MAST", "CYCLING.MYELOID")
 reference_cells <- c("FIBROBLASTS", "PDAC")

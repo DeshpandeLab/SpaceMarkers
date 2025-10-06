@@ -1,7 +1,7 @@
 ---
 title: "Inferring Immune Interactions in Breast Cancer"
 author: "Orian Stapleton"
-date: "2024-01-08"
+date: "2025-09-17"
 output:
     BiocStyle::html_document:
         toc: yes
@@ -425,7 +425,6 @@ library(readbitmap)
 library(dplyr)
 library(data.table)
 library(viridis)
-library(hrbrthemes)
 library(ggplot2)
 ```
 
@@ -452,130 +451,9 @@ print(head(top))
 
 ## Code Setup
 
-This first function below can visualize the locations of these patterns on a 
-spatial grid. The code has been adopted from 10xgenomics:
-(support.10xgenomics.com/spatial-gene-expression/software/pipelines/latest/rkit)
-
-```{r}
-geom_spatial <-  function(mapping = NULL,
-                          data = NULL,
-                          stat = "identity",
-                          position = "identity",
-                          na.rm = FALSE,
-                          show.legend = NA,
-                          inherit.aes = FALSE,...) {
-  GeomCustom <- ggproto(
-    "GeomCustom",
-    Geom,
-    setup_data = function(self, data, params) {
-      data <- ggproto_parent(Geom, self)$setup_data(data, params)
-      data
-    },
-    draw_group = function(data, panel_scales, coord) {
-      vp <- grid::viewport(x=data$x, y=data$y)
-      g <- grid::editGrob(data$grob[[1]], vp=vp)
-      ggplot2:::ggname("geom_spatial", g)
-    },
-    required_aes = c("grob","x","y")
-  )
-  layer(geom = GeomCustom,mapping = mapping,data = data,stat = stat,position=
-          position,show.legend = show.legend,inherit.aes =
-          inherit.aes,params = list(na.rm = na.rm, ...)
-  )
-}
-
-```
-
-The plotSpatialData function allows you to look at the deconvoluted patterns
-on the tissue image.
-
-```{r}
-plotSpatialData <- function(spatial_data,positions_path,image_path,jsonPath,
-                              feature_col,colors = NULL,
-                              title = "Spatial Heatmap",
-                              alpha = 0.6,scaled = FALSE,res = "lowres",
-                              x_col = "x",y_col = "y",sample = "Sample",
-                              plot = TRUE) {
-  og_positions <- read.csv(positions_path, header = FALSE)
-  og_positions <- og_positions[,c(1,5,6)]
-  colnames(og_positions) <- c("barcode",y_col,x_col)
-  spatial_data <- dplyr::inner_join(
-    og_positions,spatial_data[,c("barcode",feature_col)],by = "barcode")
-  images_cl <- readbitmap::read.bitmap(image_path)
-  height <-  data.frame(height = nrow(images_cl))
-  width <- data.frame(width = ncol(images_cl))
-  grobs<-grid::rasterGrob(images_cl,width=unit(1,"npc"),
-                          height=unit(1,"npc"))
-  images_tibble <- dplyr::tibble(sample=factor(sample), grob=list(grobs))
-  images_tibble$height <- height$height
-  images_tibble$width <- width$width
-  scales <- jsonlite::read_json(jsonPath)
-  if (scaled == FALSE){
-    res <- names(scales)[grepl(pattern = res,x = names(scales))]
-    spatial_data[[x_col]]<-  scales[[res]] * spatial_data[[x_col]]
-    spatial_data[[y_col]] <- scales[[res]] * spatial_data[[y_col]]
-  }
-  spatial_data$height <- height$height
-  spatial_data$width <- width$width
-  if (is.numeric(spatial_data[[feature_col]])){
-    p <- spatial_data %>% ggplot(aes(
-      x=.data[[x_col]], y=.data[[y_col]], fill=.data[[feature_col]],
-      alpha = .data[[feature_col]])) + geom_spatial(data=images_tibble[1,],
-                                                    mapping = aes(grob=grob),
-                                                    x=0.5, y=0.5) +
-      geom_point(shape = 21, colour = "black", size = 1.1, stroke = 0.2)
-  } else {
-    p <- spatial_data %>% ggplot(aes(
-      x=.data[[x_col]], y=.data[[y_col]], fill=.data[[feature_col]]))+
-      geom_spatial(data=images_tibble[1,],mapping = aes(grob=grob),
-                   x=0.5, y=0.5) +
-      geom_point(shape = 21, colour = "black", size = 1.1, stroke = 0.2,
-                 alpha = alpha)
-  }
-  p <- p + coord_cartesian(expand=FALSE) + 
-    xlim(0,max(spatial_data$width)) + ylim(max(spatial_data$height),0) +
-    xlab("") + ylab("")+
-    ggtitle(title) + theme_set(theme_bw(base_size = 10)) +
-    theme(
-      panel.grid.major=element_blank(),
-      panel.grid.minor = element_blank(),
-      panel.background = element_blank(),
-      axis.line = element_line(colour="black"),
-      axis.text=element_blank(),axis.ticks = element_blank())
-  # Check if the feature_col is continuous or discrete and apply 
-  #the appropriate color scale
-  if (is.numeric(spatial_data[[feature_col]]) & !is.null(colors)) {
-    # Use gradient scale for continuous variables when colors are provided
-    p <- p + scale_fill_gradientn(colours = colors)
-  } else if (is.numeric(spatial_data[[feature_col]]) & is.null(colors)) {
-    # Default to a color palette when no colors are provided for 
-    #continuous variables
-    p <- p + scale_fill_gradientn(colours = rev(
-      RColorBrewer::brewer.pal(name = "RdYlBu", n = 11)))
-  } else if (!is.numeric(spatial_data[[feature_col]])) {
-    # Use manual scale for discrete variables
-    if (!is.null(colors)) {
-      p <- p + scale_fill_manual(values = colors)
-    } else {
-      features <- unique(spatial_data[[feature_col]])
-      features <- as.character(features[!is.na(features)])
-      if (length(features) > 1){
-        message("You can specify your colors. Ensure the length is equal to the
-                number of unique features in your feature_col")
-      } else {
-        p <- p + scale_fill_manual(values = "red")
-      }
-    }
-  }
-  if (plot == TRUE) {
-    print(p)
-  } 
-  return(p)
-}
-```
-
-We can compare these spatial maps to the expression of genes identified 
-interacting genes on violin plots. 
+The plotSpatialDataOverImage function allows you to look at the 
+deconvoluted patterns on the tissue image. We can compare these spatial maps to
+the expression of genes identified interacting genes on violin plots. 
 
 ```{r}
 createInteractCol <- function(spHotspots, 
@@ -605,7 +483,7 @@ createInteractCol <- function(spHotspots,
 #for larger counts matrices
 plotSpatialExpr <- function(data,gene,hotspots,patterns,
                                remove.na = TRUE,
-                               title = "Expression (Log)"){
+                               title = "Expression (Log)", text_size = 15){
   counts <- data
   interact <- createInteractCol(spHotspots = hotspots,
                                 interaction_cols = patterns)
@@ -616,8 +494,8 @@ plotSpatialExpr <- function(data,gene,hotspots,patterns,
   p <- df %>% ggplot( aes_string(x='region',y=gene,
                                             fill='region')) + geom_violin() +
     scale_fill_viridis(discrete = TRUE,alpha=0.6) +
-    geom_jitter(color="black",size=0.4,alpha=0.9) + theme_ipsum()+
-    theme(legend.position="none",plot.title = element_text(size=11),
+    geom_jitter(color="black",size=0.4,alpha=0.9) +
+    theme(legend.position="none",plot.title = element_text(size=text_size),
             axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
     ggtitle(paste0(gene,": ",title)) + xlab("")
   return(p)
@@ -626,7 +504,6 @@ plotSpatialExpr <- function(data,gene,hotspots,patterns,
 
 
 ```
-
 
 ## Get the Spatial Data
 
@@ -642,26 +519,18 @@ counts_df <- as.data.frame(as.matrix(
 
 ## Generate Plots
 
-```{r}
-image_paths <- file.path(data_dir,"spatial","tissue_lowres_image.png")
-scalefactor_paths <- file.path(data_dir,"spatial","scalefactors_json.json")
-tissue_paths <- file.path(data_dir,"spatial","tissue_positions_list.csv")
-
+```{r suppressMessages=TRUE, warning=FALSE}
 spatialMaps <- list()
 exprPlots <- list()
 
 for (g in genes){
-  spatialMaps[[length(spatialMaps)+1]] <- plotSpatialData(
-    spatial_data = cbind(spPatterns, counts_df), 
-                positions_path = tissue_paths,
-                image_path = image_paths,
-                jsonPath = scalefactor_paths,
-                feature_col = g,
-                colors = NULL,
-                title = g,
-                scaled = FALSE, plot = FALSE)
+  
+  spatialMaps[[length(spatialMaps)+1]] <- suppressMessages(
+    plotSpatialDataOverImage(visiumDir = data_dir,
+                             df = cbind(spPatterns, counts_df),feature_col = g,
+                             resolution="lowres",title = g))
   exprPlots[[length(exprPlots)+1]] <- plotSpatialExpr(
-    data = counts_df,gene = g,hotspots = hotspots, 
+    data = counts_df,gene = g,hotspots = hotspots,
                    patterns = c("Pattern_1","Pattern_5"))
 }
 ```
@@ -672,29 +541,23 @@ of individual genes across different patterns.
 ### Pattern_1
 
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
-plotSpatialData(
-    spatial_data = cbind(spPatterns, counts_df), 
-                positions_path = tissue_paths,
-                image_path = image_paths,
-                jsonPath = scalefactor_paths,
-                feature_col = "Pattern_1",
-                colors = NULL,
-                title = "Pattern_1",
-                scaled = FALSE, plot = FALSE)
+
+plotSpatialDataOverImage(visiumDir = data_dir,
+                         df = cbind(spPatterns, counts_df),
+                         feature_col = "Pattern_1",
+                         resolution="lowres",title = "Pattern_1")
 ```
 
 ### Pattern_5
 
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
-plotSpatialData(
-    spatial_data = cbind(spPatterns, counts_df), 
-                positions_path = tissue_paths,
-                image_path = image_paths,
-                jsonPath = scalefactor_paths,
-                feature_col = "Pattern_5",
-                colors = NULL,
-                title = "Pattern_5",
-                scaled = FALSE, plot = FALSE)
+
+
+plotSpatialDataOverImage(visiumDir = data_dir,
+                         df = cbind(spPatterns, counts_df),
+                         feature_col = "Pattern_5",
+                         resolution="lowres",title = "Pattern_5")
+
 ```
 
 On the spatial heatmap, Pattern_5, the invasive carcinoma pattern, is 
@@ -703,9 +566,9 @@ the immune pattern is prevalent along the diagonal of the tissue image.
 
 ### Top SpaceMarkers
 
-```{r, message=FALSE, warning=FALSE, dpi=36, fig.width=6, fig.height=2.5}
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 plot_grid(plotlist = list(exprPlots[[1]],spatialMaps[[1]]))
-plot_grid(plotlist = list(exprPlots[[2]],spatialMaps[[2]]))
+
 ```
 
 APOE is expressed highly across all patterns but is especially strong in the 
@@ -714,7 +577,7 @@ expressed in the interacting region relative to both Pattern_1 and Pattern_5.
 The second gene also has a similar expression profile. 
 
 
-```{r, message=FALSE, dpi=36, warning=FALSE, fig.width=6, fig.height=2.5}
+```{r, message=FALSE,dpi=60, fig.width=6}
 plot_grid(plotlist = list(exprPlots[[3]],spatialMaps[[3]]))
 ```
 
@@ -738,15 +601,10 @@ g <- bottom$Gene[1]
 p1 <- plotSpatialExpr(
     data = counts_df,gene = g,hotspots = hotspots, 
                    patterns = c("Pattern_1","Pattern_5"))
-p2 <- plotSpatialData(
-    spatial_data = cbind(spPatterns, counts_df), 
-                positions_path = tissue_paths,
-                image_path = image_paths,
-                jsonPath = scalefactor_paths,
-                feature_col = g,
-                colors = NULL,
-                title = g,
-                scaled = FALSE, plot = FALSE)
+p2 <- plotSpatialDataOverImage(visiumDir = data_dir,
+                         df = cbind(spPatterns, counts_df),
+                         feature_col = g,
+                         resolution="lowres",title = g)
 
 plot_grid(plotlist = list(p1,p2))
 

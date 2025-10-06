@@ -37,15 +37,16 @@ Imports:
     reshape2,
     RColorBrewer,
     circlize,
-    mixtools
+    mixtools,
+    dplyr,
+    readbitmap,
+    rlang,
+    viridis
 Suggests: 
     data.table,
     devtools,
-    dplyr,
-    hrbrthemes,
     knitr,
     cowplot,
-    readbitmap,
     rjson,
     rmarkdown,
     BiocStyle,

@@ -24,6 +24,7 @@ data_dir <- "${data}"           # example: "sample1/binned_outputs/"
 patternpath <- "${features}"    # example: "rctd_cell_types.csv" # 
 output_dir <- "${prefix}"       # example: "hd_pipeline_output" # 
 figure_dir <- file.path(output_dir, "figures")
+set.seed(${params.seed})
 
 
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
