@@ -14,7 +14,11 @@ calculate_gene_set_score(
 \arguments{
 \item{IMscores}{A matrix of interaction scores}
 
-\item{genes}{A list of gene sets, where each set is a vector of gene names}
+\item{gene_sets}{A list of gene sets, where each set is a vector of gene names}
+
+\item{weighted}{Logical; if TRUE, gene scores are weighted by their occurrence in multiple gene sets}
+
+\item{method}{Character; specifies the aggregation method for gene set scores. Options are "geometric_mean" or "arithmetic_mean"}
 }
 \value{
 A matrix of mean interaction scores for genes in each gene set, with
@@ -22,4 +26,8 @@ attributes for log p-value sums and number of genes for later fisher combination
 }
 \description{
 Calculate the mean interaction score for a set of genes
+}
+\details{
+This function computes mean interaction scores for given gene sets across cell interactions.
+It supports both geometric and arithmetic means, and can weight gene contributions based on their presence in multiple gene sets.
 }

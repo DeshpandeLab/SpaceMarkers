@@ -180,7 +180,11 @@ plotIMScores <- function(df, interaction, cutOff = 0, nGenes = 20,
 #' @title calculate_gene_set_score
 #' @description Calculate the mean interaction score for a set of genes
 #' @param IMscores A matrix of interaction scores
-#' @param genes A list of gene sets, where each set is a vector of gene names
+#' @param gene_sets A list of gene sets, where each set is a vector of gene names
+#' @param weighted Logical; if TRUE, gene scores are weighted by their occurrence in multiple gene sets
+#' @param method Character; specifies the aggregation method for gene set scores. Options are "geometric_mean" or "arithmetic_mean"
+#' @details This function computes mean interaction scores for given gene sets across cell interactions.
+#' It supports both geometric and arithmetic means, and can weight gene contributions based on their presence in multiple gene sets.
 #' @return A matrix of mean interaction scores for genes in each gene set, with 
 #' attributes for log p-value sums and number of genes for later fisher combination
 #' @export
