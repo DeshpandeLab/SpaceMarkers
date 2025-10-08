@@ -41,6 +41,7 @@ Imports:
     dplyr,
     readbitmap,
     rlang,
+    effsize,
     viridis
 Suggests: 
     data.table,
