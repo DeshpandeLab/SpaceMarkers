@@ -14,15 +14,29 @@ calculate_lr_scores(
 )
 }
 \arguments{
+\item{ligand_scores}{Output from getGeneSetScore for ligands}
+
+\item{receptor_scores}{Output from getGeneSetScore for receptors}
+
 \item{lr_pairs}{Data frame with columns 'ligand' and 'receptor'}
 
-\item{ligand_results}{Output from getGeneSetScore for ligands}
+\item{ligand_test}{Character; specifies the type of test for ligand overexpression. Options are "greater" or "two.sided"}
 
-\item{receptor_results}{Output from getGeneSetScore for receptors}
+\item{method}{Character; specifies the aggregation method for L-R scores. Options are "
+geometric_mean" or "arithmetic_mean"}
+
+\item{weighted}{Logical; if TRUE, L-R scores are weighted by their occurrence in
+multiple L-R pairs}
 }
 \value{
 Data frame with L-R scores and p-values
 }
 \description{
 Calculate L-R pair scores using Fisher's method
+}
+\details{
+This function computes L-R pair scores by combining ligand and receptor
+overexpression scores using either geometric or arithmetic mean. It can also
+weight L-R pairs based on their presence in multiple pairs to reduce bias from
+promiscuous ligands or receptors.
 }

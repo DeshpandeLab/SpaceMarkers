@@ -361,9 +361,18 @@ plotSpatialDataOverImage <- function(
 
 #' @title calculate_lr_scores
 #' @description Calculate L-R pair scores using Fisher's method
-#' @param ligand_results Output from getGeneSetScore for ligands
-#' @param receptor_results Output from getGeneSetScore for receptors
+#' @param ligand_scores Output from getGeneSetScore for ligands
+#' @param receptor_scores Output from getGeneSetScore for receptors
 #' @param lr_pairs Data frame with columns 'ligand' and 'receptor'
+#' @param ligand_test Character; specifies the type of test for ligand overexpression. Options are "greater" or "two.sided"
+#' @param method Character; specifies the aggregation method for L-R scores. Options are "
+#' geometric_mean" or "arithmetic_mean"
+#' @param weighted Logical; if TRUE, L-R scores are weighted by their occurrence in
+#' multiple L-R pairs
+#' @details This function computes L-R pair scores by combining ligand and receptor
+#' overexpression scores using either geometric or arithmetic mean. It can also
+#' weight L-R pairs based on their presence in multiple pairs to reduce bias from
+#' promiscuous ligands or receptors.
 #' @return Data frame with L-R scores and p-values
 #' @export
 calculate_lr_scores <- function(ligand_scores, receptor_scores, lr_pairs,
