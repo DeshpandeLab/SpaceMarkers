@@ -52,7 +52,6 @@ Suggests:
     rmarkdown,
     BiocStyle,
     testthat (>= 3.0.0),
-    viridis,
     CoGAPS,
     ComplexHeatmap
 Enhances: 
