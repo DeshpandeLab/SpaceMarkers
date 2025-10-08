@@ -45,6 +45,3 @@ Calculate Gene Set Specificity Scores
 # gene_set_scores <- calculate_gene_set_specificity(expr_matrix, spPatterns, gene_sets)
 
 }
-\seealso{
-\code{\link{calculate_all_fc_scores}}
-}

@@ -568,7 +568,6 @@ calculate_lr_scores <- function(ligand_scores, receptor_scores, lr_pairs,
 #' # Example usage:
 #' # gene_set_scores <- calculate_gene_set_specificity(expr_matrix, spPatterns, gene_sets)
 #'
-#' @seealso \code{\link{calculate_all_fc_scores}}
 #' @export
 calculate_gene_set_specificity <- function(data, spPatterns, gene_sets, weighted = TRUE, method = c("geometric_mean", "arithmetic_mean")) {
     method <- match.arg(method[1], choices = c("geometric_mean", "arithmetic_mean"))
