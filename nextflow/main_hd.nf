@@ -76,9 +76,6 @@ workflow {
     SPACEMARKERS_HD( ch_sm_inputs )
     ch_versions = ch_versions.mix(SPACEMARKERS_HD.out.versions)
 
-    SPACEMARKERS_HD_PLOTS( SPACEMARKERS_HD.out.LRscores )
-    ch_versions = ch_versions.mix(SPACEMARKERS_HD_PLOTS.out.versions)
-
     //collate versions
     ch_versions
       .collectFile(storeDir: "${params.outdir}/pipeline_info", name: 'versions.yml', sort: true, newLine: true)
