@@ -65,6 +65,7 @@ data(lrdf)
 lrpairs <- lrdf[["interaction"]][,c("ligand.symbol","receptor.symbol")]
 ligands <- sapply(lrpairs[["ligand.symbol"]],function(i) strsplit(i,split=", "))
 receptors <- sapply(lrpairs[["receptor.symbol"]],function(i) strsplit(i,split=", "))
+names(ligands) <- names(receptors) <- rownames(lrpairs)
 
 lrgenes <- union(unlist(ligands),unlist(receptors))
 
