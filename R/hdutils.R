@@ -54,11 +54,15 @@ if (method[1]=="pct"){
    maxthresh <- maxval
 }
 #Calculate the two compmonents of the normal mixture model
-comps <- mixtools::normalmixEM(df,k=2)
+res <- try(mixtools::normalmixEM(vals, k = 2, maxit = 1000, epsilon = 1e-8), silent = TRUE)
+if (inherits(res, "try-error") || is.null(res) || !all(c("mu", "sigma") %in% names(res)) || res$ft == 1000) {
+    warning("mixtools::normalmixEM failed or reached maxit; using minval as threshold")
+    return(minthresh)
+}
+comps <- res
 
 # Identify smaller component
 small <- which.min(comps$mu)
-
 
 thresh <- min(max(comps$mu[small] + (comps$sigma[small] * 4), minthresh),maxthresh)
 
