@@ -19,12 +19,11 @@ library("dplyr")
 library(SpaceMarkers)
 library(effsize)
 
-sample_name <- args[1]  # e.g., "sample1"
-data_dir <- paste0("/Users/adeshpa6/data/dpt/",sample_name,"/data/binned_outputs/square_016um")           # example: "sample1/binned_outputs/"
-patternpath <- paste0("/Users/adeshpa6/data/dpt/rctd/", sample_name,"/data/rctd/",sample_name,"BTC_visiumHD/rctd_cell_types.csv")    # example: "rctd_cell_types.csv" # 
-output_dir <- paste0("/Users/adeshpa6/01_Projects/20_BTC/DPT/dpt-manual-spacemarkers/short_out/", sample_name)       # example: "hd_pipeline_output" # 
+data_dir <- "${data}"           # example: "sample1/binned_outputs/"
+patternpath <- "${features}"    # example: "rctd_cell_types.csv" # 
+output_dir <- "${prefix}"       # example: "hd_pipeline_output" # 
 figure_dir <- file.path(output_dir, "figures")
-set.seed(42)
+set.seed(${params.seed})
 
 
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
