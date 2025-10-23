@@ -19,12 +19,12 @@ library("dplyr")
 library(SpaceMarkers)
 library(effsize)
 
-# read data_dir and patternpath form arguments
-data_dir <- "${data}"           # example: "sample1/binned_outputs/"
-patternpath <- "${features}"    # example: "rctd_cell_types.csv" # 
-output_dir <- "${prefix}"       # example: "hd_pipeline_output" # 
+sample_name <- args[1]  # e.g., "sample1"
+data_dir <- paste0("/Users/adeshpa6/data/dpt/",sample_name,"/data/binned_outputs/square_016um")           # example: "sample1/binned_outputs/"
+patternpath <- paste0("/Users/adeshpa6/data/dpt/rctd/", sample_name,"/data/rctd/",sample_name,"BTC_visiumHD/rctd_cell_types.csv")    # example: "rctd_cell_types.csv" # 
+output_dir <- paste0("/Users/adeshpa6/01_Projects/20_BTC/DPT/dpt-manual-spacemarkers/short_out/", sample_name)       # example: "hd_pipeline_output" # 
 figure_dir <- file.path(output_dir, "figures")
-set.seed(${params.seed})
+set.seed(42)
 
 
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
@@ -39,24 +39,24 @@ use.ligand.receptor.genes <- TRUE
 coords <- load10XCoords(data_dir)
 rownames(coords) <- coords[["barcode"]]
 
-spPatterns <- getSpatialFeatures(patternpath)
+spPatterns <- get_spatial_features(patternpath)
 barcodes <- intersect(rownames(coords), rownames(spPatterns))
 spPatterns <- cbind(coords[barcodes,],spPatterns[barcodes,])
-optParams <- getSpatialParameters(spPatterns,visiumDir=data_dir)
+optParams <- get_spatial_parameters(spPatterns,visiumDir=data_dir)
 sigmaPair <- optParams[,1]
 patnames <- setdiff(colnames(spPatterns),c("x","y","barcode"))
 
 # Calculate hotspots and influence for each pattern
 print("Calculating hotspots and influence for each pattern...")
-patthresholds <- calcAllThresholds(spPatterns, minvals=0.1, maxvals=0.8)
-patHotspots <- findAllHotspots.value(spPatterns, threshold=patthresholds)
+patthresholds <- calculate_thresholds(spPatterns, minvals=0.1, maxvals=0.8)
+pat_hotspots <- find_all_hotspots(spPatterns, threshold=patthresholds)
 
-spInfluence <- calcInfluence(spPatterns,optParams)
-infthresholds <- calcAllThresholds(spInfluence, minvals=0.01, maxvals=0.5)
-infHotspots <- findAllHotspots.value(spInfluence, threshold=infthresholds)
+spInfluence <-  calculate_influence(spPatterns,optParams)
+infthresholds <- calculate_thresholds(spInfluence, minvals=0.01, maxvals=0.5)
+influence_hotspots <- find_all_hotspots(spInfluence, threshold=infthresholds)
 
 #create a table of pattern pairs
-patternPairs <- t(combn(patnames,2))
+pattern_pairs <- t(combn(patnames,2))
 
 data <- load10XExpr(data_dir)
 data <- data[,barcodes]
@@ -65,6 +65,7 @@ data(lrdf)
 lrpairs <- lrdf[["interaction"]][,c("ligand.symbol","receptor.symbol")]
 ligands <- sapply(lrpairs[["ligand.symbol"]],function(i) strsplit(i,split=", "))
 receptors <- sapply(lrpairs[["receptor.symbol"]],function(i) strsplit(i,split=", "))
+names(ligands) <- names(receptors) <- rownames(lrpairs)
 
 lrgenes <- union(unlist(ligands),unlist(receptors))
 
@@ -79,10 +80,10 @@ if (use.ligand.receptor.genes) {
 }
 
 # Calculate interaction scores for all pattern pairs
-IMscores <- calcAllIMscores.HD(data=data, 
-                                patHotspots=patHotspots, 
-                                infHotspots=infHotspots, 
-                                patternPairs=patternPairs,
+IMscores <- calculate_gene_scores_directed(data=data, 
+                                pat_hotspots=pat_hotspots, 
+                                influence_hotspots=influence_hotspots, 
+                                pattern_pairs=pattern_pairs,
                                 avoid_confounders=TRUE)
 
 saveRDS(IMscores, file = sprintf("%s/IMscores.rds", output_dir))

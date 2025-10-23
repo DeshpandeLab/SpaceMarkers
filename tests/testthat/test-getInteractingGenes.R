@@ -18,7 +18,7 @@ test_that("getInteracting genes return empty interacting_genes object when no in
                            "Pattern_1" = runif(cell_num , min=0, max=1),
                            "Pattern_2" = runif(cell_num , min=0, max=1))
   optParams <- NULL
-  expect_error(output <- getInteractingGenes(data=data, spPatterns,
+  expect_error(output <- get_interacting_genes(data=data, spPatterns,
       reconstruction=NULL,
       optParams = optParams,
       spPatterns = spPatterns,
@@ -28,7 +28,7 @@ test_that("getInteracting genes return empty interacting_genes object when no in
   optParams <- matrix(c(7,2.1,6.4,1.2), nrow=2, ncol=2)
   rownames(optParams) <- c("sigmaOpt","threshOpt")
   colnames(optParams) <- c("Pattern_1","Pattern_2")
-  suppressWarnings(output <- getInteractingGenes(data=data, spPatterns,
+  suppressWarnings(output <- get_interacting_genes(data=data, spPatterns,
                                                  reconstruction=NULL,
                                 optParams = optParams,
                                 spPatterns = spPatterns,
@@ -41,5 +41,5 @@ test_that("getInteracting genes return empty interacting_genes object when no in
 })
 
 test_that("test no interacting genes in nmf output", {
-    expect_true(is.list(getSpaceMarkersMetric(list())))
+    expect_true(is.list(.get_spacemarkers_metric(list())))
 })

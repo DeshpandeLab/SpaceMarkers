@@ -81,7 +81,7 @@ png_filename <- paste0("circos_top_",top_n_plots,".png")
 png_path <- file.path(figure_dir, png_filename)
 png(png_path, width = 2000, height = 2000, res = 300)
 plot.new() # If not in RStudio or if you get "R newBella page" error
-  plotCellInteractionCircos(topNinteractions,
+  plot_cell_interaction_circos(topNinteractions,
                             link_buffer_fraction = 0.05,
                             link_connection_rou = 0.85,
                             split_segments_for_links = T,
@@ -122,7 +122,7 @@ for(source_cell in reference_cells) {
   png(png_path, width = 2000, height = 2000, res = 300)
   par(mar = c(3, 3, 3, 3)) # Provides 2 lines of margin on all sides
   plot.new() # If not in RStudio or if you get "R newBella page" error
-  plotSourceToTargetCircos(
+  plot_source_to_target_circos(
   filtered_interactions,
   source_cell_name = source_cell,
   target_cell_names = target_cells,
@@ -182,7 +182,7 @@ for (target_cell in reference_cells) {
   custom_gaps <- setNames(rep(2, length(all_plot_cells)), all_plot_cells)
   custom_gaps[length(custom_gaps)] <- 20 # Increase gap after the last sector
 
-  plotTargetFromSourcesCircos(
+  plot_target_from_sources_circos(
     topinteractions,
     target_cell_name = target_cell,
     source_cell_names = source_cells,

@@ -7,16 +7,16 @@ spPatterns <- data.frame(
 
 # Test with includeSelf = FALSE
 test_that("findPatternHotspots works with includeSelf = FALSE", {
-  result <- findPatternHotspots(spPatterns, patternName = "Pattern_1",
+  result <- find_pattern_hotspots(spPatterns, patternName = "Pattern_1",
                                 includeSelf = FALSE)
   expect_type(result, "character")
 })
 
 # Test behavior with different outlier types
 test_that("findPatternHotspots handles outlier parameter correctly", {
-  result_positive <- findPatternHotspots(spPatterns, patternName = "Pattern_1",
+  result_positive <- find_pattern_hotspots(spPatterns, patternName = "Pattern_1",
                                          outlier = "positive")
-  result_two_sided <- findPatternHotspots(spPatterns, patternName = "Pattern_1",
+  result_two_sided <- find_pattern_hotspots(spPatterns, patternName = "Pattern_1",
                                           outlier = "two.sided")
   
   expect_true(all(is.na(result_positive) | result_positive == "Pattern_1"))

@@ -1,5 +1,5 @@
 
-#' @title getOverlapScores
+#' @title calculate_overlap_undirected
 #' @description Calculate the overlap scores between patterns in hotspots
 #' @param hotspots A data frame with columns x, y, barcode and pattern names
 #' @param patternList A character vector of pattern names to calculate overlap 
@@ -15,14 +15,14 @@
 #' hotspots <- data.frame(x = c(1,2,3,4,5),
 #'                         y = c(1,2,3,4,5),
 #'                         barcode = c("A","B","C","D","E"),
-#'                         pattern1 = c(1,0,1,0,1),
-#'                         pattern2 = c(1,1,0,0,1))
-#' getOverlapScores(hotspots)   
-#' getOverlapScores(hotspots, c("pattern1","pattern2"))
+#'                         pattern1 = c("pattern1",NA,"pattern1",NA,"pattern1"),
+#'                         pattern2 = c("pattern2","pattern2",NA,NA,"pattern2"))
+#' calculate_overlap_undirected(hotspots)   
+#' calculate_overlap_undirected(hotspots, c("pattern1","pattern2"))
 #' @importFrom ggplot2 ggplot geom_tile geom_text theme_minimal
 #' @importFrom reshape2 melt
 #' @importFrom stats complete.cases
-getOverlapScores <- function(hotspots,
+calculate_overlap_undirected <- function(hotspots,
                              patternList = NULL, method = c("Szymkiewicz-Simpson",
                                                             "Jaccard", "Sorensen-Dice",
                                                             "Ochiai", "absolute") ) {
@@ -63,7 +63,7 @@ getOverlapScores <- function(hotspots,
     return(dfOverlap)
 }
 
-#' @title plotOverlapScores
+#' @title plot_overlap_scores
 #' @description Plot the overlap scores between patterns in hotspots
 #' @param df A data frame with columns pattern1, pattern2 and overlapScore
 #' @param title The title of the plot
@@ -75,11 +75,11 @@ getOverlapScores <- function(hotspots,
 #' df <- data.frame(pattern1 = c("pattern1","pattern1","pattern2","pattern2"), 
 #'                  pattern2 = c("pattern1","pattern2","pattern1","pattern2"),
 #'                  overlapScore = c(0.5,0.7,0.3,0.9))
-#' plotOverlapScores(df)
-#' plotOverlapScores(df, "Overlap Scores", "overlapScores.png", 15)
+#' plot_overlap_scores(df)
+#' plot_overlap_scores(df, "Overlap Scores", "overlapScores.png", 15)
 #' @import ggplot2
 #'
-plotOverlapScores <- function(df, title = "Spatial Overlap Scores", out = NULL,fontsize = 15) {
+plot_overlap_scores <- function(df, title = "Spatial Overlap Scores", out = NULL,fontsize = 15) {
     p <- ggplot2::ggplot(data = df, aes(pattern1, pattern2, fill = overlapScore)) +
         geom_tile(color = "black", size = 0.8) +
         geom_text(aes(label = round(overlapScore, 2)), size = 6) +  # Display values on the plot
@@ -103,17 +103,17 @@ plotOverlapScores <- function(df, title = "Spatial Overlap Scores", out = NULL,f
     return(p)
 }
 
-#' @title getIMScores
+#' @title get_im_scores
 #' @description Get the interaction scores for SpaceMarkers
 #' @param SpaceMarkers A list of SpaceMarkers objects
 #' @return A data frame with columns Gene and SpaceMarkersMetric
 #' @export
 #' @examples
-#' example(getPairwiseInteractingGenes)
-#' getIMScores(SpaceMarkers)
+#' example(get_pairwise_interacting_genes)
+#' get_im_scores(SpaceMarkers)
 #' @importFrom stats setNames
 #' 
-getIMScores <- function(SpaceMarkers){
+get_im_scores <- function(SpaceMarkers){
     smi <- SpaceMarkers[which(sapply(SpaceMarkers, function(x) length(x[['interacting_genes']]))>0)]
     fields <- c('Gene', 'SpaceMarkersMetric')
 
@@ -134,7 +134,7 @@ getIMScores <- function(SpaceMarkers){
 }
 
 
-#' @title plotIMScores
+#' @title plot_im_scores
 #' @description Plot the top SpaceMarkers IMScores
 #' @param df A data frame with columns Gene and SpaceMarkersMetric
 #' @param interaction The interaction to plot
@@ -146,12 +146,12 @@ getIMScores <- function(SpaceMarkers){
 #' @param out The output path for the plot
 #' @export
 #' @examples 
-#' example(getPairwiseInteractingGenes)
-#' plotIMScores(getIMScores(SpaceMarkers), "Pattern_1_Pattern_3")
+#' example(get_pairwise_interacting_genes)
+#' plot_im_scores(get_im_scores(SpaceMarkers), "Pattern_1_Pattern_3")
 #' @import ggplot2
 #' @importFrom stats reorder
 #' @importFrom utils head
-plotIMScores <- function(df, interaction, cutOff = 0, nGenes = 20,
+plot_im_scores <- function(df, interaction, cutOff = 0, nGenes = 20,
     geneText = 12, metricText = 12, increments = 1, out = NULL) {
     df$genes <- df$Gene
     df <- df[order(df[[interaction]], decreasing = TRUE),]
@@ -247,13 +247,13 @@ calculate_gene_set_score <- function(IMscores, gene_sets, weighted = TRUE, metho
 }
 
 
-#' @title pickImage
+#' @title .pick_image
 #' @description The function picks the appropriate histology image file from the
 #' spatial directory based on the specified resolution.
 #' @param sp_dir path to the spatial directory
 #' @param res a character string specifying the resolution of the image
 #' @return a character string of the image file name
-pickImage <- function(sp_dir, res) {
+.pick_image <- function(sp_dir, res) {
   files <- list.files(sp_dir, full.names = TRUE)
   low   <- grep("^tissue_.*lowres.*\\.(png|jpg|jpeg|tif|tiff)$",
                 basename(files), ignore.case = TRUE, value = TRUE)
@@ -302,57 +302,60 @@ pickImage <- function(sp_dir, res) {
 #' @importFrom viridis scale_fill_viridis
 #' @importFrom stats na.omit setNames
 #' @importFrom RColorBrewer brewer.pal
+#' @importFrom ggplot2 scale_fill_gradientn ggplot annotation_raster 
+#' geom_point aes coord_fixed labs theme_bw theme element_rect element_blank
+#' @importFrom dplyr mutate rename
 
-plotSpatialDataOverImage <- function(
+plot_spatial_data_over_image <- function(
     visiumDir, df, feature_col, barcode_col="barcode",
     resolution=c("lowres","hires","fullres"), version=NULL, colors=NULL,
     point_size=2.5, stroke=0.05, alpha=0.5, title="Spatial Heatmap",
     bg_color=NULL, crop=TRUE, text_size = 15) {
-  gg <- getNamespace("ggplot2"); dp <- getNamespace("dplyr")
   resolution <- match.arg(resolution)
   if (is.null(barcode_col)) {
     if (!is.null(rownames(df))) df$barcode <- rownames(df) else
       stop("barcode_col is NULL and df has no rownames.")
-  } else if (barcode_col != "barcode") df <- dp$rename(
+  } else if (barcode_col != "barcode") 
+    df <- dplyr::rename(
     df, barcode = !!rlang::sym(barcode_col))
   pos <- SpaceMarkers::load10XCoords(visiumDir, resolution, version)
   names(pos) <- c("barcode","y","x"); df <- merge(
     df[, c("barcode", feature_col)], pos, by="barcode")
-  img <- readbitmap::read.bitmap(pickImage(
+  img <- readbitmap::read.bitmap(.pick_image(
     file.path(visiumDir, "spatial"), resolution))
   if (crop) {xr <- range(df$x, na.rm=TRUE); yr <- range(df$y, na.rm=TRUE)
   xmin <- max(1L, floor(xr[1])); xmax <- min(ncol(img), ceiling(xr[2]))
   ymin <- max(1L, floor(yr[1])); ymax <- min(nrow(img), ceiling(yr[2]))
   img <- img[ymin:ymax, xmin:xmax,, drop=FALSE]
-  df <- dp$mutate(df, x_c=x-xmin+1L, y_c=y-ymin+1L)
+  df <- dplyr::mutate(df, x_c=x-xmin+1L, y_c=y-ymin+1L)
   xl <- c(0, xmax-xmin+1L); yl <- c(0, ymax-ymin+1L)
   } else {
-    df <- dp$mutate(df, x_c=x, y_c=y);xl<-c(0, ncol(img));yl<-c(0, nrow(img))}
-    p <- gg$ggplot() +
-      gg$annotation_raster(as.raster(img), 0, diff(xl), 0, diff(yl)) +
-      gg$geom_point(
+    df <- dplyr::mutate(df, x_c=x, y_c=y);xl<-c(0, ncol(img));yl<-c(0, nrow(img))}
+    p <- ggplot2::ggplot() +
+      ggplot2::annotation_raster(as.raster(img), 0, diff(xl), 0, diff(yl)) +
+      ggplot2::geom_point(
         data = df,
-        gg$aes(x_c, yl[2] - y_c, fill = .data[[feature_col]]),
+        ggplot2::aes(x_c, yl[2] - y_c, fill = .data[[feature_col]]),
         shape = 21, color = "black", size = point_size,
         stroke = stroke, alpha = alpha
       ) +
-      gg$coord_fixed(xlim = xl, ylim = yl, expand = FALSE) +
-      gg$labs(fill = feature_col, x = NULL, y = NULL, title = title) +
-      gg$theme_bw(text_size) +
-      gg$theme(
+      ggplot2::coord_fixed(xlim = xl, ylim = yl, expand = FALSE) +
+      ggplot2::labs(fill = feature_col, x = NULL, y = NULL, title = title) +
+      ggplot2::theme_bw(text_size) +
+      ggplot2::theme(
         plot.background = if (!is.null(bg_color))
-          gg$element_rect(fill = bg_color, color = NA)
-        else gg$element_blank()
+          ggplot2::element_rect(fill = bg_color, color = NA)
+        else ggplot2::element_blank()
       )
   if (is.numeric(df[[feature_col]])) {
-    p <- p + (if (!is.null(colors)) gg$scale_fill_gradientn(colours=colors)
+    p <- p + (if (!is.null(colors)) ggplot2::scale_fill_gradientn(colours=colors)
               else viridis::scale_fill_viridis())
   } else {
     vals <- unique(stats::na.omit(df[[feature_col]]))
-    p <- p + if (!is.null(colors)) gg$scale_fill_manual(values=colors) else
-      if (length(vals) > 1) gg$scale_fill_manual(values = stats::setNames(
+    p <- p + if (!is.null(colors)) ggplot2::scale_fill_manual(values=colors) else
+      if (length(vals) > 1) ggplot2::scale_fill_manual(values = stats::setNames(
         RColorBrewer::brewer.pal(max(3, min(length(vals), 9)), "Set1")
-        [seq_along(vals)], vals)) else gg$scale_fill_manual(values="red")
+        [seq_along(vals)], vals)) else ggplot2::scale_fill_manual(values="red")
   }
   return(p)
 }
@@ -573,7 +576,7 @@ calculate_lr_scores <- function(ligand_scores, receptor_scores, lr_pairs,
 #' @details
 #' - Genes not present in the data are excluded.
 #' - Genes with all zero expression are removed.
-#' - Fold-change scores and p-values are calculated using `calculate_all_fc_scores`.
+#' - Fold-change scores and p-values are calculated using `.calculate_all_fc_scores`.
 #' - Scores are normalized and weighted by p-value significance.
 #' - For each gene set, scores are aggregated using the specified method and gene weights.
 #'
@@ -622,7 +625,7 @@ calculate_gene_set_specificity <- function(data, spPatterns, gene_sets, weighted
     rownames(gene_set_scores) <- names(gene_sets)
     colnames(gene_set_scores) <- cell_types
 
-    gene_scores <- calculate_all_fc_scores(expr, spPatterns, low_thr = 0.2, high_thr = 0.8)
+    gene_scores <- .calculate_all_fc_scores(expr, spPatterns, low_thr = 0.2, high_thr = 0.8)
 
 
     for (gene_set in names(gene_sets)) {
@@ -646,7 +649,7 @@ calculate_gene_set_specificity <- function(data, spPatterns, gene_sets, weighted
     return(gene_set_scores)
 }
 
-calculate_fc_score <- function(expr, spPatterns, gene, ct,
+.calculate_fc_score <- function(expr, spPatterns, gene, ct,
                               low_thr = 0.2, high_thr = 0.8) {
 
   # Get thresholds
@@ -679,7 +682,7 @@ calculate_fc_score <- function(expr, spPatterns, gene, ct,
 
 # Wrapper for all genes and cell types
 # importFrom BiocParallel bplapply
-calculate_all_fc_scores <- function(expr, spPatterns, 
+.calculate_all_fc_scores <- function(expr, spPatterns, 
                                     low_thr = 0.2, high_thr = 0.9, ..., workers = NULL) {
 
   genes <- rownames(expr)
@@ -696,7 +699,7 @@ calculate_all_fc_scores <- function(expr, spPatterns,
   if (!use_biocparallel) {
     for (i in seq_along(genes)) {
         for (ct in cell_types) {
-            result <- calculate_fc_score(expr, spPatterns, 
+            result <- .calculate_fc_score(expr, spPatterns, 
                                     genes[i], ct,
                                     low_thr, high_thr)
             lfc_matrix[i, ct] <- result
@@ -712,7 +715,7 @@ calculate_all_fc_scores <- function(expr, spPatterns,
         lfc_col <- p_val_col <- numeric(length(genes))
         names(lfc_col) <- names(p_val_col) <- genes
         for (i in seq_along(genes)) {
-            result <- calculate_fc_score(expr, spPatterns, 
+            result <- .calculate_fc_score(expr, spPatterns, 
                                 genes[i], ct,
                                 low_thr, high_thr)
             lfc_col[i] <- result

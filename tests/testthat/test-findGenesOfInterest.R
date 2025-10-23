@@ -1,4 +1,4 @@
-test_that("findGenesOfInterest handles no significant genes without error", {
+test_that(".find_genes_of_interest handles no significant genes without error", {
     # Mock input data
     fdr <- 0.05
     testMat <- matrix(rnorm(100), nrow=10, ncol=10)
@@ -16,10 +16,10 @@ test_that("findGenesOfInterest handles no significant genes without error", {
     res_kruskal$p.adj <- qq$qvalues
 
     # Call the function and expect no errors
-    expect_no_error(findGenesOfInterest(testMat, region = region, fdr.level = fdr))
+    expect_no_error(.find_genes_of_interest(testMat, region = region, fdr.level = fdr))
 })
 
-test_that("findGenesOfInterest returns statistics for all non-zero genes", {
+test_that(".find_genes_of_interest returns statistics for all non-zero genes", {
     # Mock input data
     fdr <- 0.05
     testMat <- matrix(runif(80), nrow=8, ncol=20)
@@ -33,7 +33,7 @@ test_that("findGenesOfInterest returns statistics for all non-zero genes", {
     region[c(2,6,9)] <- NA  # Set some spots to NA
     region <- factor(region)
     suppressWarnings(
-        sm_test <- findGenesOfInterest(testMat, region = region, fdr.level = fdr)
+        sm_test <- .find_genes_of_interest(testMat, region = region, fdr.level = fdr)
     )
     zero_genes <- c("Gene10", "Gene11", "Gene12")
     coi <- c("KW.df","KW.statistic","KW.pvalue","KW.p.adj","Dunn.zP1_Int",

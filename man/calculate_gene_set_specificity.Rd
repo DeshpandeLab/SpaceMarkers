@@ -35,7 +35,7 @@ Calculate Gene Set Specificity Scores
 \itemize{
 \item Genes not present in the data are excluded.
 \item Genes with all zero expression are removed.
-\item Fold-change scores and p-values are calculated using \code{calculate_all_fc_scores}.
+\item Fold-change scores and p-values are calculated using \code{.calculate_all_fc_scores}.
 \item Scores are normalized and weighted by p-value significance.
 \item For each gene set, scores are aggregated using the specified method and gene weights.
 }

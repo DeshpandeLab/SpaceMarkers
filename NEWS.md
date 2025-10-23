@@ -8,7 +8,7 @@ when no genes pass fdr threshold.
 
 * Updated SpaceMarkersMetric by fixing signage and log transformed to scale
 magnitude
-* Added getSpatialParamsExternal which enables getting spatial parameters
+* Added get_spatial_paramsExternal which enables getting spatial parameters
 from file or from the user.
 * Deprecated getSpatialParameters
 * Enabled includeSelf = TRUE in getInteractingGenes.R to improve hotspot 

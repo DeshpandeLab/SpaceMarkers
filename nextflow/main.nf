@@ -63,7 +63,7 @@ process SPACEMARKERS {
     saveRDS(spaceMarkers, file = "${prefix}/spaceMarkersObject.rds")
 
     #save SpaceMarkers Interaction Scores
-    IMScores <- getIMScores(spaceMarkers)
+    IMScores <- get_im_scores(spaceMarkers)
     write.csv(IMScores, file = "${prefix}/spaceMarkers.csv", row.names = FALSE)
 
     # Get the versions of the packages
@@ -122,7 +122,7 @@ process SPACEMARKERS_PLOTS {
                                     levels = unique(overlaps[["pattern1"]]))
   overlaps[["pattern2"]] <- factor(overlaps[["pattern2"]], 
                                     levels = unique(overlaps[["pattern2"]]))
-  plot <- plotOverlapScores(overlaps) + ggplot2::labs(subtitle="$meta.id")
+  plot <- plot_overlap_scores(overlaps) + ggplot2::labs(subtitle="$meta.id")
   ggplot2::ggsave("${prefix}/overlapScores.png", plot)
 
   #plot interaction plots

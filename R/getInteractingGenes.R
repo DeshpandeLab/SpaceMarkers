@@ -53,7 +53,7 @@
 #' spPatterns <- cbind(spCoords,spFeatures[barcodes,])
 #' spPatterns<-spPatterns[c("barcode","y","x","Pattern_1","Pattern_5")]
 #' data("optParams")
-#' hotspots <- findPatternHotspots(
+#' hotspots <- find_pattern_hotspots(
 #' spPatterns = spPatterns,
 #' patternName = "Pattern_1",
 #' params = optParams[,"Pattern_1"],
@@ -63,7 +63,7 @@
 #' unlink("spatial", recursive = TRUE)
 #' 
 
-findPatternHotspots <- function(
+find_pattern_hotspots <- function(
     spPatterns, params = NULL, patternName = "Pattern_1",
     outlier = "positive",
     nullSamples = 1000, includeSelf = TRUE,...){
@@ -114,16 +114,16 @@ findPatternHotspots <- function(
 #===================
 #' @title Find hotSpots for all spatial patterns
 #' @description Convenience function to find hotspots for all spatial patterns
-#' @inheritParams findPatternHotspots
+#' @inheritParams find_pattern_hotspots
 #' @export
 
-findAllHotspots <- function(spPatterns, params = NULL, outlier = "positive",
+find_all_hotspots <- function(spPatterns, params = NULL, outlier = "positive",
                         nullSamples = 1000, includeSelf = TRUE,...){
     pattList <- setdiff(colnames(spPatterns),c("x","y","barcode"))
     hotspots <- matrix(NA, nrow=nrow(spPatterns), ncol=length(pattList))
     colnames(hotspots) <- pattList
     for (patternName in pattList){
-        hotspots[,patternName] <- findPatternHotspots(
+        hotspots[,patternName] <- find_pattern_hotspots(
             spPatterns = spPatterns, params = params[,patternName],
             patternName = patternName, outlier = outlier,
             nullSamples = nullSamples, includeSelf = includeSelf,...)
@@ -133,7 +133,7 @@ findAllHotspots <- function(spPatterns, params = NULL, outlier = "positive",
     return(as.data.frame(hotspots))
 }
 
-gettestMat <- function(data,reconstruction,mode){
+.get_test_mat <- function(data,reconstruction,mode){
     if ("DE" %in% mode)
         testMat <- data
     else if ("residual" %in% mode)
@@ -152,7 +152,7 @@ gettestMat <- function(data,reconstruction,mode){
     return(testMat)
 }
 
-getSpaceMarkersMetric <- function(interacting.genes){
+.get_spacemarkers_metric <- function(interacting.genes){
     interacting_genes <- lapply(interacting.genes, as.data.frame)
     if (length(interacting_genes) == 0)
     {
@@ -268,7 +268,7 @@ getSpaceMarkersMetric <- function(interacting.genes){
 #' data("optParams")
 #' SpaceMarkersMode <- "DE"
 #' ref_Pattern <- "Pattern_1"
-#' SpaceMarkers_test <- getInteractingGenes(
+#' SpaceMarkers_test <- get_interacting_genes(
 #'     data=counts_matrix,reconstruction=NULL,
 #'     optParams = optParams,
 #'     spPatterns = spPatterns,
@@ -281,16 +281,16 @@ getSpaceMarkersMetric <- function(interacting.genes){
 #' unlink(files)
 #' 
 
-getInteractingGenes <- function(data, spPatterns, refPattern="Pattern_1",
+get_interacting_genes <- function(data, spPatterns, refPattern="Pattern_1",
                                 mode=c("DE","residual"), optParams=NULL,
                                 reconstruction=NULL, hotspots=NULL,
                                 analysis=c("enrichment","overlap"),
                                 minOverlap=50,...) {
 
-    testMat <- gettestMat(data,reconstruction,mode)
+    testMat <- .get_test_mat(data,reconstruction,mode)
     pattList<- setdiff(colnames(spPatterns),c("barcode","x","y"))
     if (is.null(optParams)){
-        stop("optParams not provided. Please run getSpatialParameters() to get
+        stop("optParams not provided. Please run get_spatial_parameters() to get
         optParams and pass to the function.")
     } else {
         message("Using user provided optParams.")
@@ -304,7 +304,7 @@ getInteractingGenes <- function(data, spPatterns, refPattern="Pattern_1",
         hotspots <- c()
         for (patternName in pattList) {
             hotspots <- cbind(
-                hotspots,findPatternHotspots(
+                hotspots,find_pattern_hotspots(
                     spPatterns=spPatterns,patternName=patternName,
                     params=optParams[,patternName],outlier = "positive") )
         }
@@ -329,22 +329,22 @@ getInteractingGenes <- function(data, spPatterns, refPattern="Pattern_1",
         else {
             message("Calculating genes of interest for ",refPattern," and ",
                 pattern)
-            interacting_genes<-c(interacting_genes,findGenesOfInterest(
+            interacting_genes<-c(interacting_genes,.find_genes_of_interest(
                     testMat = testMat, region=region,...))
         }
     }
-    interacting_genes <- getSpaceMarkersMetric(interacting_genes)
+    interacting_genes <- .get_spacemarkers_metric(interacting_genes)
     return(list(interacting_genes=interacting_genes,hotspots=hotspots))
 }
 
 #' ================
-#' @title getPairwiseInteractingGenes
+#' @title get_pairwise_interacting_genes
 #' @description Performs pairwise analysis to find genes associated with 
 #' spatial interaction between pairs of spatially varying patterns. 
 #' @export
 #' @family getIntGenes
-#' @inheritParams getInteractingGenes
-#' @param patternPairs A matrix of pattern pairs to be analyzed. Default is
+#' @inheritParams get_interacting_genes
+#' @param pattern_pairs A matrix of pattern pairs to be analyzed. Default is
 #' @param workers (optional) Number of workers to 
 #' be used for parallel processing.
 #' @return a list of data frames for each pattern with 1) names of the patterns 
@@ -394,13 +394,13 @@ getInteractingGenes <- function(data, spPatterns, refPattern="Pattern_1",
 #' rownames(optParams) <- c("sigmaOpt","threshOpt")
 #' colnames(optParams) <- c("Pattern_1","Pattern_3","Pattern_5")
 #' SpaceMarkersMode <- "DE"
-#' patternPairs <- matrix(c("Pattern_1", "Pattern_1", 
+#' pattern_pairs <- matrix(c("Pattern_1", "Pattern_1", 
 #'            "Pattern_3", "Pattern_5"), nrow=2)
-#' SpaceMarkers <- getPairwiseInteractingGenes(
+#' SpaceMarkers <- get_pairwise_interacting_genes(
 #'     data=counts_matrix,reconstruction=NULL,
 #'     optParams = optParams,
 #'     spPatterns = spPatterns,
-#'     mode="DE",analysis="enrichment", patternPairs=patternPairs)
+#'     mode="DE",analysis="enrichment", pattern_pairs=pattern_pairs)
 #' #Remove present Directories if any
 #' unlink(basename(sp_url))
 #' unlink("spatial", recursive = TRUE)
@@ -408,12 +408,12 @@ getInteractingGenes <- function(data, spPatterns, refPattern="Pattern_1",
 #' unlink(files)
 #' 
 
-getPairwiseInteractingGenes <- function(data, spPatterns, 
+get_pairwise_interacting_genes <- function(data, spPatterns, 
                                     mode=c("DE","residual"), 
                                     optParams=NULL, reconstruction=NULL, 
                                     hotspots=NULL, minOverlap=50,
                                     analysis=c("enrichment","overlap"),
-                                    patternPairs=NULL ,..., workers=NULL) {
+                                    pattern_pairs=NULL ,..., workers=NULL) {
     # save params in a list for easy passing
     argsParams <- list(spPatterns=spPatterns, mode=mode, 
                         optParams=optParams, hotspots=hotspots, 
@@ -425,11 +425,11 @@ getPairwiseInteractingGenes <- function(data, spPatterns,
             stop("patternList contains patterns not present in spPatterns.")
     }
     
-    # check patternPairs if provided, if not generate them
-    patternPairs <- getPatternPairs(patternList=patternList, 
-                                        patternPairs=patternPairs)
+    # check pattern_pairs if provided, if not generate them
+    pattern_pairs <- .get_pattern_pairs(patternList=patternList, 
+                                        pattern_pairs=pattern_pairs)
 
-    input_list <- apply(patternPairs,1, pairArgsList, argsParams)
+    input_list <- apply(pattern_pairs,1, .pair_args_list, argsParams)
     
     # Check if BiocParallel is installed
     use_biocparallel <- requireNamespace("BiocParallel", quietly = TRUE) &&
@@ -450,8 +450,8 @@ getPairwiseInteractingGenes <- function(data, spPatterns,
         
         # Run the loop with BiocParallel
         results <- BiocParallel::bplapply(input_list, function(args) {
-            # call getInteractingGenes for a pair 
-            do.call(getInteractingGenes, c(list(data = data), 
+            # call get_interacting_genes for a pair 
+            do.call(get_interacting_genes, c(list(data = data), 
                 list(reconstruction=reconstruction), args, ...))
         }, BPPARAM = bpparam)  # Use the specified parallel backend
     } else {
@@ -459,18 +459,18 @@ getPairwiseInteractingGenes <- function(data, spPatterns,
         results <- vector("list", length = length(input_list))
         
         for (ii in seq(1,length(input_list))){
-            results[[ii]] <- do.call(getInteractingGenes, c(list(data = data), 
+            results[[ii]] <- do.call(get_interacting_genes, c(list(data = data), 
                 list(reconstruction=reconstruction), input_list[[ii]],...))
         }
     }
     for (ii in seq(1,length(results)))
-        results[[ii]]$patterns <- patternPairs[ii,]
-    names(results) <- apply(patternPairs,1,paste,collapse="_")
+        results[[ii]]$patterns <- pattern_pairs[ii,]
+    names(results) <- apply(pattern_pairs,1,paste,collapse="_")
     return(results)
 }
 
 # Create a list of arguments for passing two patterns to getInteractingGenes
-pairArgsList <- function(patternPair, argsParams) {
+.pair_args_list <- function(patternPair, argsParams) {
     patcols <- c("x","y", "barcode",patternPair)
     argList <- list(
         spPatterns = argsParams$spPatterns[, patcols],
@@ -483,32 +483,32 @@ pairArgsList <- function(patternPair, argsParams) {
     return(argList)
 }
 
-getPatternPairs <- function(patternList, patternPairs) {
-    if (is.null(patternPairs)){
-        message("patternPairs not provided. Calculating all 
+.get_pattern_pairs <- function(patternList, pattern_pairs) {
+    if (is.null(pattern_pairs)){
+        message("pattern_pairs not provided. Calculating all 
             possible pairs.")
-        patternPairs <- t(utils::combn(patternList,2,simplify = TRUE))
+        pattern_pairs <- t(utils::combn(patternList,2,simplify = TRUE))
     } else {
-        if (is.list(patternPairs)) {
-            if (!all(vapply(patternPairs,length, FUN.VALUE = 1)==2)) 
-                stop("Each item in the patternPairs list 
+        if (is.list(pattern_pairs)) {
+            if (!all(vapply(pattern_pairs,length, FUN.VALUE = 1)==2)) 
+                stop("Each item in the pattern_pairs list 
                     must be a vector of 2 patterns.")
-            patternPairs <- do.call(rbind, patternPairs)
-        } else if (is.matrix(patternPairs)) {
-            if (ncol(patternPairs) != 2) 
-                stop("patternPairs matrix must have 2 columns.")
-        } else if(is.character(patternPairs)) {
-            if (length(patternPairs)!=2){
+            pattern_pairs <- do.call(rbind, pattern_pairs)
+        } else if (is.matrix(pattern_pairs)) {
+            if (ncol(pattern_pairs) != 2) 
+                stop("pattern_pairs matrix must have 2 columns.")
+        } else if(is.character(pattern_pairs)) {
+            if (length(pattern_pairs)!=2){
                 stop("A single pair be a character vector of length 2.")
             } else
-                patternPairs <- matrix(patternPairs, nrow=1)
+                pattern_pairs <- matrix(pattern_pairs, nrow=1)
         }
         else
-            stop("patternPairs must either be a 2-column matrix 
+            stop("pattern_pairs must either be a 2-column matrix 
                 or a list of vectors.")
-        mess <- paste0(setdiff(patternPairs, patternList)," ")
-        if (!all(patternPairs %in% patternList)) 
+        mess <- paste0(setdiff(pattern_pairs, patternList)," ")
+        if (!all(pattern_pairs %in% patternList)) 
             stop("Following are not pattern names: ",mess )
     }
-    return(patternPairs)
+    return(pattern_pairs)
 }

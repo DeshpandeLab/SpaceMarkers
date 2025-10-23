@@ -9,7 +9,7 @@
 ## author: Atul Deshpande
 ## email: adeshpande@jhu.edu
 
-find_kernel_outliers_for_sensitivity <- function(pattern,locs,
+.find_kernel_outliers_for_sensitivity <- function(pattern,locs,
                                                     pattern_threshold=0.15,
                                                 sigma = 10,kernelthreshold = 2,
                                                 method = "Pattern_Threshold",
@@ -30,7 +30,7 @@ find_kernel_outliers_for_sensitivity <- function(pattern,locs,
     return(Kact)
 }
 
-getOptimalSigmaThresh <- function(pattern, locs, sigVec, threshVec,...){
+.get_optimal_sigma_thresh <- function(pattern, locs, sigVec, threshVec,...){
     visium.dist <- as.matrix(dist(locs))
     visium.dist.inv <-1/visium.dist
     diag(visium.dist.inv) <- 0
@@ -60,7 +60,7 @@ getOptimalSigmaThresh <- function(pattern, locs, sigVec, threshVec,...){
             numeric(4))
     sigOpt1_ind <- which.min(abs(unlist(smallmor_2[1,])-
                                 unlist(smallmor_2[2,])))
-    Kact2<-find_kernel_outliers_for_sensitivity(pattern=pattern,locs=locs,
+    Kact2<-.find_kernel_outliers_for_sensitivity(pattern=pattern,locs=locs,
                                                 sigma=smallsigVec[sigOpt1_ind],
                                                 method="Kernel2",
                                                 kernelthreshold=0,
@@ -102,17 +102,17 @@ getOptimalSigmaThresh <- function(pattern, locs, sigVec, threshVec,...){
 #' x = runif(test_num, min=0, max=test_num),
 #' Pattern_1 = runif(test_num, min=0, max=1),
 #' Pattern_2 = runif(test_num, min=0, max=1) )
-#' # Call the getSpatialParamsMoransI function with the test data
-#' optParams <- getSpatialParamsMoransI(spPatterns)
+#' # Call the get_spatial_params_morans_i function with the test data
+#' optParams <- get_spatial_params_morans_i(spPatterns)
 #'
-getSpatialParamsMoransI <- function(spatialPatterns,...){
-    .Deprecated(new = "getSpatialParameters")
+get_spatial_params_morans_i <- function(spatialPatterns,...){
+    .Deprecated(new = "get_spatial_parameters")
     sigmaRes <- max(floor(min(diff(range(spatialPatterns$x)),
                                 diff(range(spatialPatterns$y)))/250),1)
     sigVec <- seq(2,40*sigmaRes,sigmaRes)
     threshVec <- seq(1,3,0.1)
     patternList <- setdiff(colnames(spatialPatterns),c("barcode","x","y"))
-    optParams<-vapply(patternList,function(i) unlist(getOptimalSigmaThresh(
+    optParams<-vapply(patternList,function(i) unlist(.get_optimal_sigma_thresh(
         pattern=spatialPatterns[,i],locs=data.frame(
         x=spatialPatterns$x,y=spatialPatterns$y),sigVec,threshVec,...)),numeric(2))
     return(optParams)
@@ -159,11 +159,11 @@ getSpatialParamsMoransI <- function(spatialPatterns,...){
 #' x = runif(test_num, min=0, max=test_num),
 #' Pattern_1 = runif(test_num, min=0, max=1),
 #' Pattern_2 = runif(test_num, min=0, max=1) )
-#' # Call the getSpatialParameters function with the test data
-#' optParams <- getSpatialParameters(spPatterns, sigma = 10)
+#' # Call the get_spatial_parameters function with the test data
+#' optParams <- get_spatial_parameters(spPatterns, sigma = 10)
 #'
 
-getSpatialParameters <- function(spatialPatterns,visiumDir = ".",
+get_spatial_parameters <- function(spatialPatterns,visiumDir = ".",
                                          spatialDir ="spatial",
                                          pattern = "scalefactors_json.json",
                                          sigma = NULL,threshold = 4,

@@ -144,7 +144,7 @@
 
     name_cols_ligand <- NULL; name_cols_receptor <- NULL
     if(use_individual_molecule_colors) {
-        gen_mol_cols_helper <- function(mol_names, pal_gen, pal_default_name, type) {
+        .gen_mol_cols_helper <- function(mol_names, pal_gen, pal_default_name, type) {
             n_unique <- length(mol_names)
             if (n_unique == 0) return(stats::setNames(character(0), character(0)))
             colors_vec <- if (is.null(pal_gen)) {
@@ -168,8 +168,8 @@
         lig_names <- sort(unique(molecules_in_plot_df$molecule_name[molecules_in_plot_df$molecule_type == "ligand"]))
         rec_names <- sort(unique(molecules_in_plot_df$molecule_name[molecules_in_plot_df$molecule_type == "receptor"]))
         
-        name_cols_ligand <- gen_mol_cols_helper(lig_names, individual_ligand_palette_generator, "Greens", "ligands")
-        name_cols_receptor <- gen_mol_cols_helper(rec_names, individual_receptor_palette_generator, "Blues", "receptors")
+        name_cols_ligand <- .gen_mol_cols_helper(lig_names, individual_ligand_palette_generator, "Greens", "ligands")
+        name_cols_receptor <- .gen_mol_cols_helper(rec_names, individual_receptor_palette_generator, "Blues", "receptors")
     }
     return(list(cell_type_colors = cell_type_colors_vec,
                 name_colors_ligand = name_cols_ligand,
@@ -352,16 +352,18 @@
 #'   lr_data <- data.frame(
 #'     ligand = c("LGF1", "LGF1", "LGF2", "LGF3", "LGF4", "LGF1", "LGF5", "LGF6"),
 #'     receptor = c("REC1", "REC2A", "REC1", "REC3B", "REC1", "REC4", "REC4", "REC2A"),
-#'     source_cell_type = c("CellA", "CellA", "CellB", "CellC", "CellA", "CellD", "CellD", "CellB"),
-#'     target_cell_type = c("CellB", "CellC", "CellB", "CellA", "CellD", "CellA", "CellD", "CellC"),
+#'     source_cell_type = c("CellA", "CellA", "CellB", "CellC",
+#'                           "CellA", "CellD", "CellD", "CellB"),
+#'     target_cell_type = c("CellB", "CellC", "CellB", "CellA",
+#'                           "CellD", "CellA", "CellD", "CellC"),
 #'     score = c(4, 0.9, 0.7, 0.95, 0.6, 0.1, 0.88, 2.5),
 #'     stringsAsFactors = FALSE
 #'   )
 #'   # Basic plot with defaults
-#'   # plotCellInteractionCircos(lr_data)
+#'   # plot_cell_interaction_circos(lr_data)
 #'
 #'   # Plot with selected cell types and custom order
-#'   # plotCellInteractionCircos(lr_data,
+#'   # plot_cell_interaction_circos(lr_data,
 #'   #                           selected_cell_types = c("CellA", "CellB", "CellD"),
 #'   #                           cell_order = c("CellD", "CellA", "CellB"))
 #'  }
@@ -369,7 +371,7 @@
 #' @import circlize
 #' @import RColorBrewer
 #' @export
-plotCellInteractionCircos <- function(lr_interactions_df,
+plot_cell_interaction_circos <- function(lr_interactions_df,
                                      selected_cell_types = NULL,
                                      cell_order = NULL,
                                      gap_degree_after_sector = 5,
@@ -494,7 +496,7 @@ plotCellInteractionCircos <- function(lr_interactions_df,
 #' Visualizes ligand-receptor interactions focusing on a single source cell type
 #' and its outgoing interactions to a specified set of target cell types. Only
 #' ligands from the source and relevant receptors on the targets are shown.
-#' @inheritParams plotCellInteractionCircos
+#' @inheritParams plot_cell_interaction_circos
 #' @param lr_interactions_df A data.frame with columns: `ligand`, `receptor`,
 #'   `source_cell_type`, `target_cell_type`, `score`.
 #' @param source_cell_name Character, name of the source cell type.
@@ -511,19 +513,21 @@ plotCellInteractionCircos <- function(lr_interactions_df,
 #'   lr_data <- data.frame(
 #'     ligand = c("LGF1", "LGF1", "LGF2", "LGF3", "LGF4", "LGF1", "LGF5", "LGF6", "LGF7"),
 #'     receptor = c("REC1", "REC2A", "REC1", "REC3B", "REC1", "REC4", "REC4", "REC2A", "REC5"),
-#'     source_cell_type = c("CellA", "CellA", "CellB", "CellC", "CellA", "CellD", "CellD", "CellB", "CellA"),
-#'     target_cell_type = c("CellB", "CellC", "CellB", "CellA", "CellD", "CellA", "CellD", "CellC", "CellE"),
+#'     source_cell_type = c("CellA", "CellA", "CellB", "CellC", 
+#'                          "CellA", "CellD", "CellD", "CellB", "CellA"),
+#'     target_cell_type = c("CellB", "CellC", "CellB", "CellA", 
+#'                          "CellD", "CellA", "CellD", "CellC", "CellE"),
 #'     score = c(4,0.9,0.7,0.95,0.6,0.1,0.88,2.5,3.0),
 #'     stringsAsFactors = FALSE
 #'   )
 #'   # Plot interactions from CellA to CellB and CellC
-#'   # plotSourceToTargetCircos(lr_data,
+#'   # plot_source_to_target_circos(lr_data,
 #'   #                          source_cell_name = "CellA",
 #'   #                          target_cell_names = c("CellB", "CellC"))
 #'
 #'   # Custom order and score-based link widths
 #'   # score_pal <- circlize::colorRamp2(c(0, 4), c("white", "blue"))
-#'   # plotSourceToTargetCircos(lr_data,
+#'   # plot_source_to_target_circos(lr_data,
 #'   #                          source_cell_name = "CellD",
 #'   #                          target_cell_names = c("CellA", "CellD"), # Include autocrine
 #'   #                          cell_order = c("CellD", "CellA"),
@@ -535,7 +539,7 @@ plotCellInteractionCircos <- function(lr_interactions_df,
 #' @import RColorBrewer
 #' 
 #' @export
-plotSourceToTargetCircos <- function(lr_interactions_df,
+plot_source_to_target_circos <- function(lr_interactions_df,
                                      source_cell_name,
                                      target_cell_names,
                                      cell_order = NULL,
@@ -651,7 +655,7 @@ plotSourceToTargetCircos <- function(lr_interactions_df,
 #' Visualizes ligand-receptor interactions focusing on a single target cell type
 #' and its incoming interactions from a specified set of source cell types. Only
 #' relevant ligands from the source cells and receptors on the target cell are shown.
-#' @inheritParams plotSourceToTargetCircos
+#' @inheritParams plot_source_to_target_circos
 #' @param lr_interactions_df A data.frame with columns: `ligand`, `receptor`,
 #'   `source_cell_type`, `target_cell_type`, `score`.
 #' @param source_cell_names Character vector, names of source cell types to show.
@@ -677,18 +681,18 @@ plotSourceToTargetCircos <- function(lr_interactions_df,
 #'     stringsAsFactors = FALSE
 #'   )
 #'   # Plot interactions from CellB and CellD converging on CellA
-#'   # plotTargetFromSourcesCircos(test_lr_data,
+#'   # plot_target_from_sources_circos(test_lr_data,
 #'   #                             source_cell_names = c("CellB", "CellD"),
 #'   #                             target_cell_name = "CellA")
 #'
 #'   # Another example: Interactions from CellA and CellC targeting CellD
-#'   # plotTargetFromSourcesCircos(test_lr_data,
+#'   # plot_target_from_sources_circos(test_lr_data,
 #'   #                             source_cell_names = c("CellA", "CellC"),
 #'   #                             target_cell_name = "CellD",
 #'   #                             scale_link_width_by_score = TRUE)
 #'  }
 #' }
-plotTargetFromSourcesCircos <- function(lr_interactions_df,
+plot_target_from_sources_circos <- function(lr_interactions_df,
                                         source_cell_names,
                                         target_cell_name,
                                         cell_order = NULL,

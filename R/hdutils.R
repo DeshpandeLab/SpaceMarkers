@@ -5,8 +5,7 @@
 #' @param ... Additional parameters for the Smooth function
 #' @return A data frame with the spatial influence of the specified pattern
 #' @export
-calcInfluence <- function(spPatterns, optParams,...) {
- 
+calculate_influence <- function(spPatterns, optParams,...) {
     patnames <- setdiff(colnames(spPatterns),
                        c("x", "y", "barcode"))
 
@@ -46,8 +45,7 @@ calcInfluence <- function(spPatterns, optParams,...) {
 #' @param method Method to use for threshold calculation. Options are "abs" for absolute (default) and "pct" for percentile.
 #' @return A list containing the computed thresholds
 #' @importFrom mixtools normalmixEM
-#' @export
-calcThresholds <- function(df, minval = 0.01, maxval = 0.99, method=c("abs","pct")) {
+.calc_threshold <- function(df, minval = 0.01, maxval = 0.99, method=c("abs","pct")) {
 if (method[1]=="pct"){
     minthresh <- quantile(df,minval)
     maxthresh <- quantile(df,maxval)
@@ -77,22 +75,24 @@ return(thresh)
 #' @param ... Additional parameters to pass to lower level functions
 #' @return A list containing the computed thresholds for each pattern
 #' @export 
-calcAllThresholds <- function(df, minvals = 0.01, maxvals = 0.99,...) {
+calculate_thresholds <- function(df, minvals = 0.01, maxvals = 0.99,...) {
   
-  patnames <- setdiff(colnames(df), c("x", "y", "barcode"))
-  #Check if minvals and maxvals are vectors
-  if (length(minvals) == 1) minvals <- rep(minvals, length(patnames))
-  names(minvals) <- patnames
-  if (length(maxvals) == 1) maxvals <- rep(maxvals, length(patnames))
-  names(maxvals) <- patnames
-  # Check if minvals and maxvals are of the same length and match 
-  # the number of columns in df
-  if ((length(minvals) == length(maxvals)) && (ncol(df)==length(minvals)))
+    patnames <- setdiff(colnames(df), c("x", "y", "barcode"))
+    #Check if minvals and maxvals are vectors
+    if (length(minvals) == 1) minvals <- rep(minvals, length(patnames))
+    if (length(maxvals) == 1) maxvals <- rep(maxvals, length(patnames))
+    # Check if minvals and maxvals are of the same length and match 
+    # the number of columns in df
+    if ((length(minvals) != length(maxvals)) || length(patnames) != length(minvals)) {
         stop("minvals and maxvals must be scalar or vectors of 
               the length ncol(df)")
+    }
+    names(minvals) <- patnames
+    names(maxvals) <- patnames
+
     # Calculate thresholds for all patterns
     thresholds <- sapply(patnames, function(pat) {
-        calcThresholds(df[,pat], minval=minvals[pat], maxval=maxvals[pat],...)
+        .calc_threshold(df[,pat], minval=minvals[pat], maxval=maxvals[pat],...)
     })
     return(thresholds)
 }
@@ -101,12 +101,12 @@ calcAllThresholds <- function(df, minvals = 0.01, maxvals = 0.99,...) {
 #' @title Find hotspots for all patterns or influences based on values
 #' @description Convenience function to find hotspots for all spatial patterns 
 #' or influence dataframes based on provided thresholds
-#' @inheritParams calcAllThresholds
+#' @inheritParams calculate_thresholds
 #' @param threshold a scalar or vector of thresholds for each column in the data frame.
-#'  Either user provided or the output of @calcAllThresholds
+#'  Either user provided or the output of @calculate_thresholds
 #' @return a data frame with the same dimensions as the input data frame.
 #' @export 
-findAllHotspots.value <- function(df, threshold = 0.1,...){
+find_hotspots_gmm <- function(df, threshold = 0.1,...){
     patnames <- setdiff(colnames(df),c("x","y","barcode"))
     if (length(threshold)==1){
         threshold <- rep(threshold,length(patnames))
@@ -128,14 +128,14 @@ findAllHotspots.value <- function(df, threshold = 0.1,...){
     return(hotspots)
 }
 
-classifySpots <- function(patHotspots, infHotspots, patternpair = NULL) {
-    patnames <- setdiff(colnames(patHotspots), c("x", "y", "barcode"))
-    infnames <- setdiff(colnames(infHotspots), c("x", "y", "barcode"))  
-    #check if patHotspots and infHotspots have the same dimensions
-    if (!all(dim(patHotspots) == dim(infHotspots))) {
-        stop("patHotspots and infHotspots must have the same dimensions.")
+.classify_spots <- function(pat_hotspots, influence_hotspots, patternpair = NULL) {
+    patnames <- setdiff(colnames(pat_hotspots), c("x", "y", "barcode"))
+    infnames <- setdiff(colnames(influence_hotspots), c("x", "y", "barcode"))  
+    #check if pat_hotspots and influence_hotspots have the same dimensions
+    if (!all(dim(pat_hotspots) == dim(influence_hotspots))) {
+        stop("pat_hotspots and influence_hotspots must have the same dimensions.")
     } else if (!all(patnames == infnames)) {
-        stop("patHotspots and infHotspots must have the same column names.")
+        stop("pat_hotspots and influence_hotspots must have the same column names.")
     }
     # Check if patternpair is NULL or is contained in patnames
     if (!is.null(patternpair) && !all(patternpair %in% patnames)) {
@@ -144,12 +144,12 @@ classifySpots <- function(patHotspots, infHotspots, patternpair = NULL) {
         stop("More than 2 patterns found. Please provide patternpair.")
     }
     
-    region <- patHotspots[,patternpair[1]]
-    pat1.inf2 <- ifelse(!is.na(region) & !is.na(infHotspots[,patternpair[2]]),"Interacting",
+    region <- pat_hotspots[,patternpair[1]]
+    pat1.inf2 <- ifelse(!is.na(region) & !is.na(influence_hotspots[,patternpair[2]]),"Interacting",
     ifelse(!is.na(region),region,NA))
 
-    region <- patHotspots[,patternpair[2]]
-    pat2.inf1 <- ifelse(!is.na(region) & !is.na(infHotspots[,patternpair[1]]),"Interacting",
+    region <- pat_hotspots[,patternpair[2]]
+    pat2.inf1 <- ifelse(!is.na(region) & !is.na(influence_hotspots[,patternpair[1]]),"Interacting",
     ifelse(!is.na(region),region,NA))
     df <- data.frame(pat1.inf2=pat1.inf2, pat2.inf1=pat2.inf1)
 return(df)
@@ -171,7 +171,7 @@ return(df)
 #'         - `n2`: Number of non-missing observations in group 2 for that row.
 #' @importFrom stats t.test
 #' @importFrom effsize cohen.d
-row.t.test <- function(in.data, region, min_bins=50, ...){
+.row_t_test <- function(in.data, region, min_bins=50, ...){
     if (!is.factor(region)) {
         region <- factor(region)
     }
@@ -203,24 +203,23 @@ row.t.test <- function(in.data, region, min_bins=50, ...){
 }
 #' @title Calculate interaction scores for a specific pattern pair
 #' @description This function calculates interaction scores for a specific pattern pair
-#' using the `classifySpots` function to determine the region of each spot.
+#' using the ` .classify_spots` function to determine the region of each spot.
 #' @param data A numeric matrix with genes as rows and barcodes as columns.
-#' @param patHotspots A data frame with pattern hotspots, containing columns for x, y, and barcode.
-#' @param infHotspots A data frame with influence hotspots, containing columns for x, y, and barcode.
+#' @param pat_hotspots A data frame with pattern hotspots, containing columns for x, y, and barcode.
+#' @param influence_hotspots A data frame with influence hotspots, containing columns for x, y, and barcode.
 #' @param patternpair A character vector of length 2 specifying the pattern pair to analyze.
 #' @param avoid_confounders Logical (default=FALSE) indicating whether to avoid confounding effects due to colocalization.
 #' @param ... Additional parameters to pass to lower level functions.
 #' @return A data frame with interaction scores for the specified pattern pair.
-#' @export
-calcIMscores.HD <- function(data, patHotspots, infHotspots, patternpair, avoid_confounders=FALSE,...) {
-    spotClass <- classifySpots(patHotspots, infHotspots, patternpair = patternpair)
+.calc_IM_scores <- function(data, pat_hotspots, influence_hotspots, patternpair, avoid_confounders=FALSE,...) {
+    spotClass <-  .classify_spots(pat_hotspots, influence_hotspots, patternpair = patternpair)
     pat1 <- patternpair[1]
     pat2 <- patternpair[2]
     region <- spotClass[,1]
     if (avoid_confounders==TRUE)
         region[which(!is.na(spotClass[,2]))] <- NA
     if (sum(!is.na(unique(region)))==2){
-        t1table <- row.t.test(data, region=region)
+        t1table <- .row_t_test(data, region=region)
 
     } else {
        t1table <- matrix(NA, nrow=nrow(data), ncol=5)
@@ -234,7 +233,7 @@ calcIMscores.HD <- function(data, patHotspots, infHotspots, patternpair, avoid_c
     if (avoid_confounders==TRUE)
         region[which(!is.na(spotClass[,1]))] <- NA
     if (sum(!is.na(unique(region)))==2){
-        t2table <- row.t.test(data, region=region)
+        t2table <- .row_t_test(data, region=region)
     } else {
         t2table <- matrix(NA, nrow=nrow(data), ncol=5)
         colnames(t2table) <- c("statistic", "p.value", "n1", "n2", "effect_size")
@@ -250,28 +249,31 @@ calcIMscores.HD <- function(data, patHotspots, infHotspots, patternpair, avoid_c
 
 #' @title Calculate interaction scores for all pattern pairs
 #' @description This function calculates interaction scores for all pattern pairs
-#' using the `calcIMscores.HD` function. It can run in parallel if BiocParallel is available.
+#' using the `.calc_IM_scores` function. It can run in parallel if BiocParallel is available.
 #' @param data A numeric matrix with genes as rows and barcodes as columns.
-#' @param patHotspots A data frame with pattern hotspots, containing columns for x, y, and barcode.
-#' @param infHotspots A data frame with influence hotspots, containing columns for x, y, and barcode.
-#' @param patternPairs A data frame with pattern pairs to calculate interaction scores for. If NULL, 
-#' all combinations of patterns in `patHotspots` will be used.
+#' @param pat_hotspots A data frame with pattern hotspots, containing columns for x, y, and barcode.
+#' @param influence_hotspots A data frame with influence hotspots, containing columns for x, y, and barcode.
+#' @param pattern_pairs A data frame with pattern pairs to calculate interaction scores for. If NULL, 
+#' all combinations of patterns in `pat_hotspots` will be used.
 #' If provided, it should have two columns with pattern names. 
 #' Each row should represent a pair of patterns for which interaction scores will be calculated.
 #' @param ... Additional parameters to pass to lower level functions.
 #' @return A data frame with interaction scores for all pattern pairs.
 #' @export
-calcAllIMscores.HD <- function(data, patHotspots, infHotspots, patternPairs=NULL,...) {
-    if (is.null(patternPairs)) {
-        patternPairs <- utils::combn(setdiff(colnames(patHotspots), c("x", "y", "barcode")), 2, simplify = FALSE)
+calculate_gene_scores_directed <- function(data, pat_hotspots, influence_hotspots, pattern_pairs=NULL,...) {
+    if (is.null(pattern_pairs)) {
+        pattern_pairs <- utils::combn(setdiff(colnames(pat_hotspots), c("x", "y", "barcode")), 2, simplify = FALSE)
     }
-    if (requireNamespace("BiocParallel", quietly = TRUE) && BiocParallel::bpparam()$workers > 1) {
+    use_biocparallel <- (requireNamespace("BiocParallel", quietly = TRUE)) && 
+                                        (BiocParallel::bpparam()$workers > 1) &&
+                                        (!is.null(nrow(pattern_pairs)) && (nrow(pattern_pairs) > 1))
+    if (use_biocparallel) {
         bpp <- BiocParallel::bpparam()
         IMscores_list <- BiocParallel::bplapply(
-            seq_len(nrow(patternPairs)),
+            seq_len(nrow(pattern_pairs)),
             function(i) {
-                patternpair <- patternPairs[i,]
-                IMscores.pair <- calcIMscores.HD(data, patHotspots, infHotspots, patternpair,...)
+                patternpair <- pattern_pairs[i,]
+                IMscores.pair <- .calc_IM_scores(data, pat_hotspots, influence_hotspots, patternpair,...)
                 return(IMscores.pair)
             },
             BPPARAM = bpp
@@ -280,9 +282,9 @@ calcAllIMscores.HD <- function(data, patHotspots, infHotspots, patternPairs=NULL
         message("Processed all pattern pairs in parallel.\n")
     } else {
         IMscores <- c()
-        for (i in 1:nrow(patternPairs)) {
-            patternpair <- patternPairs[i,]
-            IMscores.pair <- calcIMscores.HD(data, patHotspots, infHotspots, patternpair,...)
+        for (i in 1:nrow(pattern_pairs)) {
+            patternpair <- pattern_pairs[i,]
+            IMscores.pair <- .calc_IM_scores(data, pat_hotspots, influence_hotspots, patternpair,...)
             IMscores <- rbind(IMscores, IMscores.pair)
             message("Processed pattern pair: ", patternpair[1], " and ", patternpair[2], "\n")
             if (i %% 10 == 0) {
@@ -293,14 +295,14 @@ calcAllIMscores.HD <- function(data, patHotspots, infHotspots, patternPairs=NULL
     return(IMscores)
 }
 
-#' @title getOverlapScores.HD
+#' @title calculate_overlap_directed
 #' @description Calculate the overlap scores between patterns in hotspots
-#' @param patHotspots A data frame with columns x, y, barcode and pattern names
-#' @param infHotspots A data frame with columns x, y, barcode and pattern names
+#' @param pat_hotspots A data frame with columns x, y, barcode and pattern names
+#' @param influence_hotspots A data frame with columns x, y, barcode and pattern names
 #' @param method The method to calculate overlapping abundance scores. Options are
 #' "relative-abundance", "differential-abundance" and "absolute"
 #' @param patternList A character vector of pattern names to calculate overlap 
-#' scores for. If NULL, all patterns in patHotspots and infHotspots will be used.
+#' scores for. If NULL, all patterns in pat_hotspots and influence_hotspots will be used.
 #' @details The function calculates the overlap scores between patterns hotspots
 #' using the specified method. The default method is "relative-abundance"
 #' @return A data frame with columns pattern, influence and overlapping abundance
@@ -311,12 +313,16 @@ calcAllIMscores.HD <- function(data, patHotspots, infHotspots, patternPairs=NULL
 #'                         barcode = c("A","B","C","D","E"),
 #'                         pattern1 = c(1,0,1,0,1),
 #'                         pattern2 = c(1,1,0,0,1))
-#' getOverlapScores(hotspots)   
-#' getOverlapScores(hotspots, c("pattern1","pattern2"))
+#' influence_hotspots <- data.frame(x = c(1,2,3,4,5),
+#'                        y = c(1,2,3,4,5),
+#'                       barcode = c("A","B","C","D","E"),
+#'                       pattern1 = c(0,1,1,0,0),
+#'                       pattern2 = c(0,1,0,1,1))
+#' calculate_overlap_directed(pat_hotspots = hotspots, influence_hotspots = influence_hotspots)
 #' @importFrom ggplot2 ggplot geom_tile geom_text theme_minimal
 #' @importFrom reshape2 melt
 #' @importFrom stats complete.cases
-getOverlapScores.HD <- function(patHotspots, infHotspots,
+calculate_overlap_directed <- function(pat_hotspots, influence_hotspots,
                              patternList = NULL, method = c("relative-abundance",
                                                             "differential-abundance",
                                                              "absolute") ) {
@@ -324,16 +330,17 @@ getOverlapScores.HD <- function(patHotspots, infHotspots,
     #warn if more than one method is supplied, do not warn by default
     if(length(method) > 1){
         method <- method[1]
-        message("Only one method can be used at a time. Using ", method)}
+        message("Only one method can be used at a time. Using ", method)
+    }
 
     if (is.null(patternList)) {
-        patternList <- setdiff(colnames(patHotspots),c("x","y","barcode"))
-    } else if (!all(patternList %in% colnames(patHotspots))) {
+        patternList <- setdiff(colnames(pat_hotspots),c("x","y","barcode"))
+    } else if (!all(patternList %in% colnames(pat_hotspots))) {
         stop("Pattern names not found in hotspots")
     }
 
-    patBinarized <- (!is.na(patHotspots[,patternList]))*1
-    infBinarized <- (!is.na(infHotspots[,patternList]))*1
+    patBinarized <- (!is.na(pat_hotspots[,patternList]))*1
+    infBinarized <- (!is.na(influence_hotspots[,patternList]))*1
     intersects <- t(patBinarized) %*% infBinarized
     #nHotspots <- colSums(binarized)
     nHotsP1 <- t(t(colSums(patBinarized))) %*% array(1, length(patternList))

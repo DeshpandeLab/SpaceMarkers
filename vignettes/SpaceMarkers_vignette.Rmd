@@ -170,21 +170,21 @@ based model. Spots that have spatial influence beyond the defined outlier
 threshold are termed **hotspots**. SpaceMarkers then identifies where the
 hotspots are overlapping/interacting and where they are mutually exclusive.
 
-getSpatialParameters: This function sets the width of the spatial kernel 
+get_spatial_params_morans_i: This function sets the width of the spatial kernel 
 (sigmaOpt) as well as the outlier threshold around the set of spots
 (threshOpt) for each pattern. By default, the sigmaOpt is set to the spot 
 diameter at the appropriate resolution. Note that the legacy function has been
-deprecated and has been renamed to getSpatialParamsMoransI. Please read the 
+deprecated and has been renamed to .get_spatial_params_morans_i. Please read the 
 documentation for more information.
 
 ```{r}
-optParams <- getSpatialParameters(spPatterns,visiumDir = data_dir,
+optParams <- get_spatial_params_morans_i(spPatterns,visiumDir = data_dir,
                                           resolution = "lowres")
 ```
 
 #### SpaceMarkers Step2: Interacting Genes
 
-getPairwiseInteractingGenes: This function identifies the regions of influence 
+get_pairwise_interacting_genes: This function identifies the regions of influence 
 and interaction as well as the **genes** associated with these regions. 
 A non-parametric Kruskal-Wallis test is used to identify statistically 
 significant genes in any one region of influence without discerning which region
@@ -200,7 +200,7 @@ The output of this are all possible pairs fo interactions from the spatial
 patterns. 
 
 ```{r}
-SpaceMarkers <- getPairwiseInteractingGenes(data = counts_matrix,
+SpaceMarkers <- get_pairwise_interacting_genes(data = counts_matrix,
                                     reconstruction = cogaps_matrix,
                                     optParams = optParams,
                                     spPatterns = spPatterns,
@@ -208,7 +208,7 @@ SpaceMarkers <- getPairwiseInteractingGenes(data = counts_matrix,
 
 ```
 
-NB: When running getPairwiseInteractingGenes some warnings may be generated. 
+NB: When running get_pairwise_interacting_genes some warnings may be generated. 
 The warnings are due to the nature of the 'sparse' data being used. 
 Comparing two cells from the two patterns with identical information is 
 redundant as SpaceMarkers is identifying statistically different expression for
@@ -244,7 +244,7 @@ molecular interactions between regions and still executes the 'hotspots' and
 'interacting genes' steps of SpaceMarkers
 
 ```{r}
-SpaceMarkers_DE <- getPairwiseInteractingGenes(
+SpaceMarkers_DE <- get_pairwise_interacting_genes(
     data=counts_matrix,reconstruction=NULL,
     optParams = optParams,
     spPatterns = spPatterns,
@@ -340,16 +340,16 @@ between the two is that enrichment mode includes genes even if they did not
 pass the post-hoc Dunn's test. These additional genes were included to enable a
 more statistically powerful pathway enrichment analysis and understand to a 
 better extent the impact of genes involved each pathway. 
-Changing analysis = 'enrichment' in the getPairwiseInteractingGenes function 
+Changing analysis = 'enrichment' in the get_pairwise_interacting_genes function 
 will enable this.
 
 ```{r}
-SpaceMarkers_enrich <- getPairwiseInteractingGenes(data = counts_matrix,
+SpaceMarkers_enrich <- get_pairwise_interacting_genes(data = counts_matrix,
                                     reconstruction = cogaps_matrix,
                                     optParams = optParams,
                                     spPatterns = spPatterns,
                                     mode ="residual",analysis="enrichment")
-SpaceMarkers_DE_enrich <- getPairwiseInteractingGenes(
+SpaceMarkers_DE_enrich <- get_pairwise_interacting_genes(
     data=counts_matrix,reconstruction=NULL,
     optParams = optParams,
     spPatterns = spPatterns,
@@ -451,7 +451,7 @@ print(head(top))
 
 ## Code Setup
 
-The plotSpatialDataOverImage function allows you to look at the 
+The plot_spatial_data_over_image function allows you to look at the 
 deconvoluted patterns on the tissue image. We can compare these spatial maps to
 the expression of genes identified interacting genes on violin plots. 
 
@@ -525,10 +525,10 @@ exprPlots <- list()
 
 for (g in genes){
   
-  spatialMaps[[length(spatialMaps)+1]] <- suppressMessages(
-    plotSpatialDataOverImage(visiumDir = data_dir,
-                             df = cbind(spPatterns, counts_df),feature_col = g,
-                             resolution="lowres",title = g))
+    spatialMaps[[length(spatialMaps)+1]] <- suppressMessages(
+        plot_spatial_data_over_image(visiumDir = data_dir,
+                                                         df = cbind(spPatterns, counts_df),feature_col = g,
+                                                         resolution="lowres",title = g))
   exprPlots[[length(exprPlots)+1]] <- plotSpatialExpr(
     data = counts_df,gene = g,hotspots = hotspots,
                    patterns = c("Pattern_1","Pattern_5"))
@@ -542,7 +542,7 @@ of individual genes across different patterns.
 
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 
-plotSpatialDataOverImage(visiumDir = data_dir,
+plot_spatial_data_over_image(visiumDir = data_dir,
                          df = cbind(spPatterns, counts_df),
                          feature_col = "Pattern_1",
                          resolution="lowres",title = "Pattern_1")
@@ -553,7 +553,7 @@ plotSpatialDataOverImage(visiumDir = data_dir,
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 
 
-plotSpatialDataOverImage(visiumDir = data_dir,
+plot_spatial_data_over_image(visiumDir = data_dir,
                          df = cbind(spPatterns, counts_df),
                          feature_col = "Pattern_5",
                          resolution="lowres",title = "Pattern_5")
@@ -601,7 +601,7 @@ g <- bottom$Gene[1]
 p1 <- plotSpatialExpr(
     data = counts_df,gene = g,hotspots = hotspots, 
                    patterns = c("Pattern_1","Pattern_5"))
-p2 <- plotSpatialDataOverImage(visiumDir = data_dir,
+p2 <- plot_spatial_data_over_image(visiumDir = data_dir,
                          df = cbind(spPatterns, counts_df),
                          feature_col = g,
                          resolution="lowres",title = g)
@@ -651,7 +651,7 @@ knitr::kable(paramTable, col.names = c("Argument","Description"))
 
 ```
 
-## getSpatialParameters() Arguments
+## get_spatial_params_morans_i() Arguments
 
 ```{r echo=FALSE}
 parameters = c('spPatterns','visiumDir','spatialDir','pattern','sigma',
@@ -670,7 +670,7 @@ knitr::kable(paramTable, col.names = c("Argument","Description"))
 
 ```
 
-## getPairwiseInteractingGenes() Arguments
+## get_pairwise_interacting_genes() Arguments
 
 ```{r echo=FALSE}
 parameters = c(
