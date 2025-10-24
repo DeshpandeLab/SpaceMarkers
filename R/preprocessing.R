@@ -169,22 +169,22 @@ load10XCoords <- function(visiumDir, resolution = c("fullres","lowres","hires"),
 #' #CoGAPS data filePath
 #' filePath <- system.file("extdata","CoGAPS_result.rds", 
 #' package = "SpaceMarkers",mustWork = TRUE)
-#' spFeatures <- getSpatialFeatures(filePath, method = "CoGAPS")
+#' spFeatures <- get_spatial_features(filePath, method = "CoGAPS")
 #' head(spFeatures)
 #' 
 
-getSpatialFeatures <- function(filePath, method = NULL, featureNames = "."){
+get_spatial_features <- function(filePath, method = NULL, featureNames = "."){
 
     #read the features object based on the format
-    spObject <- .readFormat(filePath)
+    spObject <- .read_format(filePath)
 
     #determine the method to use for feature extractioin
-    method <- .inferMethod(spObject, method)
+    method <- .infer_method(spObject, method)
 
-    spFun <- c("CoGAPS"=.getCogapsFeatures,
-                "BayesTME"=.getBTMEfeatures,
-                "Seurat"=.getSeuratFeatures,
-                "CSV"=.getCSVfeatures)
+    spFun <- c("CoGAPS"=.get_cogaps_features,
+                "BayesTME"=.get_BTME_features,
+                "Seurat"=.get_seurat_features,
+                "CSV"=.get_csv_features)
 
     spFeatures <- spFun[[method]](spObject)
 
@@ -214,7 +214,7 @@ getSpatialFeatures <- function(filePath, method = NULL, featureNames = "."){
 #' Reads a format into an R object
 #' @keywords internal
 #' 
-.readFormat <- function(path){
+.read_format <- function(path){
     if(grepl(".rds",path)){
         obj <- readRDS(path)
     } else if (grepl(".h5ad",path)){
@@ -231,7 +231,7 @@ getSpatialFeatures <- function(filePath, method = NULL, featureNames = "."){
 #' inferMethod
 #' Infer the method used to obtain spatial features
 #' @keywords internal
-.inferMethod <- function(spObject, method){
+.infer_method <- function(spObject, method){
     if(is.null(method)){
         if(inherits(spObject, "H5File")){
             method <- "BayesTME"
@@ -248,21 +248,21 @@ getSpatialFeatures <- function(filePath, method = NULL, featureNames = "."){
     return(method)
 }
 
-#' .getCogapsFeatures
+#' .get_cogaps_features
 #' Load features CoGAPS object
 #' @keywords internal
 #' 
-.getCogapsFeatures <- function(obj){
+.get_cogaps_features <- function(obj){
     spFeatures <- slot(obj, "sampleFactors")
     return(spFeatures)
 }
 
-#' .getBTMEfeatures
+#' .get_BTME_features
 #' Load features BayesTME object
 #' 
 #' @keywords internal
 #' 
-.getBTMEfeatures <- function(hf){
+.get_BTME_features <- function(hf){
     feat_loc <- "obsm/bayestme_cell_type_counts"
     barc_loc <- "obs/_index"
     spFeatures <- t(hdf5r::readDataSet(hf[[feat_loc]]))
@@ -275,11 +275,11 @@ getSpatialFeatures <- function(filePath, method = NULL, featureNames = "."){
     return(spFeatures)
 }
 
-#' .getSeuratFeatures
+#' .get_seurat_features
 #' Load features Seurat object
 #' @keywords internal
 #' 
-.getSeuratFeatures <- function(obj){
+.get_seurat_features <- function(obj){
     spFeatures <- slot(obj, "meta.data")
     selection <- grepl("_Feature",colnames(spFeatures), ignore.case = TRUE)
     if (!any(selection)){
@@ -289,16 +289,21 @@ getSpatialFeatures <- function(filePath, method = NULL, featureNames = "."){
     return(spFeatures)
 }
 
-#' .getCSVFeatures
+#' .get_csv_features
 #' Load features from dataframe
 #' @keywords internal
 #' 
-.getCSVfeatures <- function(obj){
+.get_csv_features <- function(obj){
     spFeatures <- obj
     if ("barcode" %in% colnames(spFeatures)){
         rownames(spFeatures) <- spFeatures$barcode
     } else {
-        rownames(spFeatures) <- spFeatures[,"X"]
+        if(!colnames(spFeatures)[1]=="X"){
+            stop("No barcode column found and first colname is not blank.
+                    Stopping.")
+        } else {
+            rownames(spFeatures) <- spFeatures[,"X"]
+        }
     }
     removeCols <- c("NA","barcode","in_tissue","array_row","array_col","pxl_col_in_fullres","pxl_row_in_fullres")
     spFeatures <- spFeatures[,-which(startsWith(colnames(spFeatures),"X") | colnames(spFeatures) %in% removeCols)]

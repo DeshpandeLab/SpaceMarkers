@@ -6,7 +6,7 @@
 ## author: Atul Deshpande
 ## email: adeshpande@jhu.edu
 
-row.dunn.test <- function(in.data,region,pattern1,pattern2){
+.row_dunn_test <- function(in.data,region,pattern1,pattern2){
     
     in.ranks <- matrixStats::rowRanks(in.data,cols = !is.na(region),
                                         ties.method = "average")
@@ -49,7 +49,7 @@ return(cbind(zVals,pvals))
 }
 
 #===================
-#' findGenesOfInterest
+#' .find_genes_of_interest
 #' Identify genes associated with pattern interaction.
 #' This function identifies genes exhibiting significantly higher values of 
 #' testMat in the Interaction region of the two 
@@ -58,7 +58,7 @@ return(cbind(zVals,pvals))
 #' posthoc analysis using Dunn's Test to identify the genes.
 #'
 #' @usage
-#' findGenesOfInterest(testMat, goodGenes, region, fdr.level=0.05,
+#' .find_genes_of_interest(testMat, goodGenes, region, fdr.level=0.05,
 #'        analysis=c("enrichment","overlap"),...)
 #' @param    testMat A matrix of counts with cells as columns and genes as rows
 #' @param    goodGenes A vector of user specified genes expected to interact 
@@ -74,7 +74,7 @@ return(cbind(zVals,pvals))
 #' the Interaction region of the two #' patterns compared to regions with 
 #' exclusive influence from either pattern.
 
-findGenesOfInterest<-function(
+.find_genes_of_interest<-function(
         testMat,goodGenes=NULL,region, fdr.level=0.05,
         analysis=c("enrichment","overlap"),...) {
     
@@ -112,7 +112,7 @@ findGenesOfInterest<-function(
     res_kruskal[zero_genes,c("df","statistic")] <- 0
     res_kruskal[zero_genes,c("pvalue","p.adj")] <- 1
     
-    res_dunn_test <- row.dunn.test(in.data=testMat, region=region,
+    res_dunn_test <- .row_dunn_test(in.data=testMat, region=region,
                                         pattern1=pattern1, pattern2=pattern2)
     rownames(res_dunn_test) <- rownames(res_kruskal)
 
@@ -142,13 +142,13 @@ findGenesOfInterest<-function(
     res_dunn_test[zero_genes,c("pval_1_Int.adj",
                                 "pval_2_Int.adj",
                                 "pval_2_1.adj")] <- 1
-    interactGenes <- buildInteractGenesdf(res_kruskal,res_dunn_test,ind,
+    interactGenes <- .build_interact_genes_df(res_kruskal,res_dunn_test,ind,
                                           fdr.level,pattern1,pattern2,
                                           analysis)
 
     return(interactGenes)
 }
-buildInteractGenesdf <- function(res_kruskal,res_dunn_test,ind,
+.build_interact_genes_df <- function(res_kruskal,res_dunn_test,ind,
                                 fdr.level=0.05,pattern1,pattern2,analysis) {
     interact_patt1 <- res_dunn_test[ind,"pval_1_Int.adj"]<fdr.level
     interact_patt2 <- res_dunn_test[ind,"pval_2_Int.adj"]<fdr.level

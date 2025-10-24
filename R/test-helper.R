@@ -1,7 +1,7 @@
 # helper file for tests
 
 # create sample data for getPairwiseInteractingGenes
-createSampleData <- function(...) {
+.create_sample_data <- function(...) {
     data <- matrix(stats::rnorm(100), nrow = 10)
     rownames(data) <- paste0("gene_", seq_len(10))
     colnames(data) <- paste0("spot_", seq_len(10))

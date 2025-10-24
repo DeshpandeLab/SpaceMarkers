@@ -27,9 +27,9 @@ mock_json <- function(temp_dir = temp) {
               pattern = "scalefactors_json.json"))
 }
 
-# Test cases for getSpatialParamsExternal
-test_that("getSpatialParameters works with provided sigma", {
-  result <- getSpatialParameters(spatialPatterns, sigma = 5)
+# Test cases for get_spatial_paramsExternal
+test_that("get_spatial_parameters works with provided sigma", {
+  result <- get_spatial_parameters(spatialPatterns, sigma = 5)
   
   expect_equal(nrow(result), 2)
   expect_equal(ncol(result), 2)
@@ -39,10 +39,10 @@ test_that("getSpatialParameters works with provided sigma", {
   expect_equal(result[["threshOpt", "pattern2"]], 4)
 })
 
-test_that("getSpatialParameters works by reading from JSON file", {
+test_that("get_spatial_parameters works by reading from JSON file", {
   paths <- mock_json()
   
-result <- getSpatialParameters(spatialPatterns,
+result <- get_spatial_parameters(spatialPatterns,
                                          visiumDir = paths$visiumDir,
                                          spatialDir = "spatial")
   
@@ -54,8 +54,8 @@ result <- getSpatialParameters(spatialPatterns,
   expect_equal(result[["threshOpt", "pattern2"]], 4)
 })
 
-test_that("getSpatialParameters works with threshold", {
-  result <- getSpatialParameters(spatialPatterns, sigma = 6,
+test_that("get_spatial_parameters works with threshold", {
+  result <- get_spatial_parameters(spatialPatterns, sigma = 6,
                                          threshold = 10)
   
   expect_equal(result[["sigmaOpt", "pattern1"]], 6)

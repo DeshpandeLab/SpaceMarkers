@@ -27,3 +27,11 @@ NULL
 #' @return a vector of genes
 NULL
 
+#' Curated Ligand-receptor interaction genes
+#' A list of vectors with genes associated with ligand-receptor interactions from CellChat database
+#' @name lrdf
+#' @format A data frame with LR interaction genes
+#' @return A list of vectors of LR genes
+#' 
+NULL
+

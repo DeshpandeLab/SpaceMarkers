@@ -1,5 +1,5 @@
 
-#' @title getOverlapScores
+#' @title calculate_overlap_undirected
 #' @description Calculate the overlap scores between patterns in hotspots
 #' @param hotspots A data frame with columns x, y, barcode and pattern names
 #' @param patternList A character vector of pattern names to calculate overlap 
@@ -15,19 +15,19 @@
 #' hotspots <- data.frame(x = c(1,2,3,4,5),
 #'                         y = c(1,2,3,4,5),
 #'                         barcode = c("A","B","C","D","E"),
-#'                         pattern1 = c(1,0,1,0,1),
-#'                         pattern2 = c(1,1,0,0,1))
-#' getOverlapScores(hotspots)   
-#' getOverlapScores(hotspots, c("pattern1","pattern2"))
+#'                         pattern1 = c("pattern1",NA,"pattern1",NA,"pattern1"),
+#'                         pattern2 = c("pattern2","pattern2",NA,NA,"pattern2"))
+#' calculate_overlap_undirected(hotspots)   
+#' calculate_overlap_undirected(hotspots, c("pattern1","pattern2"))
 #' @importFrom ggplot2 ggplot geom_tile geom_text theme_minimal
 #' @importFrom reshape2 melt
 #' @importFrom stats complete.cases
-getOverlapScores <- function(hotspots,
+calculate_overlap_undirected <- function(hotspots,
                              patternList = NULL, method = c("Szymkiewicz-Simpson",
                                                             "Jaccard", "Sorensen-Dice",
                                                             "Ochiai", "absolute") ) {
     
-    #warn if more than one method is supplied, do not warn by default
+    #stop if more than one method is supplied, do not warn by default
     if(length(method) > 1){
         method <- method[1]
         message("Only one method can be used at a time. Using ", method)}
@@ -63,7 +63,7 @@ getOverlapScores <- function(hotspots,
     return(dfOverlap)
 }
 
-#' @title plotOverlapScores
+#' @title plot_overlap_scores
 #' @description Plot the overlap scores between patterns in hotspots
 #' @param df A data frame with columns pattern1, pattern2 and overlapScore
 #' @param title The title of the plot
@@ -75,11 +75,11 @@ getOverlapScores <- function(hotspots,
 #' df <- data.frame(pattern1 = c("pattern1","pattern1","pattern2","pattern2"), 
 #'                  pattern2 = c("pattern1","pattern2","pattern1","pattern2"),
 #'                  overlapScore = c(0.5,0.7,0.3,0.9))
-#' plotOverlapScores(df)
-#' plotOverlapScores(df, "Overlap Scores", "overlapScores.png", 15)
+#' plot_overlap_scores(df)
+#' plot_overlap_scores(df, "Overlap Scores", "overlapScores.png", 15)
 #' @import ggplot2
 #'
-plotOverlapScores <- function(df, title = "Spatial Overlap Scores", out = NULL,fontsize = 15) {
+plot_overlap_scores <- function(df, title = "Spatial Overlap Scores", out = NULL,fontsize = 15) {
     p <- ggplot2::ggplot(data = df, aes(pattern1, pattern2, fill = overlapScore)) +
         geom_tile(color = "black", size = 0.8) +
         geom_text(aes(label = round(overlapScore, 2)), size = 6) +  # Display values on the plot
@@ -103,17 +103,17 @@ plotOverlapScores <- function(df, title = "Spatial Overlap Scores", out = NULL,f
     return(p)
 }
 
-#' @title getIMScores
+#' @title get_im_scores
 #' @description Get the interaction scores for SpaceMarkers
 #' @param SpaceMarkers A list of SpaceMarkers objects
 #' @return A data frame with columns Gene and SpaceMarkersMetric
 #' @export
 #' @examples
-#' example(getPairwiseInteractingGenes)
-#' getIMScores(SpaceMarkers)
+#' example(get_pairwise_interacting_genes)
+#' get_im_scores(SpaceMarkers)
 #' @importFrom stats setNames
 #' 
-getIMScores <- function(SpaceMarkers){
+get_im_scores <- function(SpaceMarkers){
     smi <- SpaceMarkers[which(sapply(SpaceMarkers, function(x) length(x[['interacting_genes']]))>0)]
     fields <- c('Gene', 'SpaceMarkersMetric')
 
@@ -134,7 +134,7 @@ getIMScores <- function(SpaceMarkers){
 }
 
 
-#' @title plotIMScores
+#' @title plot_im_scores
 #' @description Plot the top SpaceMarkers IMScores
 #' @param df A data frame with columns Gene and SpaceMarkersMetric
 #' @param interaction The interaction to plot
@@ -146,12 +146,12 @@ getIMScores <- function(SpaceMarkers){
 #' @param out The output path for the plot
 #' @export
 #' @examples 
-#' example(getPairwiseInteractingGenes)
-#' plotIMScores(getIMScores(SpaceMarkers), "Pattern_1_Pattern_3")
+#' example(get_pairwise_interacting_genes)
+#' plot_im_scores(get_im_scores(SpaceMarkers), "Pattern_1_Pattern_3")
 #' @import ggplot2
 #' @importFrom stats reorder
 #' @importFrom utils head
-plotIMScores <- function(df, interaction, cutOff = 0, nGenes = 20,
+plot_im_scores <- function(df, interaction, cutOff = 0, nGenes = 20,
     geneText = 12, metricText = 12, increments = 1, out = NULL) {
     df$genes <- df$Gene
     df <- df[order(df[[interaction]], decreasing = TRUE),]
@@ -175,4 +175,471 @@ plotIMScores <- function(df, interaction, cutOff = 0, nGenes = 20,
         ggplot2::ggsave(filename = out,plot = p1)
     }
     return(p1)
+}
+
+#' @title calculate_gene_set_score
+#' @description Calculate the mean interaction score for a set of genes
+#' @param IMscores A matrix of interaction scores
+#' @param gene_sets A list of gene sets, where each set is a vector of gene names
+#' @param weighted Logical; if TRUE, gene scores are weighted by their occurrence in multiple gene sets
+#' @param method Character; specifies the aggregation method for gene set scores. Options are "geometric_mean" or "arithmetic_mean"
+#' @details This function computes mean interaction scores for given gene sets across cell interactions.
+#' It supports both geometric and arithmetic means, and can weight gene contributions based on their presence in multiple gene sets.
+#' @return A matrix of mean interaction scores for genes in each gene set, with 
+#' attributes for log p-value sums and number of genes for later fisher combination
+#' @export
+calculate_gene_set_score <- function(IMscores, gene_sets, weighted = TRUE, method = c("geometric_mean", "arithmetic_mean")) {
+    method <- match.arg(method[1], choices = c("geometric_mean", "arithmetic_mean"))
+
+    IMS <- split(IMscores, IMscores$cell_interaction)
+
+    # Pre-calculate gene overlap counts
+    # How many complexes does each gene appear in?
+    all_genes <- unique(unlist(gene_sets))
+    gene_complex_count <- sapply(all_genes, function(g) {
+        sum(sapply(gene_sets, function(gs) g %in% gs))
+    })
+
+    scores <- matrix(NA, nrow=length(gene_sets), ncol=length(IMS))
+    rownames(scores) <- names(gene_sets)
+    colnames(scores) <- names(IMS)
+
+    for (i in seq_along(IMS)) {
+        temp <- lapply(gene_sets, function(geneSet) {
+            if (length(geneSet) == 0) return(NA)
+            ims <- IMS[[i]]
+            geneSet <- intersect(geneSet, ims$gene)
+            if (length(geneSet) == 0) return(NA)
+
+            subset_data <- ims[ims$gene %in% geneSet,]
+            
+                        # Calculate uniqueness weight for each gene
+            # Weight = 1 / (number of complexes containing this gene)
+            if (!weighted) {
+                gene_weights <- rep(1, nrow(subset_data))
+            } else {
+                gene_weights <- 1 / gene_complex_count[subset_data$gene]
+                # Normalize weights to sum to number of genes
+                # (preserves interpretation of the score)
+                gene_weights <- gene_weights * length(gene_weights) / sum(gene_weights)
+            }
+
+            # Calculate weighted effect size
+            weighted_effect <- switch(method,
+                "geometric_mean" = exp(weighted.mean(log(subset_data$effect_size),gene_weights)),
+                "arithmetic_mean" = weighted.mean(subset_data$effect_size, gene_weights),
+                stop("Unknown method for gene set score calculation")
+                )
+
+            weighted_effect
+
+        })
+        scores[,i] <- unlist(temp)
+    }
+    
+    scores <- .call(scores, 2, as.numeric)
+    colnames(scores) <- names(IMS)
+    rownames(scores) <- names(gene_sets)
+        # Add gene overlap information as an attribute
+    attr(scores, "gene_complex_count") <- gene_complex_count
+    
+    return(scores)
+}
+
+
+#' @title .pick_image
+#' @description The function picks the appropriate histology image file from the
+#' spatial directory based on the specified resolution.
+#' @param sp_dir path to the spatial directory
+#' @param res a character string specifying the resolution of the image
+#' @return a character string of the image file name
+.pick_image <- function(sp_dir, res) {
+  files <- list.files(sp_dir, full.names = TRUE)
+  low   <- grep("^tissue_.*lowres.*\\.(png|jpg|jpeg|tif|tiff)$",
+                basename(files), ignore.case = TRUE, value = TRUE)
+  high  <- grep("^tissue_.*hires.*\\.(png|jpg|jpeg|tif|tiff)$",
+                basename(files), ignore.case = TRUE, value = TRUE)
+  anyi  <- grep("\\.(png|jpg|jpeg|tif|tiff)$",
+                basename(files), ignore.case = TRUE, value = TRUE)
+  want <- switch(res,lowres = low,hires  = high,fullres = high)
+  if (!length(want)) want <- if (res == "lowres") high else low
+  if (!length(want)) want <- anyi
+  if (!length(want)) stop("No histology image found in ", sp_dir)
+  return(file.path(sp_dir, want[[1]]))
+}
+
+#' @title plotSpatialDataOverImage
+#' @description This function plots spatial data over the complementary 
+#' histology image of varing resolutions
+#' @param visiumDir directory with a spatial folder containing 
+#' scalefactors_json.json, images (lowres,or hires), and 
+#' coordinates (tissue_positons_(list).csv or probe.csv)
+#' @param df a dataframe with the features of interest. For example,
+#' can behotspots (character), and/or influence (numeric))
+#' @param feature_col feature to plot over spots, Default: NULL
+#' @param barcode_col barcode column name to match with coordinates,
+#' Default: 'barcode'
+#' @param resolution Image resoultion to scale coordinates too, 
+#' Default: c("lowres", "hires", "fullres")
+#' @param version Visium version. Automatically infers from load10XCoords if 
+#' NULL,Default: NULL
+#' @param colors colors to be displayed over spots. If set to NULL, it
+#' automatically colors the spots red for character values and uses viridis for 
+#' numeric values. Default: NULL
+#' @param point_size size of spots displayed on the plot, Default: 2.5
+#' @param stroke thickness of spot outline, Default: 0.05
+#' @param alpha Transparency of the spots, Default: 0.5
+#' @param title Title displayed on the plot, Default: 'Spatial Heatmap'
+#' @param bg_color background color of ggplot box, Default: NULL
+#' @param crop crop spatial plot to a zoomed in window, Default: TRUE
+#' @param text_size size of text on the plot, Default: 15
+#' @return a ggplot object
+#
+#' @export 
+#' @importFrom rlang sym
+#' @importFrom SpaceMarkers load10XCoords
+#' @importFrom readbitmap read.bitmap
+#' @importFrom viridis scale_fill_viridis
+#' @importFrom stats na.omit setNames
+#' @importFrom RColorBrewer brewer.pal
+#' @importFrom ggplot2 scale_fill_gradientn ggplot annotation_raster 
+#' geom_point aes coord_fixed labs theme_bw theme element_rect element_blank
+#' @importFrom dplyr mutate rename
+
+plot_spatial_data_over_image <- function(
+    visiumDir, df, feature_col, barcode_col="barcode",
+    resolution=c("lowres","hires","fullres"), version=NULL, colors=NULL,
+    point_size=2.5, stroke=0.05, alpha=0.5, title="Spatial Heatmap",
+    bg_color=NULL, crop=TRUE, text_size = 15) {
+  resolution <- match.arg(resolution)
+  if (is.null(barcode_col)) {
+    if (!is.null(rownames(df))) df$barcode <- rownames(df) else
+      stop("barcode_col is NULL and df has no rownames.")
+  } else if (barcode_col != "barcode") 
+    df <- dplyr::rename(
+    df, barcode = !!rlang::sym(barcode_col))
+  pos <- SpaceMarkers::load10XCoords(visiumDir, resolution, version)
+  names(pos) <- c("barcode","y","x"); df <- merge(
+    df[, c("barcode", feature_col)], pos, by="barcode")
+  img <- readbitmap::read.bitmap(.pick_image(
+    file.path(visiumDir, "spatial"), resolution))
+  if (crop) {xr <- range(df$x, na.rm=TRUE); yr <- range(df$y, na.rm=TRUE)
+  xmin <- max(1L, floor(xr[1])); xmax <- min(ncol(img), ceiling(xr[2]))
+  ymin <- max(1L, floor(yr[1])); ymax <- min(nrow(img), ceiling(yr[2]))
+  img <- img[ymin:ymax, xmin:xmax,, drop=FALSE]
+  df <- dplyr::mutate(df, x_c=x-xmin+1L, y_c=y-ymin+1L)
+  xl <- c(0, xmax-xmin+1L); yl <- c(0, ymax-ymin+1L)
+  } else {
+    df <- dplyr::mutate(df, x_c=x, y_c=y);xl<-c(0, ncol(img));yl<-c(0, nrow(img))}
+    p <- ggplot2::ggplot() +
+      ggplot2::annotation_raster(as.raster(img), 0, diff(xl), 0, diff(yl)) +
+      ggplot2::geom_point(
+        data = df,
+        ggplot2::aes(x_c, yl[2] - y_c, fill = .data[[feature_col]]),
+        shape = 21, color = "black", size = point_size,
+        stroke = stroke, alpha = alpha
+      ) +
+      ggplot2::coord_fixed(xlim = xl, ylim = yl, expand = FALSE) +
+      ggplot2::labs(fill = feature_col, x = NULL, y = NULL, title = title) +
+      ggplot2::theme_bw(text_size) +
+      ggplot2::theme(
+        plot.background = if (!is.null(bg_color))
+          ggplot2::element_rect(fill = bg_color, color = NA)
+        else ggplot2::element_blank()
+      )
+  if (is.numeric(df[[feature_col]])) {
+    p <- p + (if (!is.null(colors)) ggplot2::scale_fill_gradientn(colours=colors)
+              else viridis::scale_fill_viridis())
+  } else {
+    vals <- unique(stats::na.omit(df[[feature_col]]))
+    p <- p + if (!is.null(colors)) ggplot2::scale_fill_manual(values=colors) else
+      if (length(vals) > 1) ggplot2::scale_fill_manual(values = stats::setNames(
+        RColorBrewer::brewer.pal(max(3, min(length(vals), 9)), "Set1")
+        [seq_along(vals)], vals)) else ggplot2::scale_fill_manual(values="red")
+  }
+  return(p)
+}
+
+
+
+#' @title calculate_lr_scores
+#' @description Calculate L-R pair scores using Fisher's method
+#' @param ligand_scores Output from getGeneSetScore for ligands
+#' @param receptor_scores Output from getGeneSetScore for receptors
+#' @param lr_pairs Data frame with columns 'ligand' and 'receptor'
+#' @param ligand_test Character; specifies the type of test for ligand overexpression. Options are "greater" or "two.sided"
+#' @param method Character; specifies the aggregation method for L-R scores. Options are "
+#' geometric_mean" or "arithmetic_mean"
+#' @param weighted Logical; if TRUE, L-R scores are weighted by their occurrence in
+#' multiple L-R pairs
+#' @details This function computes L-R pair scores by combining ligand and receptor
+#' overexpression scores using either geometric or arithmetic mean. It can also
+#' weight L-R pairs based on their presence in multiple pairs to reduce bias from
+#' promiscuous ligands or receptors.
+#' @return Data frame with L-R scores and p-values
+#' @export
+calculate_lr_scores <- function(ligand_scores, receptor_scores, lr_pairs,
+                              ligand_test = c("greater", "two.sided"), method = c("geometric_mean", "arithmetic_mean"),
+                              weighted = TRUE) {
+
+    method <- match.arg(method[1], choices = c("geometric_mean", "arithmetic_mean"))
+       # parameter checks
+    ligand_test <- match.arg(ligand_test[1], choices = c("greater", "two.sided"))
+    
+    ## Scoring ligand overexpression near target cell type and receptor overexpression in target cell type
+    if (!all(grepl("near",colnames(receptor_scores)))) {
+        target_cells <- gsub("^.*_","",colnames(ligand_scores))
+        if (!any(target_cells %in% colnames(receptor_scores))) {
+            stop("Receptor scores do not have expected cell type names in column names.")
+        }
+        ligand_cols <- colnames(ligand_scores)[grepl(paste0("near_(", paste(target_cells, collapse="|"), ")"), colnames(ligand_scores))]
+        names(ligand_cols) <- ligand_cols
+        # Map ligand columns to receptor columns
+        mapped_receptor_cols <- sapply(ligand_cols, function(lc) gsub("^.*_","",lc))
+        names(mapped_receptor_cols) <- ligand_cols
+        lr_scores <- matrix(0, nrow=nrow(lr_pairs), ncol=length(ligand_cols))
+        if (weighted) {
+            ligand_counts <- table(lr_pairs$ligand.symbol)
+            receptor_counts <- table(lr_pairs$receptor.symbol)
+            ligand_weights <- 1 / ligand_counts[lr_pairs$ligand.symbol]
+            receptor_weights <- 1 / receptor_counts[lr_pairs$receptor.symbol]
+            ligand_weights <- matrix(ligand_weights * length(ligand_weights) / sum(ligand_weights), nrow=nrow(lr_pairs), ncol=1)
+            receptor_weights <- matrix(receptor_weights * length(receptor_weights) / sum(receptor_weights), nrow=nrow(lr_pairs), ncol=1)
+            rownames(ligand_weights) <- rownames(receptor_weights) <- rownames(lr_pairs)
+            weights <- cbind(ligand_weights, receptor_weights)
+            colnames(weights) <- c("ligand_weights", "receptor_weights")
+            rownames(weights) <- rownames(lr_pairs)
+        } else {
+            weights <- matrix(1, nrow=nrow(lr_pairs), ncol=2)
+            colnames(weights) <- c("ligand_weights", "receptor_weights")
+            rownames(weights) <- rownames(lr_pairs)
+        }
+
+        lr_scores <- matrix(NA, nrow=nrow(lr_pairs), ncol=length(ligand_cols))
+        rownames(lr_scores) <- rownames(lr_pairs)
+        mapped_lr_cols <- gsub("near_","to_",ligand_cols)
+        names(mapped_lr_cols) <- ligand_cols
+        colnames(lr_scores) <- mapped_lr_cols
+            
+        for (i in seq_along(ligand_cols)) {
+            lc <- ligand_cols[i]
+            rc <- mapped_receptor_cols[i]
+            scores <- cbind(ligand_scores[,lc], receptor_scores[,rc])
+            colnames(scores) <- c("ligand_score", "receptor_score")
+            rownames(scores) <- rownames(lr_pairs)
+            lr_scores[,i] <- switch(method,
+                "geometric_mean" = exp(sapply(rownames(scores), function(r) {weighted.mean(log(scores[r, ]), w=weights[r,])})),
+                "arithmetic_mean" = sapply(rownames(scores), function(r) {weighted.mean(scores[r, ], w=weights[r,])}),
+                stop("Unknown method for L-R score calculation")
+            )
+        }
+        colnames(lr_scores) <- mapped_lr_cols
+        rownames(lr_scores) <- rownames(lr_pairs)
+        return(lr_scores)
+    } else {
+        stop("Receptor scores have been calculated using calculate_gene_set_score (overexpression) of receptors near source cell; use calculate_gene_set_specificity for receptors instead.")
+    }
+
+}
+
+#' Calculate Gene Set Specificity Scores
+#' @title calculate_gene_set_specificity
+#' @description
+#' This function computes specificity scores for given gene sets across cell types or spatial patterns.
+#' It uses fold-change scores and p-values to weight gene contributions, and supports both geometric and arithmetic means.
+#'
+#' @param data A numeric matrix or data frame of gene expression values (genes x samples).
+#' @param spPatterns A data frame or matrix containing spatial pattern information, with columns for cell types and optionally "x", "y", "barcode".
+#' @param gene_sets A named list of character vectors, where each vector contains gene names for a gene set.
+#' @param weighted Logical; if TRUE, gene scores are weighted by their occurrence in multiple gene sets.
+#' @param method Character; specifies the aggregation method for gene set scores. Options are "geometric_mean" or "arithmetic_mean".
+#'
+#' @return A numeric matrix of gene set specificity scores (gene sets x cell types).
+#'
+#' @details
+#' - Genes not present in the data are excluded.
+#' - Genes with all zero expression are removed.
+#' - Fold-change scores and p-values are calculated using `.calculate_all_fc_scores`.
+#' - Scores are normalized and weighted by p-value significance.
+#' - For each gene set, scores are aggregated using the specified method and gene weights.
+#'
+#' @examples
+#' # Example usage:
+#' # gene_set_scores <- calculate_gene_set_specificity(expr_matrix, spPatterns, gene_sets)
+#'
+#' @export
+calculate_gene_set_specificity <- function(data, spPatterns, gene_sets, weighted = TRUE, method = c("geometric_mean", "arithmetic_mean")) {
+    method <- match.arg(method[1], choices = c("geometric_mean", "arithmetic_mean"))
+    genes <- unique(unlist(gene_sets))
+    genes <- intersect(genes, rownames(data))
+    if (length(genes) == 0) {
+        stop("No genes from gene sets found in data")
+    }
+    expr <- data[genes, , drop = FALSE]
+    expr[is.na(expr)] <- 0
+
+    expr <- expr[apply(expr, 1, function(x) any(x > 0)), , drop = FALSE]
+    
+    genes <- rownames(expr)
+
+    gene_complex_count <- sapply(genes, function(g) {
+        sum(sapply(gene_sets, function(gs) g %in% gs))
+    })
+    if (weighted) {
+        gene_weights <- 1 / gene_complex_count[genes]
+            # (preserves interpretation of the score)
+        gene_weights <- gene_weights * length(gene_weights) / sum(gene_weights)
+    } else {
+        gene_weights <- rep(1, length(genes))
+    }
+    names(gene_weights) <- genes
+            # (preserves interpretation of the score)
+
+    if (nrow(expr) == 0) {
+        return(matrix(0, nrow=length(gene_sets), ncol=ncol(spPatterns)))
+    }
+
+    # Group by cell type
+    patnames <- setdiff(colnames(spPatterns),c("x","y","barcode"))
+    cell_types <- unique(patnames)
+
+    # Initialize result matrix
+    gene_set_scores <- matrix(0, nrow = length(gene_sets), ncol = length(cell_types))
+    rownames(gene_set_scores) <- names(gene_sets)
+    colnames(gene_set_scores) <- cell_types
+
+    gene_scores <- .calculate_all_fc_scores(expr, spPatterns, low_thr = 0.2, high_thr = 0.8)
+
+
+    for (gene_set in names(gene_sets)) {
+        genes <- gene_sets[[gene_set]]
+        valid_genes <- intersect(genes, rownames(gene_scores))
+        if (length(valid_genes) > 1) {
+            
+            # Calculate weighted scores
+            gene_set_scores[gene_set, ] <- switch(method,
+                "geometric_mean" = exp(apply(log(gene_scores[valid_genes, ]), 2, weighted.mean, w = gene_weights[valid_genes])),
+                "arithmetic_mean" = apply(gene_scores[valid_genes, ], 2, weighted.mean, w = gene_weights[valid_genes]),
+                stop("Unknown method for gene set score calculation")
+            )
+        } else if (length(valid_genes) == 1) {
+        gene_set_scores[gene_set, ] <- gene_scores[valid_genes, ]
+        } else {
+        gene_set_scores[gene_set, ] <- 0
+        }
+    }
+
+    return(gene_set_scores)
+}
+
+.calculate_fc_score <- function(expr, spPatterns, gene, ct,
+                              low_thr = 0.2, high_thr = 0.8) {
+
+  # Get thresholds
+  low_thr <- quantile(spPatterns[, ct], probs = low_thr, na.rm = TRUE)
+  high_thr <- quantile(spPatterns[, ct], probs = high_thr, na.rm = TRUE)
+
+  # Get high and low bins
+  high_bins <- which(spPatterns[, ct] > high_thr)
+  low_bins <- which(spPatterns[, ct] < low_thr)
+  
+  # Calculate means
+  mean_high <- mean(expr[gene, high_bins])
+  mean_low <- mean(expr[gene, low_bins])
+  
+  # Log fold change
+  lfc <- mean_high - mean_low
+  
+  # Get p-value
+  if (all(expr[gene, c(high_bins, low_bins)] == 0)) {
+    score <- NA
+    attr(score, "p_value") <- 1
+    return(score)
+  }
+  w_test <- wilcox.test(as.matrix(expr[gene, high_bins]), as.matrix(expr[gene, low_bins]))
+
+  score <- lfc
+  attr(score, "p_value") <- w_test$p.value
+  return(score)
+}
+
+# Wrapper for all genes and cell types
+# importFrom BiocParallel bplapply
+.calculate_all_fc_scores <- function(expr, spPatterns, 
+                                    low_thr = 0.2, high_thr = 0.9, ..., workers = NULL) {
+
+  genes <- rownames(expr)
+  cell_types <- setdiff(colnames(spPatterns), c("x", "y", "barcode"))
+  
+  # Initialize results
+  score_matrix <- matrix(NA, nrow = length(genes), ncol = length(cell_types))
+  rownames(score_matrix) <- genes
+  colnames(score_matrix) <- cell_types
+  
+  gene_scores <- lfc_matrix <- p_values <- score_matrix
+  use_biocparallel <- requireNamespace("BiocParallel", quietly = TRUE)
+  # Calculate for each combination
+  if (!use_biocparallel) {
+    for (i in seq_along(genes)) {
+        for (ct in cell_types) {
+            result <- .calculate_fc_score(expr, spPatterns, 
+                                    genes[i], ct,
+                                    low_thr, high_thr)
+            lfc_matrix[i, ct] <- result
+            p_values[i, ct] <- attr(result, "p_value")
+        }
+    }
+  } else {
+    if (is.null(workers) || workers < 1) {
+        workers <- BiocParallel::bpworkers(BiocParallel::bpparam())
+    }
+    BiocParallel::register(BiocParallel::MulticoreParam(workers))
+    lfc <- BiocParallel::bplapply(cell_types, function(ct) {
+        lfc_col <- p_val_col <- numeric(length(genes))
+        names(lfc_col) <- names(p_val_col) <- genes
+        for (i in seq_along(genes)) {
+            result <- .calculate_fc_score(expr, spPatterns, 
+                                genes[i], ct,
+                                low_thr, high_thr)
+            lfc_col[i] <- result
+            p_val_col[i] <- attr(result, "p_value")
+        }
+        return(list(lfc = lfc_col, p_value = p_val_col))
+    })
+    for (i in seq_along(cell_types)) {
+        ct <- cell_types[i]
+        lfc_matrix[, ct] <- lfc[[i]]$lfc
+        p_values[, ct] <- lfc[[i]]$p_value
+    }
+  }
+    p_adj <- apply(p_values,2,p.adjust,method="BH")
+    p_weights <- 1 / (1 + exp(2 * (log10(p_adj) - log10(0.05))))
+
+    norm_scores <- 1/(1 + exp(-40 * (lfc_matrix-median(lfc_matrix[lfc_matrix>0], na.rm = TRUE))))
+    gene_scores <- norm_scores * p_weights
+    gene_scores[is.na(gene_scores)] <- 0
+    attr(gene_scores,"p_values") <- p_values
+    attr(gene_scores,"p_adj") <- p_adj
+    attr(gene_scores,"p_weights") <- p_weights
+    attr(gene_scores,"lfc") <- lfc_matrix
+  return(gene_scores)
+}
+
+.call <- function(x, MARGIN = NULL, FUN, ...) {
+    # Save attributes
+    saved_attrs <- attributes(x)
+
+    # Apply function
+    if (is.null(MARGIN)) {
+        result <- FUN(x, ...)
+    } else {
+        result <- apply(x, MARGIN, FUN, ...)
+    }
+
+    # Restore custom attributes
+    for (attr_name in names(saved_attrs)) {
+        attr(result, attr_name) <- saved_attrs[[attr_name]]
+    }
+    
+    return(result)
 }

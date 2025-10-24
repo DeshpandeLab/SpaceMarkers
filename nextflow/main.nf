@@ -14,24 +14,6 @@ process SPACEMARKERS {
     tuple val(meta), path("${prefix}/overlapScores.csv"),      val(source),   emit: overlapScores
     path  "versions.yml",                                                     emit: versions
 
-  stub:
-    def args = task.ext.args ?: ''
-    source = features.simpleName
-    prefix = task.ext.prefix ?: "${meta.id}/${source}"
-    """
-    mkdir -p "${prefix}"
-    touch "${prefix}/spPatterns.rds"
-    touch "${prefix}/optParams.rds"
-    touch "${prefix}/spaceMarkers.csv"
-    touch "${prefix}/spaceMarkersObject.rds"
-    touch "${prefix}/hotspots.rds"
-    touch "${prefix}/overlapScores.csv"
-    cat <<-END_VERSIONS > versions.yml
-      "${task.process}":
-          SpaceMarkers: \$(Rscript -e 'print(packageVersion("SpaceMarkers"))' | awk '{print \$2}')
-          R: \$(Rscript -e 'print(packageVersion("base"))' | awk '{print \$2}')
-    END_VERSIONS
-    """
   script:
     def args = task.ext.args ?: ''
     source = features.simpleName
@@ -40,6 +22,7 @@ process SPACEMARKERS {
     #!/usr/bin/env Rscript
     dir.create("${prefix}", showWarnings = FALSE, recursive = TRUE)
     library("SpaceMarkers")
+    set.seed(${params.seed})
     
     #load spatial coords from tissue positions, deconvolved patterns, and expression
     coords <- load10XCoords("$data")
@@ -80,7 +63,7 @@ process SPACEMARKERS {
     saveRDS(spaceMarkers, file = "${prefix}/spaceMarkersObject.rds")
 
     #save SpaceMarkers Interaction Scores
-    IMScores <- getIMScores(spaceMarkers)
+    IMScores <- get_im_scores(spaceMarkers)
     write.csv(IMScores, file = "${prefix}/spaceMarkers.csv", row.names = FALSE)
 
     # Get the versions of the packages
@@ -90,20 +73,38 @@ process SPACEMARKERS {
             "${task.process}", spaceMarkersVersion, rVersion), 
         file = "versions.yml")
     """
+    stub:
+    def args = task.ext.args ?: ''
+    source = features.simpleName
+    prefix = task.ext.prefix ?: "${meta.id}/${source}"
+    """
+    mkdir -p "${prefix}"
+    touch "${prefix}/spPatterns.rds"
+    touch "${prefix}/optParams.rds"
+    touch "${prefix}/spaceMarkers.csv"
+    touch "${prefix}/spaceMarkersObject.rds"
+    touch "${prefix}/hotspots.rds"
+    touch "${prefix}/overlapScores.csv"
+    cat <<-END_VERSIONS > versions.yml
+      "${task.process}":
+          SpaceMarkers: \$(Rscript -e 'print(packageVersion("SpaceMarkers"))' | awk '{print \$2}')
+          R: \$(Rscript -e 'print(packageVersion("base"))' | awk '{print \$2}')
+    END_VERSIONS
+    """
 }
 
 process SPACEMARKERS_PLOTS {
   tag "$meta.id"
   label 'process_low'
-  container 'ghcr.io/deshpandelab/spacemarkers:nextflow'
+  container 'ghcr.io/deshpandelab/spacemarkers:main'
 
   input:
   tuple val(meta), path(spaceMarkers), path(overlapScores), val(source)
 
   output:
   tuple val(meta), path("${prefix}/overlapScores.png"),         val(source),     emit: overlapScores_plot
-  tuple val(meta), path("${prefix}/*_interacting_genes.png"),   val(source),     emit: interaction_plots
-  path  "versions.yml",                                                         emit: versions
+  tuple val(meta), path("${prefix}/*_interacting_genes.png"),   val(source),     emit: interaction_plots,   optional:true
+  path  "versions.yml",                                                          emit: versions
 
   script:
   def args = task.ext.args ?: ''
@@ -114,12 +115,14 @@ process SPACEMARKERS_PLOTS {
   library("SpaceMarkers")
   overlaps <- read.csv("$overlapScores")
 
+  set.seed(${params.seed})
+
   #getOverlapScores needs factors to be ordered
   overlaps[["pattern1"]] <- factor(overlaps[["pattern1"]], 
                                     levels = unique(overlaps[["pattern1"]]))
   overlaps[["pattern2"]] <- factor(overlaps[["pattern2"]], 
                                     levels = unique(overlaps[["pattern2"]]))
-  plot <- plotOverlapScores(overlaps) + ggplot2::labs(subtitle="$meta.id")
+  plot <- plot_overlap_scores(overlaps) + ggplot2::labs(subtitle="$meta.id")
   ggplot2::ggsave("${prefix}/overlapScores.png", plot)
 
   #plot interaction plots
@@ -157,7 +160,7 @@ process SPACEMARKERS_PLOTS {
 process SPACEMARKERS_MQC {
   tag "$meta.id"
   label 'process_low'
-  container 'ghcr.io/deshpandelab/spacemarkers:nextflow'
+  container 'ghcr.io/deshpandelab/spacemarkers:main'
 
   input:
     tuple val(meta), path(spaceMarkers), val(source)
@@ -172,6 +175,8 @@ process SPACEMARKERS_MQC {
     """
     #!/usr/bin/env Rscript
     dir.create("${prefix}", showWarnings = FALSE, recursive = TRUE)
+
+    set.seed(${params.seed})
 
     #[['']] notation needed to allow nextflow var susbtitution
 
@@ -264,4 +269,23 @@ process SPACEMARKERS_MQC {
           R: \$(Rscript -e 'print(packageVersion("base"))' | awk '{print \$2}')
     END_VERSIONS
     """
+}
+
+
+// Nextflow pipeline to run SpaceMarkers
+workflow {
+    ch_versions = Channel.empty()
+
+    ch_sm_inputs = Channel.fromPath(params.input)
+    .splitCsv(header:true, sep: ",")
+    .map { row-> tuple(meta:[id:row.sample], features:file(row.annotation_file), data:file(row.data_dir)) }
+
+    //spacemarkers - main
+    SPACEMARKERS( ch_sm_inputs )
+    ch_versions = ch_versions.mix(SPACEMARKERS.out.versions)
+
+
+    //collate versions
+    ch_versions
+      .collectFile(storeDir: "${params.outdir}/pipeline_info", name: 'versions.yml', sort: true, newLine: true)
 }

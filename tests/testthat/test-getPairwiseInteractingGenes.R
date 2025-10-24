@@ -1,11 +1,11 @@
-# 1. Test with no 'patternPairs' provided
-test_that("No patternPairs - computes all pairs", {
+# 1. Test with no 'pattern_pairs' provided
+test_that("No pattern_pairs - computes all pairs", {
     # Create sample data (adjust to match your actual data structure)
-    args <- createSampleData()
+    args <- .create_sample_data()
     # Call the function
     
     suppressMessages(
-        result <- getPairwiseInteractingGenes(data=args$data,
+    result <- get_pairwise_interacting_genes(data=args$data,
         spPatterns=args$spPatterns,
         optParams=args$optParams, minOverlap = 0)
     )
@@ -18,19 +18,19 @@ test_that("No patternPairs - computes all pairs", {
     expect_equal(names(result), patcombs)
 })
 
-# 2. Test with a matrix of 'patternPairs'
-test_that("Matrix patternPairs - specific pairs", {
+# 2. Test with a matrix of 'pattern_pairs'
+test_that("Matrix pattern_pairs - specific pairs", {
     # Create sample data
-    args <- createSampleData()
+    args <- .create_sample_data()
     # Define specific pattern pairs
-    patternPairs <- rbind(c("pattern1", "pattern2"), c("pattern1", "pattern3"))
+    pattern_pairs <- rbind(c("pattern1", "pattern2"), c("pattern1", "pattern3"))
     
     # Call the function
     suppressMessages(
-        result <- getPairwiseInteractingGenes(data=args$data, 
+    result <- get_pairwise_interacting_genes(data=args$data, 
         spPatterns=args$spPatterns, 
         optParams=args$optParams, 
-        patternPairs = patternPairs, minOverlap = 0)
+        pattern_pairs = pattern_pairs, minOverlap = 0)
     )
     # Check the number of results (should be 1)
     expect_equal(length(result), 2)
@@ -39,19 +39,19 @@ test_that("Matrix patternPairs - specific pairs", {
     expect_equal(names(result), c("pattern1_pattern2", "pattern1_pattern3"))
 })
 
-# 3. Test with a list of 'patternPairs'
-test_that("List patternPairs - specific pairs", {
+# 3. Test with a list of 'pattern_pairs'
+test_that("List pattern_pairs - specific pairs", {
     # Create sample data
-    args <- createSampleData()
+    args <- .create_sample_data()
     # Define specific pattern pairs as a list
-    patternPairs <- list(c("pattern1", "pattern2"))
+    pattern_pairs <- list(c("pattern1", "pattern2"))
     
     # Call the function
     suppressMessages(
-    result <- getPairwiseInteractingGenes(data=args$data, 
+    result <- get_pairwise_interacting_genes(data=args$data, 
         spPatterns=args$spPatterns, 
         optParams=args$optParams, 
-        patternPairs = patternPairs, minOverlap = 0)
+        pattern_pairs = pattern_pairs, minOverlap = 0)
     )
     # Check the number of results (should be 1)
     expect_equal(length(result), 1)
@@ -60,19 +60,19 @@ test_that("List patternPairs - specific pairs", {
     expect_equal(names(result), "pattern1_pattern2")
 })
 
-# 4. Test with invalid 'patternPairs'
-test_that("Invalid patternPairs - throws error", {
+# 4. Test with invalid 'pattern_pairs'
+test_that("Invalid pattern_pairs - throws error", {
     # Create sample data
-    args <- createSampleData()
+    args <- .create_sample_data()
     
     # Define invalid pattern pairs
-    patternPairs <- matrix(c("pattern1", "invalid_pattern"), ncol = 2)
+    pattern_pairs <- matrix(c("pattern1", "invalid_pattern"), ncol = 2)
     
     # Expect an error
-    expect_error(result <- getPairwiseInteractingGenes(data=args$data, 
+    expect_error(result <- get_pairwise_interacting_genes(data=args$data, 
         spPatterns=args$spPatterns, 
         optParams=args$optParams, 
-        patternPairs = patternPairs, minOverlap = 0), "not pattern names")
+        pattern_pairs = pattern_pairs, minOverlap = 0), "not pattern names")
 })
 
 # 5. Test without BiocParallel
@@ -81,17 +81,17 @@ test_that("No BiocParallel - sequential execution", {
     myRequire <- function(...) FALSE
     local_mocked_bindings(requireNamespace = myRequire, .package = "base")
         # Create sample data
-        args <- createSampleData()
+        args <- .create_sample_data()
         # Define specific pattern pairs
-        patternPairs <- rbind(c("pattern1", "pattern2"), 
+        pattern_pairs <- rbind(c("pattern1", "pattern2"), 
                                     c("pattern1", "pattern3"))
         
         # Call the function
         suppressMessages(
-            result <- getPairwiseInteractingGenes(data=args$data, 
+            result <- get_pairwise_interacting_genes(data=args$data, 
                 spPatterns=args$spPatterns, 
                 optParams=args$optParams, 
-                patternPairs = patternPairs, minOverlap = 0)
+                pattern_pairs = pattern_pairs, minOverlap = 0)
         )
         # Check the number of results (should be 1)
         expect_equal(length(result), 2)
@@ -104,16 +104,16 @@ test_that("No BiocParallel - sequential execution", {
 #6. Test for single pair of patterns
 test_that("Single pair of patterns", {
     # Create sample data
-    args <- createSampleData()
+    args <- .create_sample_data()
     # Define specific pattern pairs
-    patternPairs <- c("pattern1", "pattern2")
+    pattern_pairs <- c("pattern1", "pattern2")
     
     # Call the function
     suppressMessages(
-        result <- getPairwiseInteractingGenes(data=args$data, 
+    result <- get_pairwise_interacting_genes(data=args$data, 
             spPatterns=args$spPatterns, 
             optParams=args$optParams, 
-            patternPairs = patternPairs, minOverlap = 0)    
+            pattern_pairs = pattern_pairs, minOverlap = 0)    
     )
     
     # Check the number of results (should be 1)
@@ -124,12 +124,12 @@ test_that("Single pair of patterns", {
 })
 
 test_that("getPairwiseInteractingGenes works with specified hotspots", {
-    args <- createSampleData()
-    spHotspots <- findAllHotspots(spPatterns = args$spPatterns, params = args$optParams,
+    args <- .create_sample_data()
+    spHotspots <- find_all_hotspots(spPatterns = args$spPatterns, params = args$optParams,
         outlier = "positive", nullSamples = 1000, includeSelf = TRUE)
 
     suppressMessages({
-        interactingGenes <- getPairwiseInteractingGenes(
+    interactingGenes <- get_pairwise_interacting_genes(
             data=args$data,
             spPatterns=args$spPatterns,
             optParams=args$optParams,

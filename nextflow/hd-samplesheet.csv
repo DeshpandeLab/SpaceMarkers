@@ -1,0 +1,2 @@
+sample,data_dir,annotation_file
+sample1,sample/HC01BTC_visiumHD/binned_outputs/square_016um,sample/HC01BTC_rctd_cell_types.csv

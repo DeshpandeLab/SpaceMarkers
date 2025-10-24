@@ -1,4 +1,4 @@
-test_that("getSpatialParamsMoransI returns optimal parameters", {
+test_that("get_spatial_params_morans_i returns optimal parameters", {
   # Create test data
   set.seed(123)
   cells <- c()
@@ -11,8 +11,8 @@ test_that("getSpatialParamsMoransI returns optimal parameters", {
                             x = runif(test_num, min=0, max=test_num),
                             Pattern_1 = runif(test_num, min=0, max=1),
                             Pattern_2 = runif(test_num, min=0, max=1) )
-  # Call the getSpatialParameters function with the test data
-  suppressWarnings(optParams <- getSpatialParamsMoransI(spPatterns))
+  # Call the get_spatial_parameters function with the test data
+  suppressWarnings(optParams <- get_spatial_params_morans_i(spPatterns))
   optParams_test <- data.matrix(data.frame("Pattern_1" = c(40,3),
                                            "Pattern_2" = c(40.0,2.5)))
   rownames(optParams_test) <- c("sigmaOpt","threshOpt")
