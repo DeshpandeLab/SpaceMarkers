@@ -1,5 +1,16 @@
 # SpaceMarkers - unreleased
 
+# SpaceMarkers 2.0.0
+* Added support for directed cell-cell interaction (see calculate_gene_scores_directed, calculate_influence)
+* Functions for supporting ligand-receptor interactions based on 
+directed cell-cell interactions
+* Added ligand–receptor and gene-set scoring utilities: calculate_lr_scores,
+calculate_gene_set_score, and calculate_gene_set_specificity.
+* Added support for handling Visium HD
+* plotting functions using circlize for showing ligand-receiver interactions.
+* API and naming standardization (backwards-incompatible) Major public functions  renamed to snake_case for consistency (examples: calcInfluence → calculate_influence, getInteractingGenes → get_interacting_genes, getPairwiseInteractingGenes → get_pairwise_interacting_genes, getSpatialFeatures → get_spatial_features, getSpatialParameters → get_spatial_parameters)
+
+# SpaceMarkers 1.5.0
 * Added `findAllHotspots` to use with `getPairwiseInteractingGenes`
 * Return empty interacting genes list instead of failing with error
 when no genes pass fdr threshold.
