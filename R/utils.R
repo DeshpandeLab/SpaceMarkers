@@ -519,14 +519,14 @@ calculate_lr_scores <- function(ligand_scores, receptor_scores, lr_pairs,
         if (adjustment_scope == "global") {
             # Adjust across all L-R pairs and conditions together
             all_pvals <- as.vector(lr_pvalues)
-            all_padj <- p_adjust(all_pvals, method = adjustment_method)
+            all_padj <- p.adjust(all_pvals, method = adjustment_method)
             lr_padj <- matrix(all_padj, nrow = nrow(lr_pvalues), ncol = ncol(lr_pvalues))
             
         } else if (adjustment_scope == "per_interaction") {
             # Adjust within each condition separately
             lr_padj <- lr_pvalues
             for (i in 1:ncol(lr_pvalues)) {
-                lr_padj[, i] <- p_adjust(lr_pvalues[, i], method = adjustment_method)
+                lr_padj[, i] <- p.adjust(lr_pvalues[, i], method = adjustment_method)
             }
         }
         
