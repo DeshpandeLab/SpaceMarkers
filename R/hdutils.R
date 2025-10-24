@@ -54,7 +54,7 @@ if (method[1]=="pct"){
    maxthresh <- maxval
 }
 #Calculate the two compmonents of the normal mixture model
-res <- try(mixtools::normalmixEM(vals, k = 2, maxit = 1000, epsilon = 1e-8), silent = TRUE)
+res <- try(mixtools::normalmixEM(df, k = 2, maxit = 1000, epsilon = 1e-8), silent = TRUE)
 if (inherits(res, "try-error") || is.null(res) || !all(c("mu", "sigma") %in% names(res)) || res$ft == 1000) {
     warning("mixtools::normalmixEM failed or reached maxit; using minval as threshold")
     return(minthresh)
