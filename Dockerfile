@@ -15,6 +15,8 @@ RUN Rscript -e 'install.packages("BiocManager");\
 
 RUN Rscript -e 'devtools::install_deps()'
 
+RUN Rscript -e 'devtools::install_github("jinworks/CellChat")'
+
 #https://github.com/r-lib/devtools/issues/2395
 RUN Rscript -e 'devtools::install(dependencies = TRUE)'
 
