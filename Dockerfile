@@ -7,7 +7,7 @@ WORKDIR /spacemarkers
 
 RUN sudo apt-get update -y && \
     apt-get upgrade -y && \
-    apt-get install libhdf5-dev build-essential patch -y
+    apt-get install libhdf5-dev build-essential libglpk-dev patch -y
 
 RUN Rscript -e 'install.packages("BiocManager");\
                 BiocManager::install("CoGAPS");\
