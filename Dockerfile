@@ -11,7 +11,8 @@ RUN sudo apt-get update -y && \
 
 RUN Rscript -e 'install.packages("BiocManager");\
                 BiocManager::install("CoGAPS");\
-                BiocManager::install("ComplexHeatmap")'
+                BiocManager::install("ComplexHeatmap")\
+                BiocManager::install("BiocNeighbors");\'
 
 RUN Rscript -e 'devtools::install_deps()'
 
