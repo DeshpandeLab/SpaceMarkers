@@ -1,13 +1,13 @@
 process SPACEMARKERS_HD {
   tag "$meta.id"
   label 'process_medium'
-  container 'ghcr.io/deshpandelab/spacemarkers:hdutils'
+  container 'ghcr.io/deshpandelab/spacemarkers@sha256:9c06f8f9340bb5c51300dbf3bc4e803613a15e1bd349eae43d5a129462a13f4e'
 
   input:
     tuple val(meta), path(features), path(data)
   output:
     tuple val(meta), path("${prefix}/IMscores.rds"),       val(source),   emit: IMscores
-    tuple val(meta), path("${prefix}/LRscores.rds"),       val(source),   emit: LRscores
+    tuple val(meta), path("${prefix}/LRscores.rds"),       val(source),   emit: LRscores, optional: true
     path  "versions.yml",                                                 emit: versions
 
    script:
@@ -41,7 +41,7 @@ process SPACEMARKERS_HD {
 process SPACEMARKERS_HD_PLOTS{
   tag "$meta.id"
   label 'process_low'
-  container 'ghcr.io/deshpandelab/spacemarkers:hdutils'
+  container 'ghcr.io/deshpandelab/spacemarkers@sha256:9c06f8f9340bb5c51300dbf3bc4e803613a15e1bd349eae43d5a129462a13f4e'
 
   input:
     tuple val(meta), path(lrscores), val(source)

@@ -1,7 +1,7 @@
 process SPACEMARKERS {
   tag "$meta.id"
   label 'process_high_memory'
-  container 'ghcr.io/deshpandelab/spacemarkers:main'
+  container 'ghcr.io/deshpandelab/spacemarkers@sha256:9c06f8f9340bb5c51300dbf3bc4e803613a15e1bd349eae43d5a129462a13f4e'
 
   input:
     tuple val(meta), path(features), path(data)
@@ -26,7 +26,7 @@ process SPACEMARKERS {
     
     #load spatial coords from tissue positions, deconvolved patterns, and expression
     coords <- load10XCoords("$data")
-    features <- getSpatialFeatures("$features")
+    features <- get_spatial_features("$features")
     dataMatrix <- load10XExpr("$data")
 
     #add spatial coordinates to deconvolved data, only use barcodes present in data
@@ -40,19 +40,19 @@ process SPACEMARKERS {
     dataMatrix <- dataMatrix[keepGenes, keepBarcodes]
 
     #compute optimal parameters for spatial patterns
-    optParams <- getSpatialParameters(spPatterns, visiumDir="$data");
+    optParams <- get_spatial_parameters(spPatterns, visiumDir="$data");
     saveRDS(optParams, file = "${prefix}/optParams.rds")
 
     #find hotspots in spatial patterns
-    hotspots <- findAllHotspots(spPatterns);
+    hotspots <- find_all_hotspots(spPatterns);
     saveRDS(hotspots, file = "${prefix}/hotspots.rds");
 
     #find regions of overlapping spatial patterns
-    overlaps <- getOverlapScores(hotspots);
+    overlaps <- calculate_overlap_undirected(hotspots);
     write.csv(overlaps, file = "${prefix}/overlapScores.csv", row.names = FALSE);
 
     #find genes that are differentially expressed in spatial patterns
-    spaceMarkers <- getPairwiseInteractingGenes(data = dataMatrix,
+    spaceMarkers <- get_pairwise_interacting_genes(data = dataMatrix,
                                                   optParams = optParams,
                                                   spPatterns = spPatterns,
                                                   hotspots = hotspots,
@@ -96,7 +96,7 @@ process SPACEMARKERS {
 process SPACEMARKERS_PLOTS {
   tag "$meta.id"
   label 'process_low'
-  container 'ghcr.io/deshpandelab/spacemarkers:main'
+  container 'ghcr.io/deshpandelab/spacemarkers@sha256:9c06f8f9340bb5c51300dbf3bc4e803613a15e1bd349eae43d5a129462a13f4e'
 
   input:
   tuple val(meta), path(spaceMarkers), path(overlapScores), val(source)
@@ -160,7 +160,7 @@ process SPACEMARKERS_PLOTS {
 process SPACEMARKERS_MQC {
   tag "$meta.id"
   label 'process_low'
-  container 'ghcr.io/deshpandelab/spacemarkers:main'
+  container 'ghcr.io/deshpandelab/spacemarkers@sha256:9c06f8f9340bb5c51300dbf3bc4e803613a15e1bd349eae43d5a129462a13f4e'
 
   input:
     tuple val(meta), path(spaceMarkers), val(source)
