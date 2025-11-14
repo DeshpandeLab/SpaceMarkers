@@ -640,7 +640,187 @@ create_avg_exp_df <- function(counts, metadata, features, meta_col, barcode_col 
   
   names(out)[names(out) == meta_col] <- meta_col
   return(out)
-}                                     
+} 
+
+#' Dot plot of gene expression summary across interaction groups
+#'
+#' @description
+#' Create a Seurat-style dot plot where:
+#' - the x-axis represents interaction / group levels (e.g. `"Stom"`, `"Interacting"`, `"B"`),
+#' - the y-axis represents genes (or any feature),
+#' - dot size encodes percentage of cells expressing the gene,
+#' - dot fill encodes average expression.
+#'
+#' The function can optionally cluster rows/columns using hierarchical clustering
+#' on the average-expression matrix, or respect a user-specified ordering. If
+#' an `"Interacting"` level is present on the x-axis, it is automatically
+#' centered between the other two levels (if there are exactly two others).
+#'
+#' @param meta_df Data frame containing per-group gene summaries. Must include
+#'   at least the columns:
+#'   - `meta_col` (default `NULL`),
+#'   - `y_var` (default `"gene_symbol"`),
+#'   - `"pct.expr"` and `"avg.expr"`.
+#' @param meta_col Character, metadata column representing the main grouping
+#'   (usually the same as `x_var`). Default: `NULL`.
+#' @param x_var Character, column to use on the x-axis (group labels).
+#'   Default: `meta_col`.
+#' @param y_var Character, column to use on the y-axis (gene labels).
+#'   Default: `"gene_symbol"`.
+#' @param title,xlab,ylab Plot title and axis labels.
+#' @param x_text_angle,x_text_hjust,x_text_size Formatting of x-axis text.
+#' @param y_text_size,title_size Font sizes for y-axis text and title.
+#' @param size_name,fill_name Legend titles for size (percentage) and fill
+#'   (average expression).
+#' @param fill_colors Optional vector of colors for a continuous gradient.
+#'   If `NULL`, a white→red gradient is generated with \pkg{circlize}.
+#' @param size_var,fill_var Column names in `meta_df` for size and fill
+#'   aesthetics. Defaults: `"pct.expr"` and `"avg.expr"`.
+#' @param order Character; ordering strategy for rows/cols. One of
+#'   `"both"`, `"row"`, `"column"`, or `NULL`. If `NULL`, user must supply
+#'   both `user_order_rows` and `user_order_cols`.
+#' @param user_order_rows,user_order_cols Optional explicit orderings for the
+#'   y- and x-axis when `order = NULL` or partially overridden.
+#' @param dot_shape,border_color,stroke Aesthetics for the points.
+#' @param clust_method Clustering method passed to \code{hclust} when rows/cols
+#'   are ordered by hierarchical clustering. Default: `"ward.D2"`.
+#'
+#' @return A \code{ggplot} object.
+#'
+#' @examples
+#' \dontrun{
+#' # Suppose `avg_df` was created by create_avg_exp_df() and then subset:
+#' # avg_df has columns: NULL, gene_symbol, pct.expr, avg.expr
+#'
+#' p <- plot_interaction_dotplot(
+#'   meta_df = avg_df,
+#'   meta_col = NULL,
+#'   x_var    = NULL,
+#'   y_var    = "gene_symbol",
+#'   title    = "Senescence gene panel by subClone",
+#'   order    = "both"
+#' )
+#' print(p)
+#' }
+#'
+#' @importFrom ggplot2 ggplot aes_string geom_point scale_size_continuous
+#'   scale_fill_gradientn scale_x_discrete scale_y_discrete theme_classic
+#'   labs theme element_text guides guide_legend
+#' @importFrom stats dist hclust as.formula
+#' @importFrom reshape2 acast
+#' @export
+plot_interaction_dot_plot <- function(
+    meta_df,
+    meta_col = NULL,
+    x_var = meta_col,              # genes on y; groups on x
+    y_var = "gene_symbol",
+    title = "Dot Plot",
+    xlab = meta_col,
+    ylab = "Gene Symbol",
+    x_text_angle = 90,
+    x_text_hjust = 1,
+    x_text_size = 12,
+    y_text_size = 12,
+    title_size = 14,
+    size_name = "Percentage Expressed",
+    fill_name = "Avg Expression",
+    fill_colors = NULL,
+    size_var = "pct.expr",
+    fill_var = "avg.expr",
+    order = "both",
+    user_order_rows = NULL,
+    user_order_cols = NULL,
+    dot_shape = 21,
+    border_color = "black",
+    stroke = 0,
+    clust_method = "ward.D2"
+) {
+  if (!requireNamespace("circlize", quietly = TRUE)) {
+    stop("Package 'circlize' is required for the color palette. Please install it: install.packages('circlize')")
+  }
+  req_cols <- c(meta_col, x_var, "gene_symbol", "pct.expr", "avg.expr")
+  miss <- setdiff(req_cols, names(meta_df))
+  if (length(miss)) stop("Missing required columns in meta_df: ", paste(miss, collapse = ", "))
+  
+  form <- stats::as.formula(paste(y_var, "~", x_var))
+  wide_df <- reshape2::acast(meta_df[, c(y_var, x_var, fill_var)], form, value.var = fill_var)
+  if (anyNA(wide_df)) wide_df[is.na(wide_df)] <- 0
+  result_matrix <- as.matrix(wide_df)
+  
+  if (!is.null(order)) {
+    if (order == "both") {
+      row_dist <- stats::dist(result_matrix)
+      col_dist <- stats::dist(t(result_matrix))
+      hc_row <- stats::hclust(row_dist, method = clust_method)
+      hc_col <- stats::hclust(col_dist, method = clust_method)
+      order_rows <- rownames(result_matrix)[hc_row$order]
+      order_cols <- colnames(result_matrix)[hc_col$order]
+    } else if (order == "row") {
+      row_dist <- stats::dist(result_matrix)
+      hc_row <- stats::hclust(row_dist, method = clust_method)
+      order_rows <- rownames(result_matrix)[hc_row$order]
+      order_cols <- if (!is.null(user_order_cols)) user_order_cols else sort(unique(meta_df[[x_var]]))
+    } else if (order == "column") {
+      col_dist <- stats::dist(t(result_matrix))
+      hc_col <- stats::hclust(col_dist, method = clust_method)
+      order_cols <- colnames(result_matrix)[hc_col$order]
+      order_rows <- if (!is.null(user_order_rows)) user_order_rows else sort(unique(meta_df[[y_var]]))
+    } else {
+      stop("Invalid 'order'. Choose 'row', 'column', 'both', or NULL.")
+    }
+  } else {
+    if (is.null(user_order_rows) || is.null(user_order_cols)) {
+      stop("For order = NULL, provide both user_order_rows and user_order_cols.")
+    }
+    order_rows <- user_order_rows
+    order_cols <- user_order_cols
+  }
+  
+  # Enforce x-axis with 'Interacting' centered and the other two groups on either side
+  ux <- unique(meta_df[[x_var]])
+  others <- sort(setdiff(ux, "Interacting"))
+  if (length(others) == 2 && "Interacting" %in% ux) {
+    order_cols <- c(others[1], "Interacting", others[2])
+  } else {
+    order_cols <- ux
+  }
+  
+  if (is.null(fill_colors)) {
+    v <- meta_df[[fill_var]]
+    vmin <- min(v, na.rm = TRUE); vmax <- max(v, na.rm = TRUE)
+    if (vmin == vmax) vmax <- vmin + 1e-8
+    pal_fun <- circlize::colorRamp2(c(vmin, vmax), c("#FFFFFF", "#B30000"))
+    fill_colors <- pal_fun(seq(vmin, vmax, length.out = 100))
+  }
+  
+  p <- ggplot2::ggplot(
+    meta_df,
+    ggplot2::aes_string(x = x_var, y = y_var, size = size_var, fill = fill_var)
+  ) +
+    ggplot2::geom_point(shape = dot_shape, stroke = stroke, colour = border_color) +
+    ggplot2::scale_size_continuous(range = c(1, 10), name = size_name) +
+    ggplot2::scale_fill_gradientn(colors = fill_colors, name = fill_name) +
+    ggplot2::scale_x_discrete(limits = order_cols) +
+    ggplot2::scale_y_discrete(limits = order_rows) +
+    ggplot2::theme_classic() +
+    ggplot2::labs(x = xlab, y = ylab, title = title) +
+    ggplot2::theme(
+      axis.text.x  = ggplot2::element_text(angle = x_text_angle, hjust = x_text_hjust, size = x_text_size),
+      axis.text.y  = ggplot2::element_text(size = y_text_size),
+      plot.title   = ggplot2::element_text(face = "bold", size = title_size),
+      axis.title.x = ggplot2::element_text(size = x_text_size),
+      axis.title.y = ggplot2::element_text(size = y_text_size),
+      legend.title = ggplot2::element_text(size = x_text_size),
+      legend.text  = ggplot2::element_text(size = y_text_size)
+    ) +
+    ggplot2::guides(
+      size = ggplot2::guide_legend(
+        override.aes = list(shape = dot_shape, stroke = 0.7, colour = border_color)
+      )
+    )
+  return(p)
+}
+          
                                      
 
 #' @title calculate_gene_set_score
