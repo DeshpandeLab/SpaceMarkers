@@ -225,6 +225,93 @@ get_im_scores <- function(SpaceMarkers){
 }
 
 
+#' @title plot_scores_heatmap
+#' @description A pheatmap wrapper to plot the top IMscores based on the maximum score
+#'   per row, where the number of rows is defined by \code{geneCutOff}.
+#'
+#' @param df A data.frame with genes as rownames and IMscores as columns. If
+#'   \code{geneCol} is not \code{NULL}, that column is used as gene names.
+#' @param interactions A character vector of column names to subset the
+#'   heatmap to specific interactions. Default: \code{NULL} (use all columns).
+#' @param geneCol Character specifying the column with the gene names.
+#'   Default: \code{"Gene"}. If \code{NULL}, assumes rownames already hold
+#'   gene names.
+#' @param geneCutOff Integer. Number of genes (rows) to plot, based on
+#'   descending maximum score per gene. Default: \code{20}.
+#' @param out Optional filename for saving the heatmap directly via
+#'   \code{pheatmap}. Default: \code{"ScoresHeatmap.png"}. Set to \code{NULL}
+#'   to avoid automatic saving.
+#' @param fontsize_row Numeric. Size of row text. Default: \code{7}.
+#' @param fontsize_col Numeric. Size of column text. Default: \code{7}.
+#' @param cluster_cols Logical. Whether to cluster columns. Default: \code{TRUE}.
+#' @param cluster_rows Logical. Whether to cluster rows. Default: \code{TRUE}.
+#' @param ... Additional parameters passed to \code{pheatmap::pheatmap()}.
+#'
+#' @return A \code{pheatmap} object (invisibly). To draw it, use \code{print(ph)}.
+#'
+#' @examples
+#' \dontrun{
+#' # Basic usage with automatic saving (PNG)
+#' ph <- plot_scores_heatmap(imScores, geneCutOff = 15)
+#'
+#' # No automatic file, then save a custom TIFF via tiff()/dev.off():
+#' ph <- plot_scores_heatmap(imScores, geneCutOff = 15, out = NULL)
+#' tiff("IMscoresHeatmap.tiff", width = 7, height = 7, units = "in", res = 300)
+#' print(ph)
+#' dev.off()
+#' }
+#'
+#' @importFrom pheatmap pheatmap
+#' @export
+plot_im_scores_heatmap <- function(df,
+                                interactions  = NULL,
+                                geneCol       = "Gene",
+                                geneCutOff    = 20,
+                                out           = "ScoresHeatmap.png",
+                                fontsize_row  = 7,
+                                fontsize_col  = 7,
+                                cluster_cols  = TRUE,
+                                cluster_rows  = TRUE,
+                                ...) {
+  # If the gene column is not NULL, use it as rownames and drop the column
+  if (!is.null(geneCol)) {
+    if (!geneCol %in% colnames(df)) {
+      stop("geneCol '", geneCol, "' not found in df.")
+    }
+    rownames(df) <- df[[geneCol]]
+    df[[geneCol]] <- NULL
+  }
+  mtx <- as.matrix(df)
+  # optionally subset columns
+  if (!is.null(interactions)) {
+    missing_cols <- setdiff(interactions, colnames(mtx))
+    if (length(missing_cols)) {
+      stop("The following interactions are not columns in df: ",
+           paste(missing_cols, collapse = ", "))
+    }
+    mtx <- mtx[, interactions, drop = FALSE]
+  }
+  # order by top genes (max score per row)
+  if (nrow(mtx) == 0L) stop("No rows to plot after subsetting.")
+  mtx <- mtx[order(apply(mtx, 1, max, na.rm = TRUE), decreasing = TRUE), , drop = FALSE]
+  mtx <- head(mtx, geneCutOff)
+  # build argument list for pheatmap
+  args <- list(
+    mat           = mtx,
+    cluster_cols  = cluster_cols,
+    cluster_rows  = cluster_rows,
+    fontsize_row  = fontsize_row,
+    fontsize_col  = fontsize_col
+  )
+  if (!is.null(out)) {
+    args$filename <- out
+  } 
+  ph <- do.call(pheatmap::pheatmap, c(args, list(...)))
+  invisible(ph)
+}
+                                     
+
+
 #' @title plot_im_scores
 #' @description Plot the top SpaceMarkers IMScores
 #' @param df A data frame with columns Gene and SpaceMarkersMetric
