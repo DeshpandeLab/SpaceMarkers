@@ -709,7 +709,7 @@ create_avg_exp_df <- function(counts, metadata, features, meta_col, barcode_col 
 #' @importFrom stats dist hclust as.formula
 #' @importFrom reshape2 acast
 #' @export
-plot_interaction_dot_plot <- function(
+plot_interaction_dotplot <- function(
     meta_df,
     meta_col = NULL,
     x_var = meta_col,              # genes on y; groups on x
