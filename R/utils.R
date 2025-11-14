@@ -126,7 +126,7 @@ get_overlap_scores <- function(hotspots = NULL, in_hotspots = NULL, pat_hotspots
     dfOverlap <- dfOverlap[grepl("^near_",  dfOverlap$pattern2), ]
   }
   
-  dfOverlap
+  return(dfOverlap)
 }
 
 #' @title plot_overlap_scores
@@ -134,40 +134,65 @@ get_overlap_scores <- function(hotspots = NULL, in_hotspots = NULL, pat_hotspots
 #' @param df A data frame with columns pattern1, pattern2 and overlapScore
 #' @param title The title of the plot
 #' @param fontsize The font size of the plot
+#' @param tilefontsize The font size of the tile labels
 #' @param out The output path for the plot
+#' @param influence If TRUE, hides self "pattern vs near_pattern" cells and
+#'   strips the "near_" prefix from y-axis labels for readability.
 #' @return A ggplot object
 #' @export
 #' @examples
-#' df <- data.frame(pattern1 = c("pattern1","pattern1","pattern2","pattern2"), 
-#'                  pattern2 = c("pattern1","pattern2","pattern1","pattern2"),
+#' df <- data.frame(pattern1 = c("pattern1","pattern1","pattern2","pattern2"),
+#'                  pattern2 = c("near_pattern1","near_pattern2","near_pattern1","near_pattern2"),
 #'                  overlapScore = c(0.5,0.7,0.3,0.9))
-#' plot_overlap_scores(df)
-#' plot_overlap_scores(df, "Overlap Scores", "overlapScores.png", 15)
+#' plot_overlap_scores(df, influence = TRUE)
 #' @import ggplot2
-#'
-plot_overlap_scores <- function(df, title = "Spatial Overlap Scores", out = NULL,fontsize = 15) {
-    p <- ggplot2::ggplot(data = df, aes(pattern1, pattern2, fill = overlapScore)) +
-        geom_tile(color = "black", size = 0.8) +
-        geom_text(aes(label = round(overlapScore, 2)), size = 6) +  # Display values on the plot
-        scale_fill_gradient2(low = "#FFF7EC", mid = "#FDBB84", high = "#D7301F", midpoint = 0.5) +
-        scale_y_discrete(limits = rev, guide = guide_axis(angle = 45)) +
-        theme_minimal() +
-        theme(
-            axis.text.x = element_text(angle = 45, vjust = 1, size = fontsize, hjust = 1),
-            axis.text.y = element_text(size = fontsize)
-        ) +
-        coord_fixed() +
-        labs(x = NULL, y = NULL, fill = "overlapScore", title = title) +
-        theme(
-            panel.background = element_blank(),
-            panel.grid.major = element_blank(),
-            panel.border = element_blank()
-        )
-    if(!is.null(out)){
-        ggplot2::ggsave(filename = out, plot = p)
-    }
-    return(p)
+plot_overlap_scores <- function(df, title = "Spatial Overlap Scores",
+                                out = NULL, fontsize = 15, tilefontsize = 6,
+                                influence = FALSE) {
+  if (isTRUE(influence)) {
+    p1 <- as.character(df$pattern1)
+    p2 <- as.character(df$pattern2)
+    # mask "pattern1 vs near_pattern1"
+    mask <- p2 == paste0("near_", p1)
+    df$overlapScore[mask] <- NA_real_
+    df <- df[!is.na(df$overlapScore), ]
+  }
+  
+  p <- ggplot2::ggplot(data = df, ggplot2::aes(pattern1, pattern2, fill = overlapScore)) +
+    ggplot2::geom_tile(color = "black", linewidth = 0.8) +
+    ggplot2::geom_text(ggplot2::aes(label = round(overlapScore, 2)), size = tilefontsize) +
+    ggplot2::scale_fill_gradient2(low = "#FFF7EC", mid = "#FDBB84", high = "#D7301F", midpoint = 0.5) +
+    ggplot2::scale_y_discrete(
+      limits = rev,
+      guide = ggplot2::guide_axis(angle = 45),
+      labels = function(x) if (isTRUE(influence)) sub("^near_", "", x) else x
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_text(angle = 45, vjust = 1, size = fontsize, hjust = 1),
+      axis.text.y = ggplot2::element_text(size = fontsize),
+      axis.title.x = if (isTRUE(influence)) ggplot2::element_text(size = fontsize) else ggplot2::element_blank(),
+      axis.title.y = if (isTRUE(influence)) ggplot2::element_text(size = fontsize) else ggplot2::element_blank()
+    ) +
+    ggplot2::coord_fixed() +
+    ggplot2::labs(
+      x = if (isTRUE(influence)) "Pattern_Hotspots" else NULL,
+      y = if (isTRUE(influence)) "Influence_Hotspots" else NULL,
+      fill = "overlapScore",
+      title = title
+    ) +
+    ggplot2::theme(
+      panel.background = ggplot2::element_blank(),
+      panel.grid.major = ggplot2::element_blank(),
+      panel.border = ggplot2::element_blank()
+    )
+  
+  if (!is.null(out)) {
+    ggplot2::ggsave(filename = out, plot = p)
+  }
+  return(p)
 }
+
 
 #' @title get_im_scores
 #' @description Get the interaction scores for SpaceMarkers
