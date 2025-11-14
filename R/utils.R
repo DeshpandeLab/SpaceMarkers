@@ -225,7 +225,7 @@ get_im_scores <- function(SpaceMarkers){
 }
 
 
-#' @title plot_scores_heatmap
+#' @title plot_im_scores_heatmap
 #' @description A pheatmap wrapper to plot the top IMscores based on the maximum score
 #'   per row, where the number of rows is defined by \code{geneCutOff}.
 #'
