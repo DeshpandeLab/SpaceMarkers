@@ -355,6 +355,294 @@ plot_im_scores <- function(df, interaction, cutOff = 0, nGenes = 20,
     return(p1)
 }
 
+#' @title get_enriched_pathways
+#' @description An fgsea wrapper to get enriched pathways for IMscores
+#' @param imscores A data frame or matrix with genes as rownames and IMscores as columns
+#' @param gene.sets A list where the names are pathway names and the values are
+#' vectors of gene names
+#' @param method Character, one of \code{c("undirected","directed")}.
+#' @param threshold Numeric FDR threshold (currently unused in filtering).
+#' @param interactionNames Optional character vector of interaction names to test.
+#'   If NULL, uses all IMscore columns except "Gene".
+#' @param ... Additional parameters to pass to \code{fgsea::fgsea}
+#' @return A list of data frames with enriched pathways for each IMscore column
+#' @export 
+#' @importFrom fgsea fgsea ora
+#' @importFrom dplyr rename arrange
+get_enriched_pathways <- function(imscores, gene.sets,method = c(
+  "undirected","directed"),threshold = 0.05,interactionNames = NULL,
+  ...){
+  
+  if (method == "undirected"){
+    if (!is.null(interactionNames)){
+      interactionNames <- interactionNames
+    } else {
+      interactionNames <- setdiff(colnames(imscores),"Gene")
+    }
+    features <- rownames(imscores)
+    if (any(grepl("_",features))) {
+      stop("Gene names cannot contain underscores (_).
+         Please remove them and try again.")
+    }
+    d <- lapply(
+      interactionNames, FUN = function(p) {
+        mscores <- imscores[,p]
+        names(mscores) <- features
+        mscores <- sort(mscores,decreasing = TRUE)
+        result <- fgsea::fgsea(pathways = gene.sets, stats = mscores,...)
+        if (nrow(result) == 0) {
+          message(paste0("No pathways enriched for ",p))
+          return(result)
+        } else {
+          result <- dplyr::rename(result, gene.set = "pathway")
+          result <- dplyr::arrange(result,padj, -NES, na.rm = TRUE)
+          result$leadingEdge <- vapply(result$leadingEdge, FUN = toString, FUN.VALUE = character(1))
+          result$log10P_adj <- -log10(result$padj)
+          result$interaction <- p
+          return(result)
+        }
+      })
+    
+  } else if (method == "directed"){
+    imscores <- unique(imscores[, c("gene","cell_interaction","effect_size")])
+    imscores$effect_size[is.na(imscores$effect_size)] <- 0
+    imscores <- reshape2::acast(
+      imscores,
+      gene ~ cell_interaction,
+      value.var = "effect_size"
+    )
+    
+    features <- rownames(imscores)
+    if (any(grepl("_",features))) {
+      stop("Gene names cannot contain underscores (_).
+         Please remove them and try again.")
+    }
+    if (!is.null(interactionNames)){
+      interactionNames <- interactionNames
+    } else {
+      interactionNames <- setdiff(colnames(imscores),"Gene")
+    }
+    
+    d <- lapply(
+      interactionNames, FUN = function(p) {
+        mscores <- imscores[,p]
+        names(mscores) <- features
+        mscores <- sort(mscores,decreasing = TRUE)
+        result <- fgsea::fgsea(pathways = gene.sets, stats = mscores,...)
+        if (nrow(result) == 0) {
+          message(paste0("No pathways enriched for ",p))
+          return(result)
+        } else {
+          result <- dplyr::rename(result, gene.set = "pathway")
+          result <- dplyr::arrange(result,padj, -NES, na.rm = TRUE)
+          result$leadingEdge <- vapply(result$leadingEdge, FUN = toString, FUN.VALUE = character(1))
+          result$log10P_adj <- -log10(result$padj)
+          result$interaction <- p
+          return(result)
+        }
+      })
+  }
+  
+  return(d)
+}
+
+                                     
+#' Dotplot of enriched pathways across interactions
+#'
+#' @param enr_list A list of data.frames from \code{get_enriched_pathways()}.
+#'   Must include: gene.set, interaction, leadingEdge, log10P_adj.
+#' @param top_n Integer. Keep the top_n pathways *within each interaction*
+#'   by log10P_adj; the plot shows the union. Default: 5.
+#' @return A ggplot object.
+plot_enriched_results <- function(enr_list, top_n = 5) {
+  df <- Filter(NROW, enr_list)
+  if (length(df) == 0L) stop("No enrichment results to plot.")
+  df <- dplyr::bind_rows(df)
+  req <- c("gene.set","interaction","leadingEdge","log10P_adj")
+  miss <- setdiff(req, names(df))
+  if (length(miss)) stop("Missing columns: ", paste(miss, collapse = ", "))
+  
+  n_lead <- function(x) ifelse(is.na(x) | trimws(x) == "", 0L, lengths(strsplit(x, "\\s*,\\s*")))
+  df <- df |>
+    dplyr::mutate(
+      n_leading = n_lead(.data$leadingEdge),
+      log10P_adj = ifelse(is.infinite(.data$log10P_adj),
+                          max(.data$log10P_adj[is.finite(.data$log10P_adj)], 0, na.rm = TRUE),
+                          .data$log10P_adj)
+    )
+  
+  keep_sets <- df |>
+    dplyr::group_by(.data$interaction) |>
+    dplyr::filter(!is.na(.data$log10P_adj)) |>
+    dplyr::slice_max(order_by = .data$log10P_adj, n = top_n, with_ties = TRUE) |>
+    dplyr::ungroup() |>
+    dplyr::pull(.data$gene.set) |>
+    unique()
+  df <- df[df$gene.set %in% keep_sets, , drop = FALSE]
+  
+  y_levels <- df |>
+    dplyr::group_by(.data$gene.set) |>
+    dplyr::summarise(max_log10 = max(.data$log10P_adj, na.rm = TRUE), .groups = "drop") |>
+    dplyr::arrange(dplyr::desc(.data$max_log10)) |>
+    dplyr::pull(.data$gene.set)
+  
+  df$gene.set    <- factor(df$gene.set, levels = y_levels)
+  df$interaction <- factor(df$interaction)
+  
+  p <- ggplot2::ggplot(
+    df,
+    ggplot2::aes(x = .data$interaction,
+                 y = .data$gene.set,
+                 size = .data$n_leading,
+                 fill = .data$log10P_adj)
+  ) +
+    ggplot2::geom_point(shape = 21, stroke = 0.2) +
+    ggplot2::scale_size_area(max_size = 9, name = "Leading Edge") +
+    ggplot2::scale_fill_gradient(low = "blue", high = "red", name = "-log10(FDR)") +
+    ggplot2::labs(x = "Interaction", y = "Pathway") +
+    ggplot2::theme_minimal(base_size = 12) +
+    ggplot2::theme(
+      panel.grid.major.x = ggplot2::element_blank(),
+      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
+      legend.position = "right"
+    )
+  return(p)
+}
+
+#' Average & detection by group for a gene set (NA-safe on meta_col)
+#'
+#' @param counts   Matrix or dgCMatrix: genes (rows) × cells (cols).
+#' @param metadata Data frame with per-cell metadata. Must include `meta_col`
+#'                 and either have barcodes as rownames or a column named in `barcode_col`.
+#' @param features Character vector of gene symbols to include.
+#' @param meta_col Name of the metadata column used to group cells (e.g., "celltype").
+#' @param barcode_col Optional column name in `metadata` holding cell barcodes.
+#'                    If NULL, rownames(metadata) are used as barcodes.
+#'
+#' @return data.frame with columns: {meta_col}, gene_symbol, pct.expr, avg.expr
+#'
+#' @examples
+#' \dontrun{
+#' # Example: average expression by SpaceMarkers interaction region
+#'
+#' # Suppose:
+#' #   - spCounts is a genes x barcodes count matrix
+#' #   - spHotspots_all is a metadata data.frame with a "barcode" column
+#' #     and an interaction-region column "Epi_Plasma"
+#' #   - df is a data.frame with a column "Gene" containing gene symbols of interest
+#'
+#' meta_col <- "Epi_Plasma"
+#'
+#' exp_df <- create_avg_exp_df(
+#'   counts      = spCounts,
+#'   metadata    = spHotspots_all,
+#'   features    = df$Gene,
+#'   meta_col    = meta_col,
+#'   barcode_col = "barcode"
+#' )
+#'
+#' head(exp_df)
+#' }
+create_avg_exp_df <- function(counts, metadata, features, meta_col, barcode_col = NULL) {
+  # --- Validate inputs ---
+  if (!is.matrix(counts) && !inherits(counts, "dgCMatrix")) {
+    stop("`counts` must be a matrix or dgCMatrix with genes as rows and cells as columns.")
+  }
+  if (!is.data.frame(metadata)) stop("`metadata` must be a data.frame.")
+  if (!meta_col %in% colnames(metadata)) {
+    stop(sprintf("`meta_col` ('%s') not found in metadata.", meta_col))
+  }
+  if (is.null(features) || !length(features)) stop("`features` must be a non-empty character vector.")
+  features <- unique(as.character(features))
+  
+  # --- Identify barcodes in metadata ---
+  if (is.null(barcode_col)) {
+    if (is.null(rownames(metadata))) {
+      stop("`barcode_col` is NULL and metadata has no rownames; provide `barcode_col`.")
+    }
+    md_barcodes <- rownames(metadata)
+  } else {
+    if (!barcode_col %in% names(metadata)) {
+      stop(sprintf("`barcode_col` ('%s') not found in metadata.", barcode_col))
+    }
+    md_barcodes <- as.character(metadata[[barcode_col]])
+    rownames(metadata) <- md_barcodes
+  }
+  
+  # --- Initial overlap & alignment by barcode ---
+  cell_barcodes <- colnames(counts)
+  if (is.null(cell_barcodes)) stop("`counts` must have column names (cell barcodes).")
+  common_bc <- intersect(cell_barcodes, md_barcodes)
+  if (!length(common_bc)) stop("No overlapping barcodes between counts and metadata.")
+  metadata <- metadata[common_bc, , drop = FALSE]
+  counts   <- counts[, common_bc, drop = FALSE]
+  
+  # --- NA handling ---
+  # 1) Drop metadata rows ONLY when meta_col is NA
+  keep_meta <- !is.na(metadata[[meta_col]])
+  if (any(!keep_meta)) {
+    metadata <- metadata[keep_meta, , drop = FALSE]
+    counts   <- counts[, rownames(metadata), drop = FALSE]
+  }
+  # 2) Drop counts columns that contain any NA
+  has_na_col <- colSums(is.na(counts)) > 0
+  if (any(has_na_col)) {
+    counts   <- counts[, !has_na_col, drop = FALSE]
+    metadata <- metadata[colnames(counts), , drop = FALSE]
+  }
+  # Final sanity check
+  if (ncol(counts) == 0L) stop("All cells removed after NA filtering.")
+  if (!identical(colnames(counts), rownames(metadata))) {
+    stop("Post-NA filtering alignment failed; barcodes are misaligned.")
+  }
+  
+  # --- Subset genes (features) ---
+  keep_features <- intersect(features, rownames(counts))
+  if (!length(keep_features)) stop("None of the requested `features` are present in `counts` rownames.")
+  if (length(keep_features) < length(features)) {
+    missing <- setdiff(features, keep_features)
+    warning(sprintf("Dropping %d missing feature(s): %s",
+                    length(missing), paste(head(missing, 10), collapse = ", ")),
+            call. = FALSE)
+  }
+  counts_sub <- counts[keep_features, , drop = FALSE]
+  
+  # --- Transpose to cells × genes and attach group column ---
+  if (inherits(counts_sub, "dgCMatrix")) {
+    if (requireNamespace("Matrix", quietly = TRUE)) {
+      counts_t <- as.matrix(Matrix::t(counts_sub))
+    } else {
+      counts_t <- t(as.matrix(counts_sub))
+    }
+  } else {
+    counts_t <- t(counts_sub)
+  }
+  df_expr <- data.frame(counts_t, check.names = FALSE)
+  stopifnot(identical(rownames(df_expr), rownames(metadata)))
+  df_expr[[meta_col]] <- as.character(metadata[[meta_col]])
+  
+  # --- Wide -> long (reshape2), then aggregate ---
+  long_df <- reshape2::melt(
+    df_expr,
+    id.vars       = meta_col,
+    variable.name = "gene_symbol",
+    value.name    = "expr"
+  )
+  
+  out <- long_df |>
+    dplyr::group_by(.data[[meta_col]], .data$gene_symbol) |>
+    dplyr::summarise(
+      pct.expr = sum(.data$expr > 0, na.rm = TRUE) / dplyr::n() * 100,
+      avg.expr = mean(.data$expr, na.rm = TRUE),
+      .groups  = "drop"
+    ) |>
+    as.data.frame()
+  
+  names(out)[names(out) == meta_col] <- meta_col
+  return(out)
+}                                     
+                                     
+
 #' @title calculate_gene_set_score
 #' @description Calculate the mean interaction score for a set of genes
 #' @param IMscores A matrix of interaction scores
