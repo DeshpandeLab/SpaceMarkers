@@ -132,7 +132,74 @@ find_hotspots_gmm <- function(df, threshold = 0.1,...){
     return(hotspots)
 }
 
-.classify_spots <- function(pat_hotspots, influence_hotspots, patternpair = NULL) {
+#' Classify spots into interacting / non-interacting pattern regions
+#'
+#' @description
+#' Given pattern hotspots and their corresponding influence hotspots,
+#' classify each spot into:
+#' - undirected interacting region (when \code{influence_hotspots = NULL}), or
+#' - directed regions for each pattern pair (e.g. \code{"Epi_near_Plasma"},
+#'   \code{"Plasma_near_Epi"}).
+#'
+#' The function expects identical dimensions and pattern columns for
+#' \code{pat_hotspots} and \code{influence_hotspots}. When only
+#' \code{pat_hotspots} is provided, a single undirected column is created.
+#'
+#' @param pat_hotspots Data frame of pattern hotspots with columns:
+#'   \code{x}, \code{y}, \code{barcode}, and one or more pattern columns.
+#' @param influence_hotspots Data frame of influence hotspots with the same
+#'   dimensions and pattern columns as \code{pat_hotspots}. If \code{NULL},
+#'   a symmetric (undirected) classification is returned. Default: \code{NULL}.
+#' @param patternpair Character vector of length 2 giving the two pattern
+#'   names to classify, e.g. \code{c("Epi", "Plasma")}. If \code{NULL} and
+#'   more than 2 patterns are present, an error is thrown.
+#'
+#' @return
+#' A data frame of region labels:
+#' \itemize{
+#'   \item If \code{influence_hotspots} is \code{NULL}: one column named
+#'         \code{"<pattern1>_<pattern2>"} with values
+#'         \code{"Interacting"}, \code{pattern1}, \code{pattern2}, or \code{NA}.
+#'   \item Otherwise: two columns
+#'         \code{"<pattern1>_near_<pattern2>"} and
+#'         \code{"<pattern2>_near_<pattern1>"} with values
+#'         \code{"Interacting"}, \code{pattern1} / \code{pattern2}, or \code{NA}.
+#' }
+#'
+#' @examples
+#' \dontrun{
+#' pat_hotspots <- data.frame(
+#'   x = 1:5,
+#'   y = 1:5,
+#'   barcode = paste0("Spot", 1:5),
+#'   Epi    = c(1, NA, 1, NA, NA),
+#'   Plasma = c(NA, 1, NA, 1, NA)
+#' )
+#'
+#' influence_hotspots <- data.frame(
+#'   x = 1:5,
+#'   y = 1:5,
+#'   barcode = paste0("Spot", 1:5),
+#'   Epi    = c(NA, 1, 1, NA, NA),
+#'   Plasma = c(1, NA, NA, 1, 1)
+#' )
+#'
+#' # Directed classification
+#' cls <- classify_spots(
+#'   pat_hotspots       = pat_hotspots,
+#'   influence_hotspots = influence_hotspots,
+#'   patternpair        = c("Epi","Plasma")
+#' )
+#'
+#' # Undirected (influence_hotspots = NULL)
+#' und <- classify_spots(
+#'   pat_hotspots       = pat_hotspots,
+#'   influence_hotspots = NULL,
+#'   patternpair        = c("Epi","Plasma")
+#' )
+#' }
+#' @export
+classify_spots <- function(pat_hotspots, influence_hotspots, patternpair = NULL) {
     patnames <- setdiff(colnames(pat_hotspots), c("x", "y", "barcode"))
     infnames <- setdiff(colnames(influence_hotspots), c("x", "y", "barcode"))  
     #check if pat_hotspots and influence_hotspots have the same dimensions
@@ -207,7 +274,7 @@ return(df)
 }
 #' @title Calculate interaction scores for a specific pattern pair
 #' @description This function calculates interaction scores for a specific pattern pair
-#' using the ` .classify_spots` function to determine the region of each spot.
+#' using the ` classify_spots` function to determine the region of each spot.
 #' @param data A numeric matrix with genes as rows and barcodes as columns.
 #' @param pat_hotspots A data frame with pattern hotspots, containing columns for x, y, and barcode.
 #' @param influence_hotspots A data frame with influence hotspots, containing columns for x, y, and barcode.
@@ -216,7 +283,7 @@ return(df)
 #' @param ... Additional parameters to pass to lower level functions.
 #' @return A data frame with interaction scores for the specified pattern pair.
 .calc_IM_scores <- function(data, pat_hotspots, influence_hotspots, patternpair, avoid_confounders=FALSE,...) {
-    spotClass <-  .classify_spots(pat_hotspots, influence_hotspots, patternpair = patternpair)
+    spotClass <-  classify_spots(pat_hotspots, influence_hotspots, patternpair = patternpair)
     pat1 <- patternpair[1]
     pat2 <- patternpair[2]
     region <- spotClass[,1]
