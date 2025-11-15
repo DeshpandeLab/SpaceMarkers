@@ -367,8 +367,9 @@ plot_im_scores <- function(df, interaction, cutOff = 0, nGenes = 20,
 #' @param ... Additional parameters to pass to \code{fgsea::fgsea}
 #' @return A list of data frames with enriched pathways for each IMscore column
 #' @export 
-#' @importFrom fgsea fgsea ora
+#' @importFrom fgsea fgsea
 #' @importFrom dplyr rename arrange
+#' 
 get_enriched_pathways <- function(imscores, gene.sets,method = c(
   "undirected","directed"),threshold = 0.05,interactionNames = NULL,
   ...){
@@ -518,8 +519,7 @@ plot_enriched_results <- function(enr_list, top_n = 5) {
 #' @param meta_col Name of the metadata column used to group cells (e.g., "celltype").
 #' @param barcode_col Optional column name in `metadata` holding cell barcodes.
 #'                    If NULL, rownames(metadata) are used as barcodes.
-#'
-#' @return data.frame with columns: {meta_col}, gene_symbol, pct.expr, avg.expr
+#' @return data.frame with columns: meta_col, gene_symbol, pct.expr, avg.expr
 #'
 #' @examples
 #' \dontrun{

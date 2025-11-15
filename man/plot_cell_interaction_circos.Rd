@@ -17,6 +17,7 @@ plot_cell_interaction_circos(
   link_arrowhead_type = "big.arrow",
   link_arrowhead_width = NULL,
   link_arrowhead_length = NULL,
+  link_directional = 1,
   score_color_palette_fun = NULL,
   split_segments_for_links = TRUE,
   link_buffer_fraction = 0.1,
@@ -59,10 +60,14 @@ alphabetical order is used for the (selected) cell types.}
 
 \item{link_arrowhead_length}{Numeric. Length of the arrowhead. Default uses circlize default.}
 
-\item{score_color_palette_fun}{A function (e.g., from \code{circlize::colorRamp2}) to map scores to colors.}
+\item{link_directional}{Integer 1 or 0. \code{1} = directed with arrowheads (default);
+\code{0} = undirected (no arrows).}
 
-\item{split_segments_for_links}{Logical. If TRUE, molecule segments are sized by interaction count/score
-and links connect to unique sub-segments. Default is TRUE.}
+\item{score_color_palette_fun}{A function (e.g., from \code{circlize::colorRamp2}) to map scores to colors.
+If NULL, a default continuous palette will be used internally (if implemented downstream).}
+
+\item{split_segments_for_links}{Logical. If TRUE, molecule segments are sized by interaction
+count/score and links connect to unique sub-segments. Default is TRUE.}
 
 \item{link_buffer_fraction}{Numeric (0 to <0.5). Buffer around each link within its sub-segment.
 Applies if \code{split_segments_for_links} is TRUE. Default is 0.1.}
@@ -70,26 +75,29 @@ Applies if \code{split_segments_for_links} is TRUE. Default is 0.1.}
 \item{scale_link_width_by_score}{Logical. If TRUE (and \code{split_segments_for_links} is TRUE),
 link/sub-segment width is proportional to score. Default is FALSE.}
 
-\item{score_transform_for_width}{Function to transform scores for width scaling. Default is \code{function(s) s}.}
+\item{score_transform_for_width}{Function to transform scores for width scaling.
+Default is \code{function(s) s}.}
 
-\item{use_individual_molecule_colors}{Logical. If TRUE, each unique ligand/receptor name gets a distinct color.
-Default is TRUE.}
+\item{use_individual_molecule_colors}{Logical. If TRUE, each unique ligand/receptor name
+gets a distinct color. Default is TRUE.}
 
-\item{default_ligand_color}{Character, color for all ligand segments if \code{use_individual_molecule_colors} is FALSE.
-Default is "lightgreen".}
+\item{default_ligand_color}{Character, color for all ligand segments if
+\code{use_individual_molecule_colors} is FALSE. Default is "lightgreen".}
 
-\item{default_receptor_color}{Character, color for all receptor segments if \code{use_individual_molecule_colors} is FALSE.
-Default is "lightblue".}
+\item{default_receptor_color}{Character, color for all receptor segments if
+\code{use_individual_molecule_colors} is FALSE. Default is "lightblue".}
 
-\item{individual_ligand_palette_generator}{Function (takes n, returns n colors) for unique ligands.
-Default generates a green palette.}
+\item{individual_ligand_palette_generator}{Function (takes \code{n}, returns \code{n} colors)
+for unique ligands. Default generates a green palette internally (if NULL).}
 
-\item{individual_receptor_palette_generator}{Function (takes n, returns n colors) for unique receptors.
-Default generates a blue palette.}
+\item{individual_receptor_palette_generator}{Function (takes \code{n}, returns \code{n} colors)
+for unique receptors. Default generates a blue palette internally (if NULL).}
 
-\item{molecule_segment_border_col}{Color for the border of L/R segments. Default \code{NA} (no border).}
+\item{molecule_segment_border_col}{Color for the border of L/R segments.
+Default \code{NA} (no border).}
 
-\item{inter_molecule_segment_gap}{Numeric, gap between L/R segments on the same track. Default is 0.1.}
+\item{inter_molecule_segment_gap}{Numeric, gap between L/R segments on the same track.
+Default is 0.1.}
 }
 \value{
 Invisibly returns NULL. The function is called for its side effect of creating a plot.
@@ -103,23 +111,31 @@ and different modes of representing interactions.
 \dontrun{
 if (requireNamespace("circlize", quietly = TRUE) &&
     requireNamespace("RColorBrewer", quietly = TRUE)) {
+
   lr_data <- data.frame(
     ligand = c("LGF1", "LGF1", "LGF2", "LGF3", "LGF4", "LGF1", "LGF5", "LGF6"),
     receptor = c("REC1", "REC2A", "REC1", "REC3B", "REC1", "REC4", "REC4", "REC2A"),
     source_cell_type = c("CellA", "CellA", "CellB", "CellC",
-                          "CellA", "CellD", "CellD", "CellB"),
+                         "CellA", "CellD", "CellD", "CellB"),
     target_cell_type = c("CellB", "CellC", "CellB", "CellA",
-                          "CellD", "CellA", "CellD", "CellC"),
+                         "CellD", "CellA", "CellD", "CellC"),
     score = c(4, 0.9, 0.7, 0.95, 0.6, 0.1, 0.88, 2.5),
     stringsAsFactors = FALSE
   )
-  # Basic plot with defaults
+
+  ## Basic directed plot (default)
   # plot_cell_interaction_circos(lr_data)
 
-  # Plot with selected cell types and custom order
-  # plot_cell_interaction_circos(lr_data,
-  #                           selected_cell_types = c("CellA", "CellB", "CellD"),
-  #                           cell_order = c("CellD", "CellA", "CellB"))
- }
+  ## Undirected plot (no arrows)
+  # plot_cell_interaction_circos(lr_data, link_directional = 0)
+
+  ## Plot with selected cell types and custom order
+  # plot_cell_interaction_circos(
+  #   lr_data,
+  #   selected_cell_types = c("CellA", "CellB", "CellD"),
+  #   cell_order = c("CellD", "CellA", "CellB")
+  # )
 }
+}
+
 }

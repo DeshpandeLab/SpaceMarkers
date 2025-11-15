@@ -42,7 +42,11 @@ Imports:
     readbitmap,
     rlang,
     effsize,
-    viridis
+    viridis,
+    ggalluvial,
+    fgsea,
+    pheatmap,
+    future
 Suggests: 
     data.table,
     devtools,
@@ -53,7 +57,8 @@ Suggests:
     BiocStyle,
     testthat (>= 3.0.0),
     CoGAPS,
-    ComplexHeatmap
+    ComplexHeatmap,
+    future.apply
 Enhances: 
     BiocParallel
 VignetteBuilder: 

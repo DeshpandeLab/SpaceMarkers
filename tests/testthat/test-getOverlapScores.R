@@ -9,33 +9,33 @@ test_that("getOverlapScores works correctly", {
     )
     
     # Test default method (Szymkiewicz–Simpson)
-    result <- calculate_overlap_undirected(hotspots)
+    result <- get_overlap_scores(hotspots)
     expect_equal(nrow(result), 1)
     expect_equal(as.character(result$pattern1), "pattern1")
     expect_equal(as.character(result$pattern2), "pattern2")
     expect_equal(result$overlapScore, 0.6666667,
                  tolerance = 1e-7) 
     # Test Jaccard method
-    result_jaccard <- calculate_overlap_undirected(hotspots, method = "Jaccard")
+    result_jaccard <- get_overlap_scores(hotspots, method = "Jaccard")
     expect_equal(nrow(result_jaccard), 1)
     expect_equal(result_jaccard$overlapScore, 0.4)
     # Test Sørensen–Dice method
-    result_sorensen <- calculate_overlap_undirected(hotspots, method = "Sorensen-Dice")
+    result_sorensen <- get_overlap_scores(hotspots, method = "Sorensen-Dice")
     expect_equal(nrow(result_sorensen), 1)
     expect_equal(result_sorensen$overlapScore, 0.5714286,
                  tolerance = 1e-7)
     # Test Ochiai method
-    result_ochiai <- calculate_overlap_undirected(hotspots, method = "Ochiai")
+    result_ochiai <- get_overlap_scores(hotspots, method = "Ochiai")
     expect_equal(nrow(result_ochiai), 1)
     expect_equal(result_ochiai$overlapScore, 0.5773503,
                  tolerance = 1e-7)
     # Test absolute method
-    result_absolute <- calculate_overlap_undirected(hotspots, method = "absolute")
+    result_absolute <- get_overlap_scores(hotspots, method = "absolute")
     expect_equal(nrow(result_absolute), 1)
     expect_equal(result_absolute$overlapScore, 2)
 
     # Test with patternList
-    result_patternList <- calculate_overlap_undirected(hotspots, patternList = c("pattern1", "pattern2"))
+    result_patternList <- get_overlap_scores(hotspots, patternList = c("pattern1", "pattern2"))
     expect_equal(nrow(result_patternList), 1)
     expect_equal(as.character(result_patternList$pattern1), "pattern1")
     expect_equal(as.character(result_patternList$pattern2), "pattern2")
@@ -43,14 +43,14 @@ test_that("getOverlapScores works correctly", {
                  tolerance = 1e-7)
 
     # Test invalid pattern names
-    expect_error(calculate_overlap_undirected(hotspots, patternList = c("invalidPattern")))
+    expect_error(get_overlap_scores(hotspots, patternList = c("invalidPattern")))
 
     # Test with multiple patterns
     hotspots$pattern3 <- c(NA, "pattern3", "pattern3", NA, NA)
-    result_multiple <- calculate_overlap_undirected(hotspots, patternList = c("pattern1", "pattern2", "pattern3"))
+    result_multiple <- get_overlap_scores(hotspots, patternList = c("pattern1", "pattern2", "pattern3"))
     expect_true(nrow(result_multiple) > 1)
 
     # Test with multiple methods
-    expect_message(calculate_overlap_undirected(hotspots, method = c("Jaccard", "absolute")),"Only one method")
+    expect_message(get_overlap_scores(hotspots, method = c("Jaccard", "absolute")),"Only one method")
 
 })

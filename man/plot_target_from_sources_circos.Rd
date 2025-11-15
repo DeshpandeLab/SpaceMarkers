@@ -18,6 +18,7 @@ plot_target_from_sources_circos(
   link_arrowhead_type = "triangle",
   link_arrowhead_width = 0.1,
   link_arrowhead_length = 0.1,
+  link_directional = 1,
   score_color_palette_fun = NULL,
   split_segments_for_links = TRUE,
   link_buffer_fraction = 0.1,
@@ -41,7 +42,7 @@ plot_target_from_sources_circos(
 \item{target_cell_name}{Character, name of the single target cell type.}
 
 \item{cell_order}{Optional character vector for specific cell type ordering.
-If NULL, target cell is first, then sources alphabetically.}
+If NULL, the target cell is first, then sources alphabetically.}
 
 \item{gap_degree_after_sector}{Numeric, gap in degrees after each sector. Default is 5.}
 
@@ -55,16 +56,21 @@ If NULL, target cell is first, then sources alphabetically.}
 
 \item{link_connection_rou}{Numeric (0-1) or vector of two for \code{rou} in \code{circos.link}. Default is 0.7.}
 
-\item{link_arrowhead_type}{Character. Type of arrowhead (e.g., "triangle", "big.arrow"). Default is "big.arrow".}
+\item{link_arrowhead_type}{Character. Type of arrowhead (e.g., "triangle",
+"big.arrow"). Default is \code{"triangle"} for this source-to-target view.}
 
 \item{link_arrowhead_width}{Numeric. Width of the arrowhead. Default uses circlize default.}
 
 \item{link_arrowhead_length}{Numeric. Length of the arrowhead. Default uses circlize default.}
 
-\item{score_color_palette_fun}{A function (e.g., from \code{circlize::colorRamp2}) to map scores to colors.}
+\item{link_directional}{Integer 1 or 0. \code{1} = directed with arrowheads (default);
+\code{0} = undirected (no arrows).}
 
-\item{split_segments_for_links}{Logical. If TRUE, molecule segments are sized by interaction count/score
-and links connect to unique sub-segments. Default is TRUE.}
+\item{score_color_palette_fun}{A function (e.g., from \code{circlize::colorRamp2}) to map scores to colors.
+If NULL, a default continuous palette will be used internally (if implemented downstream).}
+
+\item{split_segments_for_links}{Logical. If TRUE, molecule segments are sized by interaction
+count/score and links connect to unique sub-segments. Default is TRUE.}
 
 \item{link_buffer_fraction}{Numeric (0 to <0.5). Buffer around each link within its sub-segment.
 Applies if \code{split_segments_for_links} is TRUE. Default is 0.1.}
@@ -72,26 +78,29 @@ Applies if \code{split_segments_for_links} is TRUE. Default is 0.1.}
 \item{scale_link_width_by_score}{Logical. If TRUE (and \code{split_segments_for_links} is TRUE),
 link/sub-segment width is proportional to score. Default is FALSE.}
 
-\item{score_transform_for_width}{Function to transform scores for width scaling. Default is \code{function(s) s}.}
+\item{score_transform_for_width}{Function to transform scores for width scaling.
+Default is \code{function(s) s}.}
 
-\item{use_individual_molecule_colors}{Logical. If TRUE, each unique ligand/receptor name gets a distinct color.
-Default is TRUE.}
+\item{use_individual_molecule_colors}{Logical. If TRUE, each unique ligand/receptor name
+gets a distinct color. Default is TRUE.}
 
-\item{default_ligand_color}{Character, color for all ligand segments if \code{use_individual_molecule_colors} is FALSE.
-Default is "lightgreen".}
+\item{default_ligand_color}{Character, color for all ligand segments if
+\code{use_individual_molecule_colors} is FALSE. Default is "lightgreen".}
 
-\item{default_receptor_color}{Character, color for all receptor segments if \code{use_individual_molecule_colors} is FALSE.
-Default is "lightblue".}
+\item{default_receptor_color}{Character, color for all receptor segments if
+\code{use_individual_molecule_colors} is FALSE. Default is "lightblue".}
 
-\item{individual_ligand_palette_generator}{Function (takes n, returns n colors) for unique ligands.
-Default generates a green palette.}
+\item{individual_ligand_palette_generator}{Function (takes \code{n}, returns \code{n} colors)
+for unique ligands. Default generates a green palette internally (if NULL).}
 
-\item{individual_receptor_palette_generator}{Function (takes n, returns n colors) for unique receptors.
-Default generates a blue palette.}
+\item{individual_receptor_palette_generator}{Function (takes \code{n}, returns \code{n} colors)
+for unique receptors. Default generates a blue palette internally (if NULL).}
 
-\item{molecule_segment_border_col}{Color for the border of L/R segments. Default \code{NA} (no border).}
+\item{molecule_segment_border_col}{Color for the border of L/R segments.
+Default \code{NA} (no border).}
 
-\item{inter_molecule_segment_gap}{Numeric, gap between L/R segments on the same track. Default is 0.1.}
+\item{inter_molecule_segment_gap}{Numeric, gap between L/R segments on the same track.
+Default is 0.1.}
 }
 \value{
 Invisibly returns NULL. The function is called for its side effect of creating a plot.
@@ -105,7 +114,6 @@ relevant ligands from the source cells and receptors on the target cell are show
 \dontrun{
 if (requireNamespace("circlize", quietly = TRUE) &&
     requireNamespace("RColorBrewer", quietly = TRUE)) {
-  # Use the same test data from previous examples
   test_lr_data <- data.frame(
     ligand = c("LGF1","LGF1","LGF2","LGF3","LGF4","LGF1","LGF5","LGF6","LGF5"),
     receptor = c("REC1","REC2","REC1","REC1","REC5","REC4","REC4","REC6","REC2"),
@@ -114,16 +122,21 @@ if (requireNamespace("circlize", quietly = TRUE) &&
     score = c(4.0,2.5,3.0,2.2,1.5,1.0,3.5,0.5,2.8),
     stringsAsFactors = FALSE
   )
-  # Plot interactions from CellB and CellD converging on CellA
-  # plot_target_from_sources_circos(test_lr_data,
-  #                             source_cell_names = c("CellB", "CellD"),
-  #                             target_cell_name = "CellA")
 
-  # Another example: Interactions from CellA and CellC targeting CellD
-  # plot_target_from_sources_circos(test_lr_data,
-  #                             source_cell_names = c("CellA", "CellC"),
-  #                             target_cell_name = "CellD",
-  #                             scale_link_width_by_score = TRUE)
- }
+  ## Plot interactions from CellB and CellD converging on CellA
+  # plot_target_from_sources_circos(
+  #   lr_interactions_df = test_lr_data,
+  #   source_cell_names   = c("CellB", "CellD"),
+  #   target_cell_name    = "CellA"
+  # )
+
+  ## Interactions from CellA and CellC targeting CellD with score-scaled widths
+  # plot_target_from_sources_circos(
+  #   lr_interactions_df        = test_lr_data,
+  #   source_cell_names         = c("CellA", "CellC"),
+  #   target_cell_name          = "CellD",
+  #   scale_link_width_by_score = TRUE
+  # )
+}
 }
 }

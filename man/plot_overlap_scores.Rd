@@ -8,7 +8,9 @@ plot_overlap_scores(
   df,
   title = "Spatial Overlap Scores",
   out = NULL,
-  fontsize = 15
+  fontsize = 15,
+  tilefontsize = 6,
+  influence = FALSE
 )
 }
 \arguments{
@@ -19,6 +21,11 @@ plot_overlap_scores(
 \item{out}{The output path for the plot}
 
 \item{fontsize}{The font size of the plot}
+
+\item{tilefontsize}{The font size of the tile labels}
+
+\item{influence}{If TRUE, hides self "pattern vs near_pattern" cells and
+strips the "near_" prefix from y-axis labels for readability.}
 }
 \value{
 A ggplot object
@@ -27,9 +34,8 @@ A ggplot object
 Plot the overlap scores between patterns in hotspots
 }
 \examples{
-df <- data.frame(pattern1 = c("pattern1","pattern1","pattern2","pattern2"), 
-                 pattern2 = c("pattern1","pattern2","pattern1","pattern2"),
+df <- data.frame(pattern1 = c("pattern1","pattern1","pattern2","pattern2"),
+                 pattern2 = c("near_pattern1","near_pattern2","near_pattern1","near_pattern2"),
                  overlapScore = c(0.5,0.7,0.3,0.9))
-plot_overlap_scores(df)
-plot_overlap_scores(df, "Overlap Scores", "overlapScores.png", 15)
+plot_overlap_scores(df, influence = TRUE)
 }

@@ -31,5 +31,5 @@ A data frame with interaction scores for the specified pattern pair.
 }
 \description{
 This function calculates interaction scores for a specific pattern pair
-using the \code{ .classify_spots} function to determine the region of each spot.
+using the \code{ classify_spots} function to determine the region of each spot.
 }

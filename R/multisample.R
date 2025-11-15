@@ -1,34 +1,16 @@
-#' Align counts and coordinates by shared barcodes (same set, same order)
-#'
+#' @title Align counts and coordinates
 #' @description
-#' Ensures that a sparse counts matrix and a coordinates data.frame
-#' contain the **same barcodes in the same order**. Rows of `coords_df`
-#' are re-ordered to match the column order of `counts`. Returns both
-#' aligned objects.
+#' Align a sparse counts matrix and a coordinates data frame so that they use
+#' the same set of barcodes in the same order. The coordinates are reordered
+#' to match the column order of the counts matrix.
 #'
-#' @param counts A sparse gene-by-spot matrix (typically a \code{dgCMatrix})
-#'   whose \code{colnames} are spot barcodes.
-#' @param coords_df A data.frame of spot coordinates with a \code{barcode}
-#'   column containing the spot barcodes.
+#' @param counts A sparse genes x spots matrix with column names as barcodes.
+#' @param coords_df A data.frame with a column called barcode.
 #'
-#' @return A list with:
-#' \itemize{
-#'   \item \code{counts}: the input \code{counts} restricted to shared barcodes and
-#'   with columns ordered to match \code{coords_df} after alignment
-#'   \item \code{coords}: the input \code{coords_df} restricted and re-ordered so
-#'   that \code{rownames(coords)} equals \code{colnames(counts)}
-#' }
-#'
-#' @details
-#' If there are no overlapping barcodes between the two inputs, the function
-#' throws an error.
-#'
-#' @examples
-#' \dontrun{
-#' aligned <- align_counts_coords(counts, coords_df)
-#' counts_al <- aligned$counts
-#' coords_al <- aligned$coords
-#' stopifnot(identical(colnames(counts_al), rownames(coords_al)))
+#' @return A list with two elements:
+#' \describe{
+#'   \item{counts}{Filtered counts matrix with columns restricted to common barcodes.}
+#'   \item{coords}{Filtered coordinate data.frame with rows in the same order as the counts columns.}
 #' }
 #'
 #' @keywords internal
@@ -42,62 +24,33 @@ align_counts_coords <- function(counts, coords_df) {
 }
 
 
-#' Process multiple Visium/VisiumHD samples into filtered counts/coords RDS files
-#'
+#' @title Process multiple Visium or VisiumHD samples
 #' @description
-#' Loads counts and coordinates for each sample, applies a per-sample sparse
-#' gene filter (keep genes detected in at least `good_gene_threshold` spots),
-#' aligns barcodes between counts and coords via \code{align_counts_coords()},
-#' saves per-sample `.rds` files, and writes a combined
-#' `all_samples_counts_coords.rds`.
+#' Load counts and spatial coordinates for multiple samples, filter genes by
+#' a per-sample nonzero threshold, align barcodes between counts and coordinates,
+#' and save per-sample and combined RDS files.
 #'
-#' @param data_dir Character. Root directory containing the sample folders.
-#' @param samples Character vector. Sample folder names under `data_dir`.
-#' @param counts_file Character. H5 filename in each sample's bin directory.
-#'   Default: \code{"filtered_feature_bc_matrix.h5"}.
-#' @param good_gene_threshold Integer (>=1). Keep genes detected (>0) in at least
-#'   this many spots (per sample). Default: \code{10}.
-#' @param bin_subdir Character. Relative path under each sample directory where
-#'   the 10X files live (e.g., VisiumHD bins). Default:
-#'   \code{"binned_outputs/square_016um"}.
-#' @param out_dir Character or \code{NULL}. Directory to save outputs. If \code{NULL},
-#'   uses \code{file.path(data_dir, "outputs")}. Created if it doesn't exist.
-#' @param coords_resolution Character. Resolution hint passed to
-#'   \code{load10XCoords()} (e.g., \code{"fullres"}). Default: \code{"fullres"}.
-#' @param verbose Logical. If \code{TRUE}, prints progress. Default: \code{TRUE}.
+#' @param data_dir Character. Root directory containing sample folders.
+#' @param samples Character vector of sample folder names under data_dir.
+#' @param counts_file Character. H5 file name in each sample bin directory.
+#' @param good_gene_threshold Integer >= 1. Keep genes detected in at least
+#' this many spots per sample.
+#' @param bin_subdir Character. Relative path under each sample directory
+#' where the 10X files live.
+#' @param out_dir Character or NULL. Output directory for RDS files. If NULL,
+#' file.path(data_dir, "outputs") is used.
+#' @param coords_resolution Character. Resolution argument passed to load10XCoords.
+#' @param verbose Logical. If TRUE, print progress messages.
 #'
 #' @details
-#' Assumes \code{load10XExpr()} returns a \code{dgCMatrix} (log1p-transformed per your
-#' pipeline) and \code{load10XCoords()} returns a data.frame with a \code{barcode}
-#' column. Nonzero-per-gene is computed from the \code{@i} slot of the CSC matrix.
+#' This function assumes load10XExpr returns a dgCMatrix with log-transformed
+#' counts, and load10XCoords returns a data.frame with a barcode column.
 #'
-#' @return A named list with:
-#' \itemize{
-#'   \item \code{counts}: list of filtered \code{dgCMatrix} objects per sample
-#'   \item \code{coords}: list of aligned coordinate data.frames per sample
-#'   \item \code{paths}: list with per-sample \code{counts} and \code{coords} RDS paths and \code{all} combined path
-#' }
-#'
-#' @examples
-#' \dontrun{
-#' samples <- c(
-#'   "visiumHD_crc_p1",
-#'   "visiumHD_crc_p2",
-#'   "visiumHD_crc_p5",
-#'   "visiumHD_normal_colon_p3",
-#'   "visiumHD_normal_colon_p5"
-#' )
-#' res <- process_visium_samples(
-#'   data_dir            = "spacemarkers/data",
-#'   samples             = samples,
-#'   counts_file         = "filtered_feature_bc_matrix.h5",
-#'   good_gene_threshold = 10,
-#'   bin_subdir          = "binned_outputs/square_016um",
-#'   out_dir             = NULL,
-#'   coords_resolution   = "fullres",
-#'   verbose             = TRUE
-#' )
-#' res$paths$all
+#' @return A list with three elements:
+#' \describe{
+#'   \item{counts}{Named list of filtered dgCMatrix objects per sample.}
+#'   \item{coords}{Named list of aligned coordinate data.frames per sample.}
+#'   \item{paths}{List of per-sample RDS paths and a combined RDS path.}
 #' }
 #'
 #' @export
@@ -215,50 +168,22 @@ process_visium_samples <- function(
 }
 
 
-#' Build a per-spot spatial features table (coords + features) for one sample
-#'
+#' @title Build a per-spot spatial feature table
 #' @description
-#' Robust helper that accepts coordinates as a data.frame (or matrix) and features
-#' as a data.frame, base matrix, or \code{Matrix} sparse matrix. It:
-#' \itemize{
-#'   \item ensures a \code{barcode} column exists in \code{spCoords} (deduplicated),
-#'   \item extracts/standardizes the feature matrix from \code{spFeatures},
-#'   \item intersects barcodes across counts/coords/features,
-#'   \item aligns by barcode (no merges) and returns a data.frame:
-#'         \code{[barcode, ...coord columns..., <feature columns>]}.
-#' }
+#' Combine spatial coordinates and spatial features into a single data.frame
+#' for one sample. Barcodes are intersected across counts, coordinates, and
+#' features and aligned without merges.
 #'
-#' @param spCounts A genes x barcodes matrix (dense or \code{Matrix}) used only
-#'   to define the barcode set via \code{colnames(spCounts)}.
-#' @param spCoords A coordinates table (data.frame or matrix). Must contain
-#'   numeric columns \code{x} and \code{y}. If it lacks a \code{barcode} column,
-#'   rownames are used to construct one.
-#' @param spFeatures A table of per-barcode features. Supported inputs:
-#'   \itemize{
-#'     \item matrix/\code{Matrix}: rownames are barcodes; columns are features
-#'     \item data.frame with \code{barcode}: that column is used as row ID and
-#'           removed from the feature matrix
-#'     \item data.frame without \code{barcode}: rownames are treated as barcodes
-#'   }
+#' @param spCounts A genes x barcodes matrix (dense or sparse). Column names
+#' must be barcodes.
+#' @param spCoords A coordinates table (data.frame or matrix) with numeric
+#' columns x and y. If barcode is missing, row names are used.
+#' @param spFeatures A per-barcode feature table. Can be a matrix or sparse
+#' Matrix with row names as barcodes, or a data.frame with or without a
+#' barcode column.
 #'
-#' @return A data.frame with barcodes as rownames containing:
-#'   \code{barcode}, \code{x}, \code{y}, and all feature columns.
-#'
-#' @examples
-#' \dontrun{
-#' # Single sample
-#' pat <- make_sp_patterns(spCounts, spCoords, spFeatures)
-#' head(pat)
-#'
-#' # Multiple samples with parallel lists
-#' common <- Reduce(intersect, list(names(spCountsList), names(spCoordsList), names(spFeaturesList)))
-#' spPatternsList <- Map(
-#'   make_sp_patterns,
-#'   spCountsList [common],
-#'   spCoordsList [common],
-#'   spFeaturesList[common]
-#' )
-#' }
+#' @return A data.frame with barcodes as row names and columns:
+#' barcode, x, y, and feature columns.
 #'
 #' @export
 make_sp_patterns <- function(spCounts, spCoords, spFeatures) {
@@ -304,8 +229,24 @@ make_sp_patterns <- function(spCounts, spCoords, spFeatures) {
   out
 }
 
-#' @title get_multi_sample_overlaps
-#' @description Compute overlap scores per sample and assemble long + wide summaries
+#' @title Compute multi-sample overlap scores
+#' @description
+#' Compute pairwise overlap scores per sample and assemble long and wide
+#' summaries across samples.
+#'
+#' @param pat_hotspots_list Named list of hotspot tables for each sample.
+#' @param in_hotspots_list Optional named list of influence hotspot tables
+#' for each sample. If NULL, only pat_hotspots_list is used.
+#' @param patternList Optional character vector of pattern names to include.
+#' @param method Character. Overlap metric to use. One of
+#' "Szymkiewicz-Simpson", "Jaccard", "Sorensen-Dice", "Ochiai", or "absolute".
+#'
+#' @return A list with two data.frames:
+#' \describe{
+#'   \item{long}{Long-format table with one row per dataset and interaction.}
+#'   \item{wide}{Wide-format table with interactions as rows and datasets as columns.}
+#' }
+#'
 #' @export
 get_multi_sample_overlaps <- function(pat_hotspots_list,
                                      in_hotspots_list = NULL,
@@ -395,25 +336,30 @@ get_multi_sample_overlaps <- function(pat_hotspots_list,
 }
 
 
-#' @title plot_sample_overlaps
-#' @description pheatmap of multi-sample overlap scores (rows = interactions, cols = samples)
-#'              after removing "similar" interactions by default (e.g., keep Epi_Epi over Epi_Epi_in).
-#' @param wide_df data.frame with first column 'interaction' and remaining columns = datasets
-#' @param scale one of "none","row","column" (passed to pheatmap)
-#' @param cluster_rows,cluster_cols logical; cluster rows/cols
-#' @param color optional color palette; if NULL, a sensible palette is chosen
-#' @param na_color tile color for NAs
-#' @param display_numbers logical; print values inside tiles
-#' @param number_format sprintf format for numbers (e.g. "%.2f")
-#' @param fontsize base font size; fontsize_row, fontsize_col for axes
-#' @param main title
-#' @param filename optional output path (pheatmap saves if provided)
-#' @param ... passed through to pheatmap::pheatmap
-#' @return Filtered wide data.frame (what was plotted)
-#' @importFrom pheatmap pheatmap
-#' @export
-#' @title plotSampleOverlaps
-#' @description pheatmap of multi-sample overlap scores (rows = interactions, cols = samples)
+#' @title Plot overlap scores across samples
+#' @description
+#' Plot a heatmap of overlap scores where rows are interactions and columns
+#' are samples, using pheatmap.
+#'
+#' @param wide_df A data.frame with column interaction and additional columns
+#' for each dataset containing numeric overlap scores.
+#' @param scale Character. One of "none", "row", or "column". Passed to pheatmap.
+#' @param cluster_rows Logical. If TRUE, cluster rows.
+#' @param cluster_cols Logical. If TRUE, cluster columns.
+#' @param color Optional color palette. If NULL, a default palette is used.
+#' @param na_color Color for NA tiles.
+#' @param display_numbers Logical. If TRUE, print values inside tiles.
+#' @param number_format Character. sprintf format for numbers, for example "%.2f".
+#' @param fontsize Numeric. Base font size.
+#' @param fontsize_row Numeric. Font size for row labels.
+#' @param fontsize_col Numeric. Font size for column labels.
+#' @param main Character. Plot title.
+#' @param filename Character. Output file name for pheatmap. If NULL, the plot
+#' is returned but not written.
+#' @param ... Additional arguments passed to pheatmap::pheatmap.
+#'
+#' @return The filtered wide_df that was used for plotting.
+#'
 #' @importFrom pheatmap pheatmap
 #' @export
 plot_sample_overlaps <- function(wide_df,
@@ -484,51 +430,23 @@ plot_sample_overlaps <- function(wide_df,
   wide_df
 }
 
-
-#' Compare scores between a reference condition and a comparator across features
-#'
+#' @title Compare scores between a reference and a condition
 #' @description
-#' For each \code{feature_col} (e.g., ligand–receptor interaction), split the
-#' data and perform an unpaired two-sided Welch t-test on \code{value_col}
-#' between the reference condition (\code{ref_condition}) and the comparator
-#' condition (taken as the first non-reference level observed in \code{group_col}).
-#' Returns per-row annotations including raw \code{p_value}, BH-adjusted \code{fdr},
-#' median-based \code{log2fc}, and the direction (\code{fc_direction}).
+#' For each feature, compare values between a reference condition and a
+#' second condition using a Wilcoxon rank-sum test. Add p values and
+#' adjusted p values to the input data.
 #'
-#' @param df A data.frame containing at least \code{group_col}, \code{feature_col},
-#'   and \code{value_col}.
-#' @param ref_condition Character scalar. Name of the reference condition
-#'   (baseline) in \code{group_col}. Default \code{"Normal"}.
-#' @param group_col Character scalar. Column with two conditions to compare.
-#'   Default \code{"group"}.
-#' @param feature_col Character scalar. Column that defines the feature split
-#'   (e.g., interaction ID). Default \code{"interaction"}.
-#' @param value_col Character scalar. Column with numeric scores to compare
-#'   (e.g., overlap score). Default \code{"overlapScore"}.
+#' @param df Data.frame containing at least the group, feature, and value columns.
+#' @param ref_condition Character. Name of the reference condition.
+#' @param group_col Character. Column name for the group variable.
+#' @param feature_col Character. Column name for the feature identifier.
+#' @param value_col Character. Column name for the numeric values to compare.
 #'
-#' @details
-#' The comparator condition is chosen as the first non-reference level present
-#' in \code{df[[group_col]]}. If more than two levels are present, only the
-#' reference and the first other level are used. Fold-change is computed from
-#' medians as \code{log2(median(comparator) / (median(reference) + 1e-5))}.
-#'
-#' @return A data.frame matching the input rows (stacked across features) with
-#'   added columns: \code{p_value}, \code{fdr}, \code{log2fc}, \code{fc_direction}.
-#'
-#' @examples
-#' \dontrun{
-#' res <- compare_scores(
-#'   df,
-#'   ref_condition = "Normal",
-#'   group_col     = "group",
-#'   feature_col   = "interaction",
-#'   value_col     = "overlapScore"
-#' )
-#' }
+#' @return A data.frame with the same rows as df, grouped by feature, and
+#' additional columns p_value, fdr, ref_median, and condition_median.
 #'
 #' @importFrom dplyr filter pull
 #' @importFrom rlang sym
-#' @importFrom magrittr %>%
 #' @importFrom stats wilcox.test p.adjust
 #' @export
 compare_scores <- function(
@@ -572,34 +490,32 @@ compare_scores <- function(
 }
 
 
-#' Bar plot of median overlap scores for condition and reference per feature
-#'
+#' @title Bar plot of median overlap scores
 #' @description
-#' For each feature, computes the median \code{overlap_col} for the
-#' \emph{condition} (\code{condition_group}) and for the \emph{reference}
-#' (all other levels of \code{group_col}), then plots both medians as
-#' side-by-side horizontal bars. Features are ordered by the signed
-#' difference \code{median(condition) - median(reference)} (ascending).
+#' Plot horizontal bars for median overlap scores in a reference group
+#' and a condition group for each feature. Features are ordered by the
+#' difference between condition and reference medians.
 #'
-#' @param df Data.frame with columns \code{feature_col}, \code{overlap_col}, and \code{group_col}.
-#' @param condition_group Character. Name of the condition group (the "condition" bar).
-#' @param feature_col Character. Feature column (y-axis). Default \code{"interaction"}.
-#' @param overlap_col Character. Column with overlap scores. Default \code{"overlapScore"}.
-#' @param group_col Character. Group column. Default \code{"group"}.
-#' @param n_table Integer or \code{NULL}. If provided, keeps only the bottom
-#'   \code{n_table} and top \code{n_table} features by signed difference
-#'   (condition − reference). Default \code{NULL}.
-#' @param reference_label Character. How to display the reference group in the legend.
-#'   Default \code{"reference"}.
-#' @param title Character or \code{NULL}. Plot title; default \code{NULL} (empty).
-#' @param width,height Numeric. Size for saved output in inches. Defaults \code{7}, \code{10}.
-#' @param save_path Character or \code{NULL}. If provided, saves a TIFF to this path.
-#' @param dpi Integer. Resolution for saved figure. Default \code{300}.
-#' @param transparent Logical. Saved background transparency. Default \code{FALSE}.
-#' @param ref_color,cond_color Character. Hex colors for reference and condition bars.
+#' @param df Data.frame with feature, overlap, and group columns.
+#' @param condition_group Character. Name of the condition group.
+#' @param feature_col Character. Column name for the feature identifier.
+#' @param overlap_col Character. Column name for the overlap score.
+#' @param group_col Character. Column name for the group variable.
+#' @param n_table Integer or NULL. If not NULL, keep only the bottom and top
+#' n_table features by difference in medians.
+#' @param reference_label Character. Legend label for the reference bar.
+#' @param title Character or NULL. Plot title.
+#' @param width Numeric. Width in inches for saved output.
+#' @param height Numeric. Height in inches for saved output.
+#' @param save_path Character or NULL. If not NULL, path to save a TIFF file.
+#' @param dpi Integer. Resolution in dots per inch for saved output.
+#' @param transparent Logical. If TRUE, use a transparent background.
+#' @param ref_color Character. Color for the reference bars.
+#' @param cond_color Character. Color for the condition bars.
 #'
-#' @return A \code{ggplot} object.
+#' @return A ggplot object.
 #'
+#' @export
 plot_overlap_scores_bar <- function(
     df,
     condition_group,
@@ -704,54 +620,30 @@ plot_overlap_scores_bar <- function(
 
 
 
-#' Run SpaceMarkers IMscores (HD) across samples with global feature alignment
-#'
+#' @title Run directed IMscores for multiple samples
 #' @description
-#' Computes directed IMscores for each sample using
-#' \code{SpaceMarkers::calculate_gene_scores_directed()} after:
-#' \enumerate{
-#'   \item aligning sample names across the four input lists, and
-#'   \item enforcing a \strong{global feature intersection} across all samples
-#'         (from \code{spPatternsList} columns excluding \code{barcode}, \code{x}, \code{y}).
-#' }
-#' Runtime is measured per sample (via \code{base::system.time}) and returned as
-#' \code{elapsed_sec}. Optionally writes per-sample IMscores and the elapsed
-#' vector to disk.
+#' Run SpaceMarkers::calculate_gene_scores_directed for each sample after
+#' aligning sample names and enforcing a global feature intersection across
+#' spPatternsList. Optionally save IMscores and timing information.
 #'
-#' @param spCountsList Named list of genes x barcodes matrices (typically \code{dgCMatrix}).
-#' @param spPatternsList Named list of data.frames with columns \code{barcode}, \code{x}, \code{y},
-#'   and \emph{feature columns} (must yield \eqn{\ge} 2 shared features globally).
-#' @param spHotspotsList Named list of pattern hotspot objects (from \code{findAllHotspots.value()}).
+#' @param spCountsList Named list of count matrices (genes x barcodes).
+#' @param spPatternsList Named list of pattern tables with barcode, x, y,
+#' and feature columns.
+#' @param spHotspotsList Named list of pattern hotspot objects.
 #' @param spHotspotsInfluenceList Named list of influence hotspot objects.
-#' @param sampleNames \code{NULL} or character vector of sample names to run. If \code{NULL},
-#'   uses the intersection of names across all four lists; otherwise intersects with those names.
-#' @param outDir \code{NULL} or character path. If provided, saves per-sample IMscores as RDS files
-#'   and also saves an RDS with the named numeric vector \code{elapsed_sec}. The directory is
-#'   created if it does not exist. Default \code{NULL}.
-#' @param imscoresSuffix Filename suffix for IMscores RDS when saving. Default \code{"_IMscores_directed.rds"}.
-#' @param elapsedFilename Filename (no sample prefix) for the elapsed vector RDS. Default
-#'   \code{"IMscoresHD_elapsed_seconds.rds"}.
-#' @param verbose Logical; print progress. Default \code{TRUE}.
+#' @param sampleNames Optional character vector of sample names to run. If NULL,
+#' use the intersection of names across all lists.
+#' @param outDir Optional output directory for RDS files. If NULL, nothing
+#' is written to disk.
+#' @param imscoresSuffix Character. Suffix for IMscores RDS file names.
+#' @param elapsedFilename Character. File name for the elapsed seconds RDS.
+#' @param verbose Logical. If TRUE, print progress and timing information.
 #'
 #' @return A list with:
-#' \itemize{
-#'   \item \code{imscores}: named list of per-sample IMscores tables
-#'   \item \code{elapsed_sec}: named numeric vector of elapsed seconds per sample
-#'   \item \code{paths}: (only when \code{outDir} provided) a list with
-#'         \code{imscores} (per-sample paths) and \code{elapsed_path}
-#' }
-#'
-#' @examples
-#' \dontrun{
-#' res <- run_imscores_one(
-#'   spCountsList            = spCounts_list,
-#'   spPatternsList          = spPatterns_list,
-#'   spHotspotsList          = spHotspots_list,
-#'   spHotspotsInfluenceList = spHotspots_influence_list,
-#'   sampleNames             = c("visiumHD_crc_p1","visiumHD_crc_p2"),
-#'   outDir                  = file.path(data_dir, "outputs_spacemarkers")
-#' )
-#' res$elapsed_sec
+#' \describe{
+#'   \item{imscores}{Named list of IMscores objects per sample.}
+#'   \item{elapsed_sec}{Named numeric vector of elapsed seconds per sample.}
+#'   \item{paths}{Optional list of file paths if outDir is provided.}
 #' }
 #'
 #' @importFrom utils combn
@@ -888,25 +780,28 @@ run_imscores_one <- function(
   )
 }
 
-#' Parallel LR-scoring over samples
+#' @title Parallel LR scoring over samples
+#' @description
+#' Compute ligand, receptor, and ligand-receptor scores for each sample in
+#' parallel, given IMscores, counts, patterns, and ligand/receptor gene sets.
 #'
-#' @param IMscores_directed_list list of per-sample matrices for ligand scoring
-#' @param spCounts_list          list of per-sample count matrices
-#' @param spPatterns_list        list of per-sample pattern matrices
-#' @param ligands_list           named list of ligand gene sets
-#' @param receptors_list         named list of receptor gene sets
-#' @param lrpairs                data.frame of ligand-receptor pairs
-#' @param workers                number of parallel workers (default 5)
-#' @param weighted               logical, use weighted scoring (default TRUE)
-#' @param ligand_method          aggregation method for ligands (default "arithmetic_mean")
-#' @param receptor_method        aggregation method for receptors (default "arithmetic_mean")
-#' @param lr_method              method to combine L/R (default "geometric_mean")
-#' @return A list with three named lists (one element per sample):
-#' \itemize{
-#'   \item \code{$res_list}             — LR score matrices
-#'   \item \code{$ligand_scores_list}   — ligand score matrices
-#'   \item \code{$receptor_scores_list} — receptor score matrices
-#' }
+#' @param IMscores_directed_list Named list of matrices used as input for
+#' ligand scoring.
+#' @param spCounts_list Named list of per-sample count matrices.
+#' @param spPatterns_list Named list of per-sample pattern tables.
+#' @param ligands_list Named list of ligand gene sets.
+#' @param receptors_list Named list of receptor gene sets.
+#' @param lrpairs Data.frame of ligand-receptor pairs.
+#' @param workers Integer. Number of parallel workers.
+#' @param weighted Logical. If TRUE, use weighted scoring.
+#' @param ligand_method Character. Method used to aggregate ligand scores.
+#' @param receptor_method Character. Method used to aggregate receptor scores.
+#' @param lr_method Character. Method used to combine ligand and receptor
+#' scores.
+#'
+#' @return A list with three named lists:
+#' res_list (LR score matrices), ligand_scores_list, and receptor_scores_list.
+#'
 #' @export
 generate_sample_lr_scores <- function(
     IMscores_directed_list,
@@ -970,109 +865,32 @@ generate_sample_lr_scores <- function(
 }
 
 
-#' Assemble ligand–receptor interaction table across samples
-#'
+#' @title Assemble ligand receptor interaction table
 #' @description
-#' Combines ligand–receptor (LR) scores, ligand-only scores, and receptor-only
-#' scores into a single long-format data.frame suitable for downstream plotting
-#' (e.g., scatter plots, alluvial diagrams). Supports both:
-#' \itemize{
-#'   \item a single matrix per object (\code{lr_scores}, \code{ligand_scores},
-#'         \code{receptor_scores}), or
-#'   \item parallel *named lists* of matrices (sample-wise), where each list
-#'         element name is treated as a sample ID.
-#' }
+#' Combine LR scores, ligand-only scores, and receptor-only scores into a single
+#' long-format data.frame for downstream plotting. Works with either single
+#' matrices or named lists of matrices (one per sample).
 #'
-#' Rows of the returned table correspond to individual ligand–receptor
-#' \emph{interactions} for specific Source→Target pairs and samples.
+#' @param lr_scores Matrix or named list of matrices with LR scores. Rows are
+#' interaction IDs and columns are Source_to_Target combinations.
+#' @param ligand_scores Matrix or named list of matrices with ligand-only
+#' scores. Rows are interaction IDs and columns are Source_near_Target labels.
+#' @param receptor_scores Matrix or named list of matrices with receptor-only
+#' scores. Rows are interaction IDs and columns are target cell types.
+#' @param lrpairs Data.frame with row names equal to interaction IDs and
+#' annotation columns for ligand and receptor genes.
+#' @param ligand_col Character. Column name in lrpairs containing ligand genes.
+#' @param receptor_col Character. Column name in lrpairs containing receptor genes.
+#' @param name_split_token Character. Token used to split Source_to_Target
+#' column names in lr_scores.
+#' @param ligand_near_token Character. Token used to construct Source_near_Target
+#' column names in ligand_scores.
+#' @param na_replace Numeric. Value used to replace NA scores.
 #'
-#' @param lr_scores A numeric matrix or a *named list* of matrices with
-#'   LR scores. Each matrix must have:
-#'   \itemize{
-#'     \item \strong{rows} = interaction IDs (matching \code{rownames(lrpairs)})
-#'     \item \strong{columns} = Source→Target combinations, e.g.
-#'           \code{"Epi_to_Tcell"} (see \code{name_split_token}).
-#'   }
-#' @param ligand_scores A numeric matrix or a *named list* of matrices
-#'   (same structure as \code{lr_scores}) containing ligand-only scores.
-#'   Each matrix must have:
-#'   \itemize{
-#'     \item \strong{rows} = interaction IDs (matching \code{lr_scores} rows)
-#'     \item \strong{columns} = Source\code{_near_}Target-style labels, e.g.
-#'           \code{"Epi_near_Tcell"} by default (see \code{ligand_near_token}).
-#'   }
-#' @param receptor_scores A numeric matrix or a *named list* of matrices
-#'   containing receptor-only scores. Each matrix must have:
-#'   \itemize{
-#'     \item \strong{rows} = interaction IDs (matching \code{lr_scores} rows)
-#'     \item \strong{columns} = target cell types, e.g. \code{"Tcell"}.
-#'   }
-#' @param lrpairs A data.frame with rownames equal to interaction IDs
-#'   (matching rownames of the matrices) and at least the ligand and receptor
-#'   annotation columns specified by \code{ligand_col} and \code{receptor_col},
-#'   e.g. \code{"ligand"} and \code{"receptor"}. These are used to attach
-#'   gene names to each interaction.
-#' @param ligand_col Character scalar. Name of the ligand annotation column
-#'   in \code{lrpairs}. Default \code{"ligand"}.
-#' @param receptor_col Character scalar. Name of the receptor annotation
-#'   column in \code{lrpairs}. Default \code{"receptor"}.
-#' @param name_split_token Character scalar used to split Source→Target
-#'   column names in \code{lr_scores}. For example, if column names look like
-#'   \code{"Epi_to_Tcell"}, then \code{name_split_token = "_to_"} (default).
-#' @param ligand_near_token Character scalar used to construct the expected
-#'   column names in \code{ligand_scores}. For a given source and target,
-#'   the corresponding ligand column is assumed to be:
-#'   \code{paste0(source, ligand_near_token, target)}, e.g.
-#'   \code{"Epi_near_Tcell"} by default.
-#' @param na_replace Numeric scalar. Value used to replace any \code{NA}
-#'   scores in the assembled table (both LR and ligand/receptor scores).
-#'   Default \code{0}.
-#'
-#' @details
-#' This function:
-#' \enumerate{
-#'   \item Validates that \code{lr_scores}, \code{ligand_scores},
-#'         and \code{receptor_scores} are either all matrices or all *named*
-#'         lists of matrices.
-#'   \item Aligns rows (interaction IDs) to those present in \code{lrpairs}.
-#'   \item Converts \code{lr_scores} to long format; parses \code{source} and
-#'         \code{target} cell types per column via \code{name_split_token}.
-#'   \item Looks up the matching ligand and receptor columns in
-#'         \code{ligand_scores} and \code{receptor_scores} using:
-#'         \itemize{
-#'           \item ligand column: \code{paste0(source, ligand_near_token, target)}
-#'           \item receptor column: \code{target}
-#'         }
-#'   \item Attaches ligand and receptor gene names from \code{lrpairs}
-#'         (columns \code{ligand_col}, \code{receptor_col}), with any
-#'         comma+space sequences replaced by \code{"|"} for downstream parsing.
-#' }
-#'
-#' When lists are provided, each list element is treated as a separate
-#' sample, and a \code{sample} column is added to the output. When a single
-#' matrix is provided, \code{sample} is set to \code{"sample"}.
-#'
-#' @return
-#' A data.frame with one row per (sample, interaction ID, Source→Target column)
-#' containing the following columns:
-#' \itemize{
-#'   \item \code{ligand}         — ligand gene(s) (from \code{lrpairs})
-#'   \item \code{ligand_score}   — ligand-only score
-#'   \item \code{receptor}       — receptor gene(s) (from \code{lrpairs})
-#'   \item \code{receptor_score} — receptor-only score
-#'   \item \code{interaction}    — interaction ID (rownames of \code{lr_scores})
-#'   \item \code{score}          — LR score (from \code{lr_scores})
-#'   \item \code{source_cell_type} — parsed source cell type
-#'   \item \code{target_cell_type} — parsed target cell type
-#'   \item \code{source_to_target} — Source→Target label, e.g. \code{"Epi_to_Tcell"}
-#'   \item \code{sample}         — sample ID (list element name) or
-#'                                  \code{"sample"} for single matrices
-#' }
-#'
-#' Scores with missing values are replaced by \code{na_replace} before
-#' returning. The rows are arranged by \code{source_to_target}, then
-#' \code{sample}, then descending \code{score}, and finally by
-#' \code{interaction}.
+#' @return A data.frame where each row is one interaction for one
+#' Source_to_Target column and one sample. Columns include ligand, ligand_score,
+#' receptor, receptor_score, interaction, score, source_cell_type,
+#' target_cell_type, source_to_target, and sample.
 #'
 #' @examples
 #' \dontrun{
@@ -1246,57 +1064,33 @@ get_all_lr_interactions <- function(
 }
 
 
-#' Plot Ligand–Receptor Alluvial Diagram
+#' @title Plot ligand receptor alluvial diagram
+#' @description
+#' Make an alluvial (Sankey style) plot showing flows from source cell type
+#' to ligand, receptor, and target cell type. Flow width is proportional to an
+#' interaction score. Flows can be colored by sample group or by the
+#' source to target pair.
 #'
-#' Creates an alluvial (Sankey-style) plot showing flows from source cell type
-#' to ligand, receptor, and target cell type, with flow width proportional to
-#' an interaction score. Optionally, flows can be colored by sample groups
-#' (e.g., conditions) or by the source–target interaction.
+#' @param df Data.frame with score, source, target, ligand, receptor, and
+#' optionally sample columns.
+#' @param sample_groups Optional named vector that maps sample IDs to group
+#' labels. Names must match the sample column values.
+#' @param col_score Character. Column name for the interaction score.
+#' @param col_source Character. Column name for the source cell type.
+#' @param col_target Character. Column name for the target cell type.
+#' @param col_ligand Character. Column name for the ligand.
+#' @param col_receptor Character. Column name for the receptor.
+#' @param col_sample Character. Column name for the sample ID.
+#' @param title Optional plot title. If NULL, a default title is used.
+#' @param min_score Numeric. Minimum score to keep.
+#' @param top_k_per_pair Optional integer. If not NULL, keep at most this many
+#' top rows per source and target pair.
+#' @param alpha Numeric between 0 and 1. Alpha transparency for flows.
+#' @param knot_pos Numeric between 0 and 1. Knot position along the flow.
+#' @param label_size Numeric. Text size for node labels.
+#' @param wrap_width Integer or NULL. If not NULL, wrap long labels to this width.
 #'
-#' @param df A data.frame containing at least the columns specified by
-#'   \code{col_score}, \code{col_source}, \code{col_target},
-#'   \code{col_ligand}, and \code{col_receptor}. Optionally a sample column
-#'   (\code{col_sample}) when \code{sample_groups} is used.
-#' @param sample_groups Optional named vector mapping sample IDs to group labels.
-#'   Names must correspond to values in \code{df[[col_sample]]}. When provided,
-#'   flows are colored by group; otherwise, flows are colored by
-#'   Source→Target interaction.
-#' @param col_score Character. Column name in \code{df} containing the numeric
-#'   interaction scores used as flow widths. Default is \code{"score"}.
-#' @param col_source Character. Column name for source cell type. Default
-#'   \code{"source_cell_type"}.
-#' @param col_target Character. Column name for target cell type. Default
-#'   \code{"target_cell_type"}.
-#' @param col_ligand Character. Column name for ligand. Default \code{"ligand"}.
-#' @param col_receptor Character. Column name for receptor.
-#'   Default \code{"receptor"}.
-#' @param col_sample Character. Column name for sample ID (used only if
-#'   \code{sample_groups} is not \code{NULL}). Default \code{"sample"}.
-#' @param title Optional character string for the plot title. If \code{NULL},
-#'   a default title ("LR Alluvial: Source → Ligand → Receptor → Target")
-#'   is used.
-#' @param min_score Numeric. Minimum score threshold; rows with scores below
-#'   this value are dropped prior to plotting. Default is \code{0}.
-#' @param top_k_per_pair Optional integer. If not \code{NULL} and > 0, keeps at
-#'   most this many top-scoring rows per Source→Target pair (based on
-#'   \code{col_score}). Default \code{NULL} (no additional filtering).
-#' @param alpha Numeric (0–1). Alpha transparency for alluvial flows.
-#'   Default is \code{0.8}.
-#' @param knot_pos Numeric (0–1). Position of the knot (curve) along the flow
-#'   in \code{geom_alluvium}. Default is \code{0.4}.
-#' @param label_size Numeric. Text size for stratum (node) labels.
-#'   Default is \code{2.7}.
-#' @param wrap_width Integer or \code{NULL}. Width (in characters) used to wrap
-#'   long labels (source, ligand, receptor, target) onto multiple lines.
-#'   Set to \code{NULL} to disable wrapping. Default is \code{12}.
-#'
-#' @return A \code{ggplot} object representing the alluvial plot.
-#'
-#' @details
-#' Column matching is case-tolerant: if, for example, \code{col_score = "score"},
-#' the function will match any column whose name equals "score" ignoring case.
-#' If \code{sample_groups} is provided, only rows whose sample IDs map to a
-#' non-\code{NA} group are retained.
+#' @return A ggplot object.
 #'
 #' @examples
 #' \dontrun{
@@ -1316,7 +1110,7 @@ get_all_lr_interactions <- function(
 #'     stringsAsFactors = FALSE
 #'   )
 #'
-#'   # Sample → group mapping
+#'   # Sample to group mapping
 #'   sample_groups <- c(
 #'     NS_1 = "Normal skin",
 #'     NS_2 = "Normal skin",
@@ -1329,7 +1123,7 @@ get_all_lr_interactions <- function(
 #'     df             = top_normal,
 #'     sample_groups  = sample_groups,
 #'     top_k_per_pair = NULL,
-#'     title          = "Top Normal Ligand–Receptor Interactions"
+#'     title = "Top Normal LR Interactions"
 #'   )
 #'   print(p)
 #' }
@@ -1376,12 +1170,12 @@ plot_lr_alluvial <- function(
   
   if (!is.null(top_k_per_pair) && top_k_per_pair > 0) {
     ord <- order(d[[col_source]], d[[col_target]], -d[[col_score]]); d <- d[ord, ]
-    idx <- ave(d[[col_score]], paste(d[[col_source]], d[[col_target]], sep = "→"),
+    idx <- ave(d[[col_score]], paste(d[[col_source]], d[[col_target]], sep = "->"),
                FUN = function(x) seq_along(x) <= top_k_per_pair)
     d <- d[idx, , drop = FALSE]
   }
   
-  # map fill: groups if provided, otherwise Source→Target interaction
+  # map fill: groups if provided, otherwise Source->Target interaction
   if (!is.null(sample_groups)) {
     if (!(col_sample %in% names(d))) stop("`sample_groups` provided but no 'sample' column in data.")
     d$.__group__ <- unname(sample_groups[ as.character(d[[col_sample]]) ])
@@ -1390,7 +1184,7 @@ plot_lr_alluvial <- function(
     d$fill_key <- factor(d$.__group__)
     fill_name  <- "Group"
   } else {
-    d$fill_key <- factor(paste(d[[col_source]], d[[col_target]], sep = "→"))
+    d$fill_key <- factor(paste(d[[col_source]], d[[col_target]], sep = "->"))
     fill_name  <- "Cell interaction"
   }
   
@@ -1446,9 +1240,9 @@ plot_lr_alluvial <- function(
     ggplot2::scale_fill_manual(values = pal_vals, name = fill_name, drop = FALSE) +
     ggplot2::guides(fill = ggplot2::guide_legend(override.aes = list(alpha = 1))) +
     ggplot2::labs(
-      title = "LR Alluvial: Source → Ligand → Receptor → Target",
+      title = "LR Alluvial: Source -> Ligand -> Receptor -> Target",
       subtitle = if (is.null(sample_groups))
-        "Flow width ~ score; color ~ Cell interaction (Source→Target)"
+        "Flow width ~ score; color ~ Cell interaction (Source->Target)"
       else
         "Flow width ~ score; color ~ Group",
       y = "Score", x = NULL
@@ -1462,7 +1256,7 @@ plot_lr_alluvial <- function(
       plot.margin = ggplot2::margin(10, 30, 10, 30)
     )
   
-  default_title <- "LR Alluvial: Source → Ligand → Receptor → Target"
+  default_title <- "LR Alluvial: Source -> Ligand -> Receptor -> Target"
   p <- p +
     ggplot2::labs(
       title    = if (is.null(title)) default_title else title,
@@ -1472,39 +1266,26 @@ plot_lr_alluvial <- function(
   return(p)
 }
 
-#' Plot Ligand–Receptor Scores Scatter Plots by Interaction
+#' @title Plot ligand receptor scores by interaction
+#' @description
+#' Make scatter plots of ligand score versus receptor score, colored by
+#' interaction and shaped by sample, and save one TIFF file per
+#' source_to_target combination.
 #'
-#' Creates one or more scatter plots of ligand vs receptor scores, colored by
-#' ligand–receptor interaction and shaped by sample. Each plot corresponds to a
-#' single \code{source_to_target} pair and is saved as a TIFF file.
+#' @param df_long Long-format data.frame, usually from get_all_lr_interactions,
+#' containing ligand_score, receptor_score, interaction, sample, and
+#' source_to_target columns.
+#' @param out_dir Character. Output directory for TIFF files. Created if needed.
+#' @param filename_prefix Character. Prefix for output file names.
+#' @param source_to_target Character vector of source_to_target values to plot.
+#' If NULL, all unique values are used.
+#' @param point_size Numeric. Point size for geom_point.
+#' @param point_alpha Numeric between 0 and 1. Alpha transparency for points.
+#' @param width Numeric. Plot width in inches.
+#' @param height Numeric. Plot height in inches.
+#' @param dpi Numeric. Resolution in dots per inch for the saved TIFF files.
 #'
-#' @param df_long A data.frame in long format, typically produced by
-#'   \code{get_all_lr_interactions()}, containing at least the columns:
-#'   \itemize{
-#'     \item \code{ligand_score} (numeric)
-#'     \item \code{receptor_score} (numeric)
-#'     \item \code{interaction} (factor or character; ligand–receptor ID)
-#'     \item \code{sample} (factor or character; sample ID)
-#'     \item \code{source_to_target} (factor or character; e.g. \code{"Epi_to_Tcell"})
-#'   }
-#' @param out_dir Character. Output directory where TIFF files will be saved.
-#'   Created if it does not exist.
-#' @param filename_prefix Character. Prefix for output filenames. Each file will
-#'   be named as \code{<filename_prefix>_<source_to_target_lr_scatter>.tiff}
-#'   after sanitizing \code{source_to_target}. Default is \code{"lr_scatter"}.
-#' @param source_to_target Optional character vector of one or more
-#'   \code{source_to_target} values to plot. If \code{NULL} (default), all
-#'   unique \code{source_to_target} values in \code{df_long} are used.
-#' @param point_size Numeric. Point size for \code{geom_point}. Default \code{2}.
-#' @param point_alpha Numeric (0–1). Alpha transparency for points.
-#'   Default \code{0.8}.
-#' @param width Numeric. Width of the saved TIFF(s) in inches. Default \code{8}.
-#' @param height Numeric. Height of the saved TIFF(s) in inches. Default \code{6}.
-#' @param dpi Numeric. Resolution (dots per inch) for the saved TIFF(s).
-#'   Default \code{300}.
-#'
-#' @return
-#' Invisibly returns a character vector of file paths to the saved TIFFs.
+#' @return Invisibly, a character vector of paths to the saved TIFF files.
 #'
 #' @examples
 #' \dontrun{
