@@ -200,30 +200,42 @@ find_hotspots_gmm <- function(df, threshold = 0.1,...){
 #' }
 #' @export
 classify_spots <- function(pat_hotspots, influence_hotspots, patternpair = NULL) {
-    patnames <- setdiff(colnames(pat_hotspots), c("x", "y", "barcode"))
-    infnames <- setdiff(colnames(influence_hotspots), c("x", "y", "barcode"))  
-    #check if pat_hotspots and influence_hotspots have the same dimensions
-    if (!all(dim(pat_hotspots) == dim(influence_hotspots))) {
-        stop("pat_hotspots and influence_hotspots must have the same dimensions.")
-    } else if (!all(patnames == infnames)) {
-        stop("pat_hotspots and influence_hotspots must have the same column names.")
-    }
-    # Check if patternpair is NULL or is contained in patnames
-    if (!is.null(patternpair) && !all(patternpair %in% patnames)) {
-        stop("patternpair must be NULL or contained in patnames.")
-    } else if (is.null(patternpair) && length(patnames) > 2) {
-        stop("More than 2 patterns found. Please provide patternpair.")
-    }
-    
-    region <- pat_hotspots[,patternpair[1]]
-    pat1.inf2 <- ifelse(!is.na(region) & !is.na(influence_hotspots[,patternpair[2]]),"Interacting",
-    ifelse(!is.na(region),region,NA))
-
-    region <- pat_hotspots[,patternpair[2]]
-    pat2.inf1 <- ifelse(!is.na(region) & !is.na(influence_hotspots[,patternpair[1]]),"Interacting",
-    ifelse(!is.na(region),region,NA))
-    df <- data.frame(pat1.inf2=pat1.inf2, pat2.inf1=pat2.inf1)
-return(df)
+  patnames <- setdiff(colnames(pat_hotspots), c("x", "y", "barcode"))
+  infnames <- setdiff(colnames(influence_hotspots), c("x", "y", "barcode"))  
+  #check if pat_hotspots and influence_hotspots have the same dimensions
+  if (!all(dim(pat_hotspots) == dim(influence_hotspots))) {
+    stop("pat_hotspots and influence_hotspots must have the same dimensions.")
+  } else if (!all(patnames == infnames)) {
+    stop("pat_hotspots and influence_hotspots must have the same column names.")
+  }
+  # Check if patternpair is NULL or is contained in patnames
+  if (!is.null(patternpair) && !all(patternpair %in% patnames)) {
+    stop("patternpair must be NULL or contained in patnames.")
+  } else if (is.null(patternpair) && length(patnames) > 2) {
+    stop("More than 2 patterns found. Please provide patternpair.")
+  }
+  if (is.null(influence_hotspots)) {
+    message("You only provided the pattern hotspots. Specify influence 
+              hotspots if present")
+    region <- ifelse(!is.na(pat_hotspots[, patternpair[1]]) & !is.na(pat_hotspots[, patternpair[2]]), "Interacting",
+                     ifelse(!is.na(pat_hotspots[, patternpair[1]]), pat_hotspots[, patternpair[1]],
+                            ifelse(!is.na(pat_hotspots[, patternpair[2]]),
+                                   pat_hotspots[, patternpair[2]], NA)))
+    df <- data.frame(x = region)
+    colnames(df)[1] <- paste0(patternpair[1],"_",patternpair[2])
+    return(df)
+  }
+  
+  region <- pat_hotspots[,patternpair[1]]
+  pat1.inf2 <- ifelse(!is.na(region) & !is.na(influence_hotspots[,patternpair[2]]),"Interacting",
+                      ifelse(!is.na(region),region,NA))
+  
+  region <- pat_hotspots[,patternpair[2]]
+  pat2.inf1 <- ifelse(!is.na(region) & !is.na(influence_hotspots[,patternpair[1]]),"Interacting",
+                      ifelse(!is.na(region),region,NA))
+  df <- data.frame(pat1.inf2=pat1.inf2, pat2.inf1=pat2.inf1)
+  colnames(df) <- c(paste0(patternpair[1],"_near_",patternpair[2]),paste0(patternpair[2],"_near_",patternpair[1]))
+  return(df)
 }
 
 #' @title Perform row-wise t-tests from scratch
