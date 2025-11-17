@@ -447,14 +447,33 @@ get_enriched_pathways <- function(imscores, gene.sets,method = c(
   return(d)
 }
 
-                                     
-#' Dotplot of enriched pathways across interactions
+#' Plot enriched pathways by interaction
+#' @title plot_enriched_results
+#' @description
+#' Create a dot plot of pathways (gene sets) versus ligand–receptor
+#' interactions from a list of enrichment result tables.
+#' Dot size shows the size of the leading edge, and dot fill shows
+#' minus log10 adjusted p-values.
 #'
-#' @param enr_list A list of data.frames from \code{get_enriched_pathways()}.
-#'   Must include: gene.set, interaction, leadingEdge, log10P_adj.
-#' @param top_n Integer. Keep the top_n pathways *within each interaction*
-#'   by log10P_adj; the plot shows the union. Default: 5.
-#' @return A ggplot object.
+#' @param enr_list
+#' A list of enrichment result data frames.
+#' Each non-empty data frame must contain the columns:
+#' gene.set, interaction, leadingEdge, and log10P_adj.
+#' @param top_n
+#' Integer. Number of top pathways to keep per interaction,
+#' ranked by log10P_adj. Default is 5.
+#'
+#' @return
+#' A ggplot object with pathways on the y-axis, interactions on
+#' the x-axis, dot size for number of leading-edge genes, and
+#' dot fill for minus log10(FDR).
+#' @importFrom dplyr bind_rows group_by filter slice_max ungroup pull mutate
+#'   summarise arrange
+#' @importFrom rlang .data
+#' @importFrom ggplot2 ggplot aes geom_point scale_size_area scale_fill_gradient
+#'   labs theme_minimal element_blank element_text
+#' @export
+#' 
 plot_enriched_results <- function(enr_list, top_n = 5) {
   df <- Filter(NROW, enr_list)
   if (length(df) == 0L) stop("No enrichment results to plot.")

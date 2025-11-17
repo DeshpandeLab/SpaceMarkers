@@ -2,20 +2,29 @@
 % Please edit documentation in R/utils.R
 \name{plot_enriched_results}
 \alias{plot_enriched_results}
-\title{Dotplot of enriched pathways across interactions}
+\title{plot_enriched_results}
 \usage{
 plot_enriched_results(enr_list, top_n = 5)
 }
 \arguments{
-\item{enr_list}{A list of data.frames from \code{get_enriched_pathways()}.
-Must include: gene.set, interaction, leadingEdge, log10P_adj.}
+\item{enr_list}{A list of enrichment result data frames.
+Each non-empty data frame must contain the columns:
+gene.set, interaction, leadingEdge, and log10P_adj.}
 
-\item{top_n}{Integer. Keep the top_n pathways \emph{within each interaction}
-by log10P_adj; the plot shows the union. Default: 5.}
+\item{top_n}{Integer. Number of top pathways to keep per interaction,
+ranked by log10P_adj. Default is 5.}
 }
 \value{
-A ggplot object.
+A ggplot object with pathways on the y-axis, interactions on
+the x-axis, dot size for number of leading-edge genes, and
+dot fill for minus log10(FDR).
 }
 \description{
-Dotplot of enriched pathways across interactions
+Create a dot plot of pathways (gene sets) versus ligand–receptor
+interactions from a list of enrichment result tables.
+Dot size shows the size of the leading edge, and dot fill shows
+minus log10 adjusted p-values.
+}
+\details{
+Plot enriched pathways by interaction
 }
