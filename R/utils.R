@@ -552,7 +552,8 @@ plot_enriched_results <- function(enr_list, top_n = 5) {
 #'
 #' head(exp_df)
 #' }
-#'
+#' 
+#' 
 #' @importFrom reshape2 melt
 #' @importFrom dplyr group_by summarise
 #' @importFrom rlang .data
@@ -599,11 +600,20 @@ create_avg_exp_df <- function(counts, metadata, features, meta_col, barcode_col 
     counts   <- counts[, rownames(metadata), drop = FALSE]
   }
   # 2) Drop counts columns that contain any NA
-  has_na_col <- colSums(is.na(counts)) > 0
-  if (any(has_na_col)) {
-    counts   <- counts[, !has_na_col, drop = FALSE]
-    metadata <- metadata[colnames(counts), , drop = FALSE]
+  if (anyNA(counts)) {
+    if (inherits(counts, "dgCMatrix")) {
+      na_mat <- is.na(as.matrix(counts))
+    } else {
+      na_mat <- is.na(counts)
+    }
+    has_na_col <- colSums(na_mat) > 0
+    if (any(has_na_col)) {
+      counts   <- counts[, !has_na_col, drop = FALSE]
+      metadata <- metadata[colnames(counts), , drop = FALSE]
+    }
   }
+  
+
   # Final sanity check
   if (ncol(counts) == 0L) stop("All cells removed after NA filtering.")
   if (!identical(colnames(counts), rownames(metadata))) {
@@ -717,7 +727,8 @@ create_avg_exp_df <- function(counts, metadata, features, meta_col, barcode_col 
 #' )
 #' print(p)
 #' }
-#'
+#' 
+#' 
 #' @importFrom ggplot2 ggplot aes_string geom_point scale_size_continuous
 #'   scale_fill_gradientn scale_x_discrete scale_y_discrete theme_classic
 #'   labs theme element_text guides guide_legend
@@ -810,9 +821,16 @@ plot_interaction_dotplot <- function(
   
   p <- ggplot2::ggplot(
     meta_df,
-    ggplot2::aes_string(x = x_var, y = y_var, size = size_var, fill = fill_var)
+    ggplot2::aes(
+      x     = !!rlang::sym(x_var),
+      y     = !!rlang::sym(y_var),
+      size  = !!rlang::sym(size_var),
+      fill  = !!rlang::sym(fill_var)
+    )
   ) +
-    ggplot2::geom_point(shape = dot_shape, stroke = stroke, colour = border_color) +
+    ggplot2::geom_point(shape = dot_shape,
+                        stroke = stroke,
+                        colour = border_color) +
     ggplot2::scale_size_continuous(range = c(1, 10), name = size_name) +
     ggplot2::scale_fill_gradientn(colors = fill_colors, name = fill_name) +
     ggplot2::scale_x_discrete(limits = order_cols) +
@@ -820,7 +838,9 @@ plot_interaction_dotplot <- function(
     ggplot2::theme_classic() +
     ggplot2::labs(x = xlab, y = ylab, title = title) +
     ggplot2::theme(
-      axis.text.x  = ggplot2::element_text(angle = x_text_angle, hjust = x_text_hjust, size = x_text_size),
+      axis.text.x  = ggplot2::element_text(angle = x_text_angle,
+                                           hjust = x_text_hjust,
+                                           size  = x_text_size),
       axis.text.y  = ggplot2::element_text(size = y_text_size),
       plot.title   = ggplot2::element_text(face = "bold", size = title_size),
       axis.title.x = ggplot2::element_text(size = x_text_size),
@@ -830,9 +850,12 @@ plot_interaction_dotplot <- function(
     ) +
     ggplot2::guides(
       size = ggplot2::guide_legend(
-        override.aes = list(shape = dot_shape, stroke = 0.7, colour = border_color)
+        override.aes = list(shape = dot_shape,
+                            stroke = 0.7,
+                            colour = border_color)
       )
     )
+  
   return(p)
 }
           
