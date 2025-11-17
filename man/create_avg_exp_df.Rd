@@ -2,28 +2,33 @@
 % Please edit documentation in R/utils.R
 \name{create_avg_exp_df}
 \alias{create_avg_exp_df}
-\title{Average & detection by group for a gene set (NA-safe on meta_col)}
+\title{Average and detection by group for a gene set}
 \usage{
 create_avg_exp_df(counts, metadata, features, meta_col, barcode_col = NULL)
 }
 \arguments{
-\item{counts}{Matrix or dgCMatrix: genes (rows) × cells (cols).}
+\item{counts}{Matrix or dgCMatrix with genes as rows and cells as columns.}
 
-\item{metadata}{Data frame with per-cell metadata. Must include \code{meta_col}
-and either have barcodes as rownames or a column named in \code{barcode_col}.}
+\item{metadata}{Data frame with per cell metadata. Must include meta_col and
+either have barcodes as row names or a column named in barcode_col.}
 
 \item{features}{Character vector of gene symbols to include.}
 
-\item{meta_col}{Name of the metadata column used to group cells (e.g., "celltype").}
+\item{meta_col}{Character. Name of the metadata column used to group cells
+(for example "celltype").}
 
-\item{barcode_col}{Optional column name in \code{metadata} holding cell barcodes.
-If NULL, rownames(metadata) are used as barcodes.}
+\item{barcode_col}{Optional character. Column name in metadata holding cell
+barcodes. If NULL, row names of metadata are used as barcodes.}
 }
 \value{
-data.frame with columns: meta_col, gene_symbol, pct.expr, avg.expr
+A data.frame with columns:
+meta_col, gene_symbol, pct.expr, avg.expr.
 }
 \description{
-Average & detection by group for a gene set (NA-safe on meta_col)
+Compute average expression and percent of cells expressing each gene in a
+set, stratified by a metadata grouping column. Barcodes in metadata and
+counts are aligned, rows with NA in the grouping column are dropped, and
+columns with any NA values in the counts matrix are removed.
 }
 \examples{
 \dontrun{
@@ -32,8 +37,8 @@ Average & detection by group for a gene set (NA-safe on meta_col)
 # Suppose:
 #   - spCounts is a genes x barcodes count matrix
 #   - spHotspots_all is a metadata data.frame with a "barcode" column
-#     and an interaction-region column "Epi_Plasma"
-#   - df is a data.frame with a column "Gene" containing gene symbols of interest
+#     and an interaction region column "Epi_Plasma"
+#   - df is a data.frame with a column "Gene" containing gene symbols
 
 meta_col <- "Epi_Plasma"
 
@@ -47,4 +52,5 @@ exp_df <- create_avg_exp_df(
 
 head(exp_df)
 }
+
 }

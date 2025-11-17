@@ -510,16 +510,25 @@ plot_enriched_results <- function(enr_list, top_n = 5) {
   return(p)
 }
 
-#' Average & detection by group for a gene set (NA-safe on meta_col)
+#' Average and detection by group for a gene set
 #'
-#' @param counts   Matrix or dgCMatrix: genes (rows) × cells (cols).
-#' @param metadata Data frame with per-cell metadata. Must include `meta_col`
-#'                 and either have barcodes as rownames or a column named in `barcode_col`.
+#' @description
+#' Compute average expression and percent of cells expressing each gene in a
+#' set, stratified by a metadata grouping column. Barcodes in metadata and
+#' counts are aligned, rows with NA in the grouping column are dropped, and
+#' columns with any NA values in the counts matrix are removed.
+#'
+#' @param counts Matrix or dgCMatrix with genes as rows and cells as columns.
+#' @param metadata Data frame with per cell metadata. Must include meta_col and
+#'   either have barcodes as row names or a column named in barcode_col.
 #' @param features Character vector of gene symbols to include.
-#' @param meta_col Name of the metadata column used to group cells (e.g., "celltype").
-#' @param barcode_col Optional column name in `metadata` holding cell barcodes.
-#'                    If NULL, rownames(metadata) are used as barcodes.
-#' @return data.frame with columns: meta_col, gene_symbol, pct.expr, avg.expr
+#' @param meta_col Character. Name of the metadata column used to group cells
+#'   (for example "celltype").
+#' @param barcode_col Optional character. Column name in metadata holding cell
+#'   barcodes. If NULL, row names of metadata are used as barcodes.
+#'
+#' @return A data.frame with columns:
+#'   meta_col, gene_symbol, pct.expr, avg.expr.
 #'
 #' @examples
 #' \dontrun{
@@ -528,8 +537,8 @@ plot_enriched_results <- function(enr_list, top_n = 5) {
 #' # Suppose:
 #' #   - spCounts is a genes x barcodes count matrix
 #' #   - spHotspots_all is a metadata data.frame with a "barcode" column
-#' #     and an interaction-region column "Epi_Plasma"
-#' #   - df is a data.frame with a column "Gene" containing gene symbols of interest
+#' #     and an interaction region column "Epi_Plasma"
+#' #   - df is a data.frame with a column "Gene" containing gene symbols
 #'
 #' meta_col <- "Epi_Plasma"
 #'
@@ -543,6 +552,11 @@ plot_enriched_results <- function(enr_list, top_n = 5) {
 #'
 #' head(exp_df)
 #' }
+#'
+#' @importFrom reshape2 melt
+#' @importFrom dplyr group_by summarise
+#' @importFrom rlang .data
+#' @export
 create_avg_exp_df <- function(counts, metadata, features, meta_col, barcode_col = NULL) {
   # --- Validate inputs ---
   if (!is.matrix(counts) && !inherits(counts, "dgCMatrix")) {
@@ -569,7 +583,7 @@ create_avg_exp_df <- function(counts, metadata, features, meta_col, barcode_col 
     rownames(metadata) <- md_barcodes
   }
   
-  # --- Initial overlap & alignment by barcode ---
+  # --- Initial overlap and alignment by barcode ---
   cell_barcodes <- colnames(counts)
   if (is.null(cell_barcodes)) stop("`counts` must have column names (cell barcodes).")
   common_bc <- intersect(cell_barcodes, md_barcodes)
@@ -578,7 +592,7 @@ create_avg_exp_df <- function(counts, metadata, features, meta_col, barcode_col 
   counts   <- counts[, common_bc, drop = FALSE]
   
   # --- NA handling ---
-  # 1) Drop metadata rows ONLY when meta_col is NA
+  # 1) Drop metadata rows where meta_col is NA
   keep_meta <- !is.na(metadata[[meta_col]])
   if (any(!keep_meta)) {
     metadata <- metadata[keep_meta, , drop = FALSE]
@@ -607,7 +621,7 @@ create_avg_exp_df <- function(counts, metadata, features, meta_col, barcode_col 
   }
   counts_sub <- counts[keep_features, , drop = FALSE]
   
-  # --- Transpose to cells × genes and attach group column ---
+  # --- Transpose to cells x genes and attach group column ---
   if (inherits(counts_sub, "dgCMatrix")) {
     if (requireNamespace("Matrix", quietly = TRUE)) {
       counts_t <- as.matrix(Matrix::t(counts_sub))
@@ -621,7 +635,7 @@ create_avg_exp_df <- function(counts, metadata, features, meta_col, barcode_col 
   stopifnot(identical(rownames(df_expr), rownames(metadata)))
   df_expr[[meta_col]] <- as.character(metadata[[meta_col]])
   
-  # --- Wide -> long (reshape2), then aggregate ---
+  # --- Wide to long and aggregate ---
   long_df <- reshape2::melt(
     df_expr,
     id.vars       = meta_col,
@@ -639,8 +653,9 @@ create_avg_exp_df <- function(counts, metadata, features, meta_col, barcode_col 
     as.data.frame()
   
   names(out)[names(out) == meta_col] <- meta_col
-  return(out)
-} 
+  out
+}
+
 
 #' Dot plot of gene expression summary across interaction groups
 #'
@@ -1288,4 +1303,240 @@ calculate_gene_set_specificity <- function(data, spPatterns, gene_sets, weighted
     }
     
     return(result)
+}
+
+
+
+
+
+#' Plot multi-way violin(s) for SpaceMarkers pattern pairs (directed / undirected / both)
+#'
+#' @description
+#' Generate violin + jitter plots of a single gene's expression across
+#' SpaceMarkers-derived region labels for a given pattern pair.
+#' This function **does not** rely on base membership columns; it only uses:
+#' - `"<cell1>_<cell2>"` (undirected, e.g., `"Epi_Plasma"`)
+#' - `"<cell1>_near_<cell2>"` (directed, e.g., `"Epi_near_Plasma"`)
+#' - `"<cell2>_near_<cell1>"` (directed, e.g., `"Plasma_near_Epi"`)
+#'
+#' For **directed** columns, any literal value `"Interacting"` is replaced with
+#' the column name (e.g., `"Epi_near_Plasma"`).  
+#' For **undirected**:
+#' * `mode = "undirected"` keeps `"Interacting"` as is and orders
+#'   `c(cell1, "Interacting", cell2)` if all groups are present.
+#' * `mode = "both"` keeps **only** the `"Interacting"` rows and renames them
+#'   to `"<cell1>_<cell2>"` before binding with the directed groups.
+#'
+#' If the expected categories for a mode are **not all present** (or there are
+#' fewer than 3 total groups), the function falls back to plotting the present
+#' groups “as is” (first-appearance order).
+#'
+#' @param expr_hotspots `data.frame` like `test_hotspot_expr` produced by your
+#'   SpaceMarkers helpers. Must contain:
+#'   - a cell/spot id column named by `cell_id` (default `"barcode"`)
+#'   - a numeric expression column for the target `gene` (the column name is the
+#'     gene symbol you pass in `gene`)
+#'   - zero or more of the SpaceMarkers region columns:
+#'     `"<cell1>_<cell2>"`, `"<cell1>_near_<cell2>"`, `"<cell2>_near_<cell1>"`
+#' @param patternpair `character(2)`. The pair `c(cell1, cell2)`, e.g.,
+#'   `c("Epi","Plasma")`. Used to derive the expected column names.
+#' @param gene `character(1)`. The **column name** in `expr_hotspots` that holds
+#'   the expression values to plot (typically a gene symbol).
+#' @param cell_id `character(1)`. Name of the cell/spot id column. Default `"barcode"`.
+#' @param mode `character(1)`. One of `c("directed","undirected","both")`.
+#'   - `"directed"` → uses `"<cell1>_near_<cell2>"` and `"<cell2>_near_<cell1>"`
+#'     and enforces order `c(cell1, cell1_near_cell2, cell2_near_cell1, cell2)`
+#'     **if** all groups are present; otherwise plots as-is.
+#'   - `"undirected"` → uses only `"<cell1>_<cell2>"` with values
+#'     `cell1`/`"Interacting"`/`cell2`, enforcing order
+#'     `c(cell1, "Interacting", cell2)` if present; else as-is.
+#'   - `"both"` → directed groups plus **only** undirected `"Interacting"`
+#'     (renamed to `"<cell1>_<cell2>"`), enforcing order
+#'     `c(cell1, cell1_near_cell2, cell1_cell2, cell2_near_cell1, cell2)` if present.
+#' @param remove_na `logical(1)`. If `TRUE` (default), drop rows with `NA` in `region`.
+#' @param colors `character`. Fill colors. If enforcing a mode’s order, the first
+#'   `length(desired_order)` colors are used; otherwise colors are matched to the
+#'   present groups. Recycled if shorter than needed.
+#' @param out `character(1)` or `NULL`. File path to save the plot via `ggsave`.
+#'   Use `NULL` to skip saving. Default `NULL`.
+#' @param width,height `numeric(1)`. Plot size in inches when saving. Defaults `10`.
+#' @param text_size Numeric base size for theme text. Default: 14.
+#'
+#' @return A `ggplot` object (invisibly). Optionally writes an image if `out` is not `NULL`.
+#'
+#' @examples
+#' \dontrun{
+#' # --- Minimal reproducible example setup ---
+#' set.seed(123)
+#'
+#' # Expression matrix (spCounts)
+#' spCounts <- data.frame(
+#'   barcode = paste0("Spot", 1:10),
+#'   SAMD11  = runif(10, 0, 5),
+#'   NOC2L   = runif(10, 0, 5)
+#' )
+#'
+#' # Base hotspots (spHotspots)
+#' spHotspots <- data.frame(
+#'   barcode    = spCounts$barcode,
+#'   Epi_Plasma = sample(c("Epi", "Interacting", "Plasma"), 10, TRUE)
+#' )
+#'
+#' # Directed influence hotspots (spHotspots_influence)
+#' spHotspots_influence <- data.frame(
+#'   barcode          = spCounts$barcode,
+#'   Epi_near_Plasma  = sample(c("Epi", "Interacting", NA), 10, TRUE),
+#'   Plasma_near_Epi  = sample(c("Plasma", "Interacting", NA), 10, TRUE)
+#' )
+#'
+#' # --- SpaceMarkers-style workflow ---
+#' interacting_hotspots <- classify_spots(
+#'   pat_hotspots       = spHotspots,
+#'   influence_hotspots = NULL,
+#'   patternpair        = c("Epi","Plasma")
+#' )
+#'
+#' spHotspots_all <- cbind(spHotspots, interacting_hotspots)
+#' spHotspots_all[["Epi_Plasma"]] <- factor(
+#'   spHotspots_all[["Epi_Plasma"]],
+#'   levels = c("Epi","Interacting","Plasma")
+#' )
+#'
+#' test_hotspots <- classify_spots(
+#'   pat_hotspots       = spHotspots_all,
+#'   influence_hotspots = spHotspots_influence,
+#'   patternpair        = c("Epi","Plasma")
+#' )
+#'
+#' multiway_test_hotspots <- cbind(spHotspots_all, test_hotspots)
+#' test_hotspot_expr <- get_hotspot_expr(multiway_test_hotspots, spCounts)
+#'
+#' # --- Demonstration using mode = "both" ---
+#' p <- plot_multi_way_violin(
+#'   expr_hotspots = test_hotspot_expr,
+#'   patternpair   = c("Epi","Plasma"),
+#'   gene          = "SAMD11",         # any gene column in spCounts
+#'   mode          = "both",
+#'   remove_na     = TRUE,
+#'   colors        = c("blue","yellow","green","red","orange"),
+#'   out           = NULL              # or specify a filename
+#' )
+#' print(p)
+#' }
+#' @importFrom ggplot2 ggplot aes geom_violin geom_jitter scale_fill_manual
+#'   labs theme_minimal element_text ggsave
+#' @export
+plot_multi_way_violin <- function(
+    expr_hotspots,
+    patternpair,
+    gene,
+    cell_id   = "barcode",
+    mode      = c("directed","undirected","both"),
+    remove_na = TRUE,
+    colors    = c("blue","orange","red","purple","darkgreen"),
+    out       = NULL,
+    width = 10, height = 10, text_size = 14
+){
+  stopifnot(length(patternpair) == 2, all(nzchar(patternpair)))
+  mode <- match.arg(mode)
+  cell1 <- patternpair[1]; cell2 <- patternpair[2]
+  
+  col_near12 <- paste0(cell1, "_near_", cell2)  # e.g., Epi_near_Plasma
+  col_near21 <- paste0(cell2, "_near_", cell1)  # e.g., Plasma_near_Epi
+  col_undir  <- paste0(cell1, "_", cell2)       # e.g., Epi_Plasma
+  
+  make_directed_df <- function(col_lab) {
+    if (!col_lab %in% names(expr_hotspots)) return(NULL)
+    raw_vals <- expr_hotspots[[col_lab]]
+    vals_chr <- as.character(raw_vals)
+    vals_chr[is.na(raw_vals)] <- NA_character_
+    
+    reg <- ifelse(is.na(vals_chr), NA_character_,
+                  ifelse(vals_chr == "Interacting", col_lab, vals_chr))
+    
+    data.frame(
+      id     = expr_hotspots[[cell_id]],
+      expr   = expr_hotspots[[gene]],
+      region = reg,
+      stringsAsFactors = FALSE
+    )
+  }
+  
+  make_undirected_df <- function(col_lab, keep_only_interacting = FALSE, rename_to = NULL) {
+    if (!col_lab %in% names(expr_hotspots)) return(NULL)
+    raw_vals <- expr_hotspots[[col_lab]]
+    vals_chr <- as.character(raw_vals)
+    vals_chr[is.na(raw_vals)] <- NA_character_
+    
+    df <- data.frame(
+      id     = expr_hotspots[[cell_id]],
+      expr   = expr_hotspots[[gene]],
+      region = vals_chr,  # "cell1" / "Interacting" / "cell2"
+      stringsAsFactors = FALSE
+    )
+    
+    if (keep_only_interacting) {
+      df <- df[!is.na(df$region) & df$region == "Interacting", , drop = FALSE]
+      if (nrow(df)) df$region <- if (is.null(rename_to)) col_lab else rename_to
+    }
+    df
+  }
+  
+  # build per mode
+  dfs <- list()
+  if (mode %in% c("directed","both")) {
+    dfs <- c(dfs, list(
+      make_directed_df(col_near12),
+      make_directed_df(col_near21)
+    ))
+  }
+  if (mode == "undirected") {
+    message('Assuming SpaceMarkers was run in undirected mode.')
+    dfs <- c(dfs, list(make_undirected_df(col_undir, keep_only_interacting = FALSE)))
+  }
+  if (mode == "both") {
+    dfs <- c(dfs, list(make_undirected_df(col_undir, keep_only_interacting = TRUE, rename_to = col_undir)))
+  }
+  
+  df <- do.call(rbind, dfs[!vapply(dfs, is.null, logical(1))])
+  if (is.null(df) || nrow(df) == 0) stop("No applicable columns found for the requested mode/patternpair.")
+  if (remove_na) df <- df[!is.na(df$region), , drop = FALSE]
+  if (!nrow(df)) stop("All rows were NA after filtering.")
+  
+  # desired orders INCLUDING base labels
+  desired_order <- switch(
+    mode,
+    "directed"   = c(cell1, col_near12, col_near21, cell2),
+    "undirected" = c(cell1, "Interacting", cell2),
+    "both"       = c(cell1, col_near12, col_undir, col_near21, cell2)
+  )
+  
+  present_levels <- unique(df$region)
+  enforce_order <- (length(intersect(desired_order, present_levels)) == length(desired_order)) &&
+    (length(present_levels) >= 3)
+  
+  if (enforce_order) {
+    df$region <- factor(df$region, levels = desired_order)
+    need <- length(desired_order)
+    if (length(colors) < need) colors <- rep(colors, length.out = need)
+    col_vec <- setNames(colors[seq_len(need)], desired_order)
+  } else {
+    df$region <- factor(df$region, levels = present_levels)
+    need <- length(present_levels)
+    if (length(colors) < need) colors <- rep(colors, length.out = need)
+    col_vec <- setNames(colors[seq_len(need)], levels(df$region))
+  }
+  
+  p <- ggplot2::ggplot(df, ggplot2::aes(x = region, y = expr, fill = region)) +
+    ggplot2::geom_violin(trim = TRUE) +
+    ggplot2::geom_jitter(width = 0.2, size = 0.5, shape = 21, color = "black") +
+    ggplot2::scale_fill_manual(values = col_vec, drop = FALSE) +
+    ggplot2::labs(title = gene, x = "Region", y = "Expression") +
+    ggplot2::theme_minimal(base_size = text_size) +
+    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 0.8))
+  
+  if (!is.null(out)) {
+    ggplot2::ggsave(out, p, width = width, height = height, units = "in")
+  }
+  invisible(p)
 }

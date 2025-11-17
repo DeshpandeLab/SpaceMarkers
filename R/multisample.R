@@ -720,9 +720,9 @@ run_imscores_one <- function(
     t0 <- proc.time()
     ims <- SpaceMarkers::calculate_gene_scores_directed(
       data         = data_counts,
-      patHotspots  = spHotspotsList[[s]],
-      infHotspots  = spHotspotsInfluenceList[[s]],
-      patternPairs = patternPairs
+      pat_hotspots = spHotspotsList[[s]],
+      influence_hotspots = spHotspotsInfluenceList[[s]],
+      pattern_pairs = patternPairs
     )
     t1 <- proc.time()
     elapsed_sec[[s]] <- as.numeric((t1 - t0)["elapsed"])
@@ -863,6 +863,220 @@ generate_sample_lr_scores <- function(
     receptor_scores_list = receptor_scores_list
   )
 }
+
+
+
+#' @title Extract top ligand receptor interactions
+#' @description
+#' Extract a long-format table of ligand receptor interactions from a score
+#' matrix or from a list of score matrices (one per sample). Optionally return
+#' only the top scoring interactions per sample or per sample group.
+#'
+#' @param lrscores Either a numeric matrix (rows are interaction IDs and
+#' columns are cell pair columns), or a named list of such matrices where the
+#' list names are sample IDs.
+#' @param lrpairs Data.frame describing each interaction row, with at least
+#' ligand and receptor columns. Row names must match the interaction IDs used
+#' as rownames in lrscores.
+#' @param top_n_table Integer. Number of top entries to keep. If samples is
+#' NULL, the function returns the top N rows per sample and column. If samples
+#' is provided, the function returns the top N interactions per group as
+#' defined by rank_by. If top_n_table is NULL, the full long table is returned.
+#' @param name_split_token Character. Token used to split column names into
+#' source and target cell types. Default is "_to_".
+#' @param na_replace Numeric. Value used to replace missing scores. Default is 0.
+#' @param ligand_col Character. Column name in lrpairs that contains ligand
+#' gene names. Default is "ligand".
+#' @param receptor_col Character. Column name in lrpairs that contains receptor
+#' gene names. Default is "receptor".
+#' @param samples Optional named character vector that maps sample IDs
+#' (names) to group labels (values). When provided, group wise medians are
+#' used to select top interactions.
+#' @param rank_by Character. Mode used for group level selection when samples
+#' is provided. Possible values are "interaction" and "interaction_col".
+#' In "interaction" mode, the function selects the top N interactions per
+#' group based on the strongest median score across all columns. In
+#' "interaction_col" mode, the function selects the top N interaction and
+#' column pairs per group.
+#'
+#' @return A data.frame in long format with columns score, interaction,
+#' source_cell_type, target_cell_type, ligand, receptor, sample and, when
+#' samples is provided, sample_group. When top_n_table is NULL, all rows are
+#' returned. Otherwise only the selected top rows are returned.
+#'
+#' @examples
+#' \dontrun{
+#' # Single matrix example
+#' lrs <- matrix(
+#'   c(0.9, 0.1,
+#'     0.2, 0.8),
+#'   nrow = 2, byrow = TRUE,
+#'   dimnames = list(
+#'     c("LGF1_REC1", "LGF2_REC2"),
+#'     c("Epi_to_Plasma", "Plasma_to_Epi")
+#'   )
+#' )
+#'
+#' lrpairs <- data.frame(
+#'   ligand   = c("LGF1","LGF2"),
+#'   receptor = c("REC1","REC2"),
+#'   row.names = c("LGF1_REC1","LGF2_REC2"),
+#'   stringsAsFactors = FALSE
+#' )
+#'
+#' top_df <- get_top_lr_interactions(
+#'   lrscores        = lrs,
+#'   lrpairs         = lrpairs,
+#'   top_n_table     = 1,
+#'   name_split_token = "_to_"
+#' )
+#'
+#' # List of matrices with sample groups
+#' lrs_list <- list(S1 = lrs, S2 = lrs * 1.2)
+#' sample_groups <- c(S1 = "Control", S2 = "Case")
+#'
+#' top_grp <- get_top_lr_interactions(
+#'   lrscores    = lrs_list,
+#'   lrpairs     = lrpairs,
+#'   top_n_table = 2,
+#'   samples     = sample_groups,
+#'   rank_by     = "interaction"
+#' )
+#' }
+#'
+#' @importFrom dplyr bind_rows arrange group_by summarise slice_max ungroup
+#'   filter select inner_join desc
+#' @importFrom stats median
+#' @export
+get_top_lr_interactions <- function(
+    lrscores,
+    lrpairs,
+    top_n_table = 10,                 # NULL => return full long table
+    name_split_token = "_to_",
+    na_replace = 0,
+    ligand_col = "ligand",
+    receptor_col = "receptor",
+    samples = NULL,                   # named vector: sample -> group (optional)
+    rank_by = "interaction"
+){
+  if (!requireNamespace("dplyr", quietly = TRUE)) stop("Please install 'dplyr'.")
+  rank_by <- match.arg(rank_by)
+  
+  # --- validate lrpairs ---
+  if (!is.data.frame(lrpairs)) stop("`lrpairs` must be a data.frame.")
+  if (is.null(rownames(lrpairs))) stop("`lrpairs` must have rownames matching interaction IDs.")
+  if (!all(c(ligand_col, receptor_col) %in% colnames(lrpairs))) {
+    stop(sprintf("`lrpairs` must contain columns '%s' and '%s'.", ligand_col, receptor_col))
+  }
+  
+  # --- helper: matrix -> long ---
+  .mat_to_long <- function(mat, sample_name){
+    if (!is.matrix(mat)) stop("Each entry of `lrscores` must be a matrix.")
+    if (is.null(rownames(mat))) stop("`lrscores` matrices must have rownames (interaction IDs).")
+    df <- as.data.frame(as.table(mat), stringsAsFactors = FALSE)
+    colnames(df) <- c("interaction","colname","score")
+    df$sample <- sample_name
+    df
+  }
+  
+  # --- build long table from matrix or list ---
+  long <-
+    if (is.list(lrscores)) {
+      if (is.null(names(lrscores)) || any(names(lrscores) == "")) {
+        stop("`lrscores` list must be *named*: names are sample IDs.")
+      }
+      dplyr::bind_rows(lapply(names(lrscores), function(s)
+        .mat_to_long(lrscores[[s]], s)))
+    } else {
+      .mat_to_long(lrscores, "sample")
+    }
+  
+  # coerce & replace NA scores
+  long$score <- suppressWarnings(as.numeric(long$score))
+  long$score[is.na(long$score)] <- na_replace
+  
+  # keep only interactions present in lrpairs, align L/R
+  long <- long[long$interaction %in% rownames(lrpairs), , drop = FALSE]
+  if (!nrow(long)) return(long)
+  
+  lrsub <- lrpairs[long$interaction, , drop = FALSE]
+  long$ligand   <- gsub(", ", "|", lrsub[[ligand_col]],   fixed = TRUE)
+  long$receptor <- gsub(", ", "|", lrsub[[receptor_col]], fixed = TRUE)
+  
+  # parse source/target from column name
+  parts <- strsplit(long$colname, split = name_split_token, fixed = TRUE)
+  long$source_cell_type <- vapply(parts, function(x) if (length(x)) x[[1]] else NA_character_, character(1))
+  long$target_cell_type <- vapply(parts, function(x) if (length(x) >= 2) x[[2]] else NA_character_, character(1))
+  
+  # add sample_group if mapping provided
+  if (!is.null(samples)) {
+    if (is.null(names(samples))) stop("`samples` must be a named vector: names=sample IDs, values=group labels.")
+    long$sample_group <- unname(samples[long$sample])
+  }
+  
+  # --- FULL TABLE MODE ---
+  if (is.null(top_n_table)) {
+    keep <- c("score","interaction","source_cell_type","target_cell_type",
+              "ligand","receptor","sample", if (!is.null(samples)) "sample_group")
+    out <- long[, keep, drop = FALSE] |>
+      dplyr::arrange(dplyr::desc(.data$score))
+    return(as.data.frame(out))
+  }
+  
+  # --- SINGLE-MATRIX (no groups provided): Top-N per column ---
+  if (is.null(samples)) {
+    out <- long |>
+      dplyr::group_by(.data$sample, .data$colname) |>
+      dplyr::slice_max(order_by = .data$score, n = top_n_table, with_ties = FALSE) |>
+      dplyr::ungroup() |>
+      dplyr::select(.data$score, .data$interaction, .data$source_cell_type, .data$target_cell_type,
+                    .data$ligand, .data$receptor, .data$sample) |>
+      dplyr::arrange(dplyr::desc(.data$score), .data$sample, .data$interaction)
+    return(as.data.frame(out))
+  }
+  
+  # --- GROUP-AWARE SELECTION: compute medians across samples in each group ---
+  # median per (group, interaction, column)
+  grp_col_med <- long |>
+    dplyr::filter(!is.na(.data$sample_group)) |>
+    dplyr::group_by(.data$sample_group, .data$interaction, .data$colname) |>
+    dplyr::summarise(med_score = stats::median(.data$score, na.rm = TRUE), .groups = "drop")
+  
+  # pick keys per group
+  if (rank_by == "interaction_col") {
+    # Top-N *interaction+column* per group
+    keys <- grp_col_med |>
+      dplyr::group_by(.data$sample_group) |>
+      dplyr::slice_max(order_by = .data$med_score, n = top_n_table, with_ties = FALSE) |>
+      dplyr::ungroup() |>
+      dplyr::select(.data$sample_group, .data$interaction, .data$colname)
+    
+    out <- long |>
+      dplyr::inner_join(keys, by = c("sample_group","interaction","colname")) |>
+      dplyr::select(.data$score, .data$interaction, .data$source_cell_type, .data$target_cell_type,
+                    .data$ligand, .data$receptor, .data$sample, .data$sample_group) |>
+      dplyr::arrange(.data$sample_group, dplyr::desc(.data$score), .data$sample, .data$interaction)
+    
+  } else {
+    # Top-N **unique interactions** per group (ignore column); use the strongest median across columns
+    grp_int_med <- grp_col_med |>
+      dplyr::group_by(.data$sample_group, .data$interaction) |>
+      dplyr::summarise(med_score = max(.data$med_score, na.rm = TRUE), .groups = "drop") |>
+      dplyr::group_by(.data$sample_group) |>
+      dplyr::slice_max(order_by = .data$med_score, n = top_n_table, with_ties = FALSE) |>
+      dplyr::ungroup() |>
+      dplyr::select(.data$sample_group, .data$interaction)
+    
+    out <- long |>
+      dplyr::inner_join(grp_int_med, by = c("sample_group","interaction")) |>
+      dplyr::select(.data$score, .data$interaction, .data$source_cell_type, .data$target_cell_type,
+                    .data$ligand, .data$receptor, .data$sample, .data$sample_group) |>
+      dplyr::arrange(.data$sample_group, dplyr::desc(.data$score), .data$sample, .data$interaction)
+  }
+  
+  as.data.frame(out)
+}
+
 
 
 #' @title Assemble ligand receptor interaction table
