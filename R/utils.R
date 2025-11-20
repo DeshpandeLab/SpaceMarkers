@@ -1081,6 +1081,7 @@ plot_spatial_data_over_image <- function(
 #' promiscuous ligands or receptors.
 #' @return Data frame with L-R scores and p-values
 #' @export
+#' 
 calculate_lr_scores <- function(ligand_scores, receptor_scores, lr_pairs,
                               ligand_test = c("greater", "two.sided"), method = c("geometric_mean", "arithmetic_mean"),
                               weighted = TRUE) {
@@ -1102,10 +1103,10 @@ calculate_lr_scores <- function(ligand_scores, receptor_scores, lr_pairs,
         names(mapped_receptor_cols) <- ligand_cols
         lr_scores <- matrix(0, nrow=nrow(lr_pairs), ncol=length(ligand_cols))
         if (weighted) {
-            ligand_counts <- table(lr_pairs$ligand.symbol)
-            receptor_counts <- table(lr_pairs$receptor.symbol)
-            ligand_weights <- 1 / ligand_counts[lr_pairs$ligand.symbol]
-            receptor_weights <- 1 / receptor_counts[lr_pairs$receptor.symbol]
+            ligand_counts <- table(lr_pairs$ligand)
+            receptor_counts <- table(lr_pairs$receptor)
+            ligand_weights <- 1 / ligand_counts[lr_pairs$ligand]
+            receptor_weights <- 1 / receptor_counts[lr_pairs$receptor]
             ligand_weights <- matrix(ligand_weights * length(ligand_weights) / sum(ligand_weights), nrow=nrow(lr_pairs), ncol=1)
             receptor_weights <- matrix(receptor_weights * length(receptor_weights) / sum(receptor_weights), nrow=nrow(lr_pairs), ncol=1)
             rownames(ligand_weights) <- rownames(receptor_weights) <- rownames(lr_pairs)
