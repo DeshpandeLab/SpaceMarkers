@@ -11,6 +11,7 @@ plot_lr_alluvial(
   target_col = "target_cell_type",
   ligand_col = "ligand",
   receptor_col = "receptor",
+  condition_col = "condition",
   title = NULL,
   min_score = 0,
   alpha = 0.8,
@@ -20,39 +21,42 @@ plot_lr_alluvial(
 )
 }
 \arguments{
-\item{df}{A data frame containing ligand–receptor scores and the required
-columns for source, ligand, receptor, target, and score.}
+\item{df}{Data frame containing ligand/receptor scores and identifiers.}
 
-\item{score_col}{Character. Name of the score column. Default is \code{"score"}.}
+\item{score_col}{Character. Column name for the interaction score.}
 
-\item{source_col}{Character. Name of the source cell type column. Default is
-\code{"source_cell_type"}.}
+\item{source_col}{Character. Column name for the source cell type.}
 
-\item{target_col}{Character. Name of the target cell type column. Default is
-\code{"target_cell_type"}.}
+\item{target_col}{Character. Column name for the target cell type.}
 
-\item{ligand_col}{Character. Name of the ligand column. Default is \code{"ligand"}.}
+\item{ligand_col}{Character. Column name for the ligand.}
 
-\item{receptor_col}{Character. Name of the receptor column. Default is \code{"receptor"}.}
+\item{receptor_col}{Character. Column name for the receptor.}
+
+\item{condition_col}{Optional character. Column name for condition used to
+distinguish ribbons via alpha. If \code{NULL} or not present, no condition
+distinction is applied.}
 
 \item{title}{Optional plot title. If \code{NULL}, a default title is used.}
 
-\item{min_score}{Numeric. Minimum score to keep before plotting.}
+\item{min_score}{Numeric. Minimum score to keep.}
 
-\item{alpha}{Numeric between 0 and 1. Alpha transparency for flows.}
+\item{alpha}{Numeric between 0 and 1. Base alpha used when \code{condition_col}
+is not provided; otherwise ignored in favor of condition-based alpha.}
 
 \item{knot_pos}{Numeric between 0 and 1. Knot position along the flow.}
 
 \item{label_size}{Numeric. Text size for node labels.}
 
-\item{wrap_width}{Integer or \code{NULL}. If not \code{NULL}, wraps labels to
-this width.}
+\item{wrap_width}{Integer or \code{NULL}. If not \code{NULL}, wrap long labels
+to this width.}
 }
 \value{
 A ggplot object.
 }
 \description{
-Creates an alluvial (Sankey-style) plot showing flows from source cell type
+Make an alluvial (Sankey-style) plot showing flows from source cell type
 to ligand, receptor, and target cell type. Flow width is proportional to an
-interaction score, and flows are colored by the source cell type.
+interaction score. Ribbons are filled by source cell type and optionally
+distinguished by condition using alpha (transparency) with a separate legend.
 }

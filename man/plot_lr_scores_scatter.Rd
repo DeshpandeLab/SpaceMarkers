@@ -7,6 +7,7 @@
 plot_lr_scores_scatter(
   df,
   out = "lr_scores_scatter.tiff",
+  title = "Ligand score vs Receptor score",
   color_by = "interaction",
   shape_by = "source_to_target",
   point_size = 2,
@@ -22,6 +23,8 @@ plot_lr_scores_scatter(
 \code{shape_by}.}
 
 \item{out}{Output file path for the saved plot (should end in \code{.tiff}).}
+
+\item{title}{Chracter. Title of the plot}
 
 \item{color_by}{Character. Column name used for point color. Default is
 \code{"interaction"}.}

@@ -1030,43 +1030,46 @@ get_top_lr_interactions <- function(df, top = 10) {
 #' @title Plot ligand receptor alluvial diagram
 #'
 #' @description
-#' Creates an alluvial (Sankey-style) plot showing flows from source cell type
+#' Make an alluvial (Sankey-style) plot showing flows from source cell type
 #' to ligand, receptor, and target cell type. Flow width is proportional to an
-#' interaction score, and flows are colored by the source cell type.
+#' interaction score. Ribbons are filled by source cell type and optionally
+#' distinguished by condition using alpha (transparency) with a separate legend.
 #'
-#' @param df A data frame containing ligand–receptor scores and the required
-#' columns for source, ligand, receptor, target, and score.
-#' @param score_col Character. Name of the score column. Default is \code{"score"}.
-#' @param source_col Character. Name of the source cell type column. Default is
-#' \code{"source_cell_type"}.
-#' @param target_col Character. Name of the target cell type column. Default is
-#' \code{"target_cell_type"}.
-#' @param ligand_col Character. Name of the ligand column. Default is \code{"ligand"}.
-#' @param receptor_col Character. Name of the receptor column. Default is \code{"receptor"}.
+#' @param df Data frame containing ligand/receptor scores and identifiers.
+#' @param score_col Character. Column name for the interaction score.
+#' @param source_col Character. Column name for the source cell type.
+#' @param target_col Character. Column name for the target cell type.
+#' @param ligand_col Character. Column name for the ligand.
+#' @param receptor_col Character. Column name for the receptor.
+#' @param condition_col Optional character. Column name for condition used to
+#' distinguish ribbons via alpha. If \code{NULL} or not present, no condition
+#' distinction is applied.
 #' @param title Optional plot title. If \code{NULL}, a default title is used.
-#' @param min_score Numeric. Minimum score to keep before plotting.
-#' @param alpha Numeric between 0 and 1. Alpha transparency for flows.
+#' @param min_score Numeric. Minimum score to keep.
+#' @param alpha Numeric between 0 and 1. Base alpha used when \code{condition_col}
+#' is not provided; otherwise ignored in favor of condition-based alpha.
 #' @param knot_pos Numeric between 0 and 1. Knot position along the flow.
 #' @param label_size Numeric. Text size for node labels.
-#' @param wrap_width Integer or \code{NULL}. If not \code{NULL}, wraps labels to
-#' this width.
+#' @param wrap_width Integer or \code{NULL}. If not \code{NULL}, wrap long labels
+#' to this width.
 #'
 #' @return A ggplot object.
 #'
 #' @export
 plot_lr_alluvial <- function(
     df,
-    score_col    = "score",
-    source_col   = "source_cell_type",
-    target_col   = "target_cell_type",
-    ligand_col   = "ligand",
-    receptor_col = "receptor",
-    title        = NULL,
-    min_score    = 0,
-    alpha        = 0.8,
-    knot_pos     = 0.4,
-    label_size   = 2.7,
-    wrap_width   = 12
+    score_col     = "score",
+    source_col    = "source_cell_type",
+    target_col    = "target_cell_type",
+    ligand_col    = "ligand",
+    receptor_col  = "receptor",
+    condition_col = "condition",
+    title         = NULL,
+    min_score     = 0,
+    alpha         = 0.8,
+    knot_pos      = 0.4,
+    label_size    = 2.7,
+    wrap_width    = 12
 ) {
   for (pkg in c("ggplot2","ggalluvial","RColorBrewer","circlize")) {
     if (!requireNamespace(pkg, quietly = TRUE)) stop(sprintf("Please install '%s'.", pkg))
@@ -1077,11 +1080,12 @@ plot_lr_alluvial <- function(
     hit <- which(tolower(names(df)) == tolower(nm))
     if (length(hit)) names(df)[hit[1]] else nm
   }
-  score_col    <- .res(score_col)
-  source_col   <- .res(source_col)
-  target_col   <- .res(target_col)
-  ligand_col   <- .res(ligand_col)
-  receptor_col <- .res(receptor_col)
+  score_col     <- .res(score_col)
+  source_col    <- .res(source_col)
+  target_col    <- .res(target_col)
+  ligand_col    <- .res(ligand_col)
+  receptor_col  <- .res(receptor_col)
+  condition_col <- if (!is.null(condition_col)) .res(condition_col) else NULL
   
   need <- c(score_col, source_col, target_col, ligand_col, receptor_col)
   miss <- setdiff(need, names(df))
@@ -1102,7 +1106,7 @@ plot_lr_alluvial <- function(
   d[[receptor_col]] <- wrap_names(d[[receptor_col]])
   d[[target_col]]   <- wrap_names(d[[target_col]])
   
-  # color by source cell type
+  # fill by source cell type
   d$fill_key <- factor(d[[source_col]])
   
   .discrete_palette <- function(n) {
@@ -1119,6 +1123,12 @@ plot_lr_alluvial <- function(
   pal_vals <- .discrete_palette(nlevels(d$fill_key))
   names(pal_vals) <- levels(d$fill_key)
   
+  # condition handling (alpha legend)
+  has_condition <- !is.null(condition_col) && condition_col %in% names(d)
+  if (has_condition) {
+    d$cond_key <- factor(d[[condition_col]])
+  }
+  
   dp <- data.frame(
     source   = d[[source_col]],
     ligand   = d[[ligand_col]],
@@ -1126,26 +1136,47 @@ plot_lr_alluvial <- function(
     target   = d[[target_col]],
     score    = d[[score_col]],
     fill_key = d$fill_key,
+    cond_key = if (has_condition) d$cond_key else NA,
     stringsAsFactors = FALSE
   )
   
   default_title <- "LR Alluvial: Source -> Ligand -> Receptor -> Target"
   
-  ggplot2::ggplot(
+  p <- ggplot2::ggplot(
     dp,
     ggplot2::aes(axis1 = source, axis2 = ligand, axis3 = receptor, axis4 = target, y = score)
   ) +
     ggplot2::scale_x_discrete(
       limits = c("Source", "Ligand", "Receptor", "Target"),
       expand = c(.08, .05)
-    ) +
-    ggalluvial::geom_alluvium(
-      ggplot2::aes(fill = fill_key),
-      alpha = alpha,
-      knot.pos = knot_pos,
-      show.legend = TRUE
-    ) +
-    ggalluvial::geom_stratum(width = 0.25, color = "grey30", fill = "grey85") +
+    )
+  
+  if (has_condition) {
+    p <- p +
+      ggalluvial::geom_alluvium(
+        ggplot2::aes(fill = fill_key, alpha = cond_key),
+        knot.pos = knot_pos,
+        show.legend = TRUE
+      ) +
+      ggplot2::scale_alpha_discrete(
+        range = c(0.45, 0.90),
+        name  = "Condition"
+      ) +
+      ggplot2::guides(
+        alpha = ggplot2::guide_legend(override.aes = list(fill = "grey40"))
+      )
+  } else {
+    p <- p +
+      ggalluvial::geom_alluvium(
+        ggplot2::aes(fill = fill_key),
+        alpha = alpha,
+        knot.pos = knot_pos,
+        show.legend = TRUE
+      )
+  }
+  
+  p <- p +
+    ggalluvial::geom_stratum(width = 0.25, color = "grey30", fill = "white") +
     ggalluvial::stat_stratum(
       geom = "text",
       ggplot2::aes(label = after_stat(stratum)),
@@ -1153,10 +1184,15 @@ plot_lr_alluvial <- function(
       check_overlap = TRUE
     ) +
     ggplot2::scale_fill_manual(values = pal_vals, name = "Source cell type", drop = FALSE) +
-    ggplot2::guides(fill = ggplot2::guide_legend(override.aes = list(alpha = 1))) +
+    ggplot2::guides(
+      fill = ggplot2::guide_legend(override.aes = list(alpha = 1))
+    ) +
     ggplot2::labs(
       title    = if (is.null(title)) default_title else title,
-      subtitle = "Flow width ~ score; color ~ source_cell_type",
+      subtitle = if (has_condition)
+        "Flow width ~ score; fill ~ source_cell_type; alpha ~ condition"
+      else
+        "Flow width ~ score; fill ~ source_cell_type",
       y = "Score",
       x = NULL
     ) +
@@ -1168,6 +1204,8 @@ plot_lr_alluvial <- function(
       axis.text.x = ggplot2::element_text(size = 11),
       plot.margin = ggplot2::margin(10, 30, 10, 30)
     )
+  
+  return(p)
 }
 
 
@@ -1182,6 +1220,7 @@ plot_lr_alluvial <- function(
 #' \code{receptor_score}, plus the columns specified by \code{color_by} and
 #' \code{shape_by}.
 #' @param out Output file path for the saved plot (should end in \code{.tiff}).
+#' @param title Chracter. Title of the plot
 #' @param color_by Character. Column name used for point color. Default is
 #' \code{"interaction"}.
 #' @param shape_by Character. Column name used for point shape. Default is
@@ -1197,6 +1236,7 @@ plot_lr_alluvial <- function(
 #' @export
 plot_lr_scores_scatter <- function(df,
                                    out = "lr_scores_scatter.tiff",
+                                   title = "Ligand score vs Receptor score",
                                    color_by = "interaction",
                                    shape_by = "source_to_target",
                                    point_size = 2,
@@ -1229,7 +1269,7 @@ plot_lr_scores_scatter <- function(df,
   ) +
     ggplot2::geom_point(size = point_size, alpha = point_alpha) +
     ggplot2::labs(
-      title = "Ligand vs Receptor scores",
+      title = title,
       x = "Ligand score",
       y = "Receptor score",
       color = color_by,
@@ -1252,7 +1292,7 @@ plot_lr_scores_scatter <- function(df,
     compress = "lzw"
   )
   
-  invisible(out)
+  invisible(p)
 }
 
 
