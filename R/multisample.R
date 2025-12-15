@@ -463,6 +463,7 @@ plot_sample_overlaps <- function(wide_df,
 #'   is not \code{NULL}, additional columns \code{comparison_group},
 #'   \code{group1}, \code{group2}, \code{median_diff}, and
 #'   \code{median_overlapScore} are added.
+#' @export
 compare_scores <- function(mtx,sample_groups = NULL,feature_col = "interaction") {
   # wide matrix from df
   rows     <- mtx[[feature_col ]]
