@@ -971,7 +971,7 @@ create_lr_dataframe_multi <- function(lr_scores_list, lrpairs, sample_groups = N
   final_lrscores<- dplyr::bind_rows(out_list)
   final_lrscores$source_to_target <- paste0(final_lrscores$source_cell_type,
                                     "_to_",final_lrscores$target_cell_type)
-  return(out_df)
+  return(final_lrscores)
 }
 
 
