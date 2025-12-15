@@ -519,6 +519,9 @@ create_lr_dataframe <- function(lrscores, ligand_scores, receptor_scores,lrpairs
   final_lrscores <- final_lrscores %>%
     dplyr::select(source_cell_type,ligand,receptor,target_cell_type,
                   ligand_score,receptor_score,score,interaction)
+  final_lrscores$source_to_target <- paste0(final_lrscores$source_cell_type,
+                                            "_to_",
+                                            final_lrscores$target_cell_type)
   return(final_lrscores)
 }
 
