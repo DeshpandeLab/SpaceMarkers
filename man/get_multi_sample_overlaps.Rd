@@ -2,34 +2,35 @@
 % Please edit documentation in R/multisample.R
 \name{get_multi_sample_overlaps}
 \alias{get_multi_sample_overlaps}
-\title{Compute multi-sample overlap scores}
+\title{Compute overlap scores across multiple samples}
 \usage{
 get_multi_sample_overlaps(
-  pat_hotspots_list,
-  in_hotspots_list = NULL,
-  patternList = NULL,
-  method = c("Szymkiewicz-Simpson", "Jaccard", "Sorensen-Dice", "Ochiai", "absolute")
+  pattern_hotspots,
+  influence_hotspots = NULL,
+  datasets,
+  ...
 )
 }
 \arguments{
-\item{pat_hotspots_list}{Named list of hotspot tables for each sample.}
+\item{pattern_hotspots}{A named list of per-sample hotspot data frames to be
+passed as pat_hotspots to get_overlap_scores.}
 
-\item{in_hotspots_list}{Optional named list of influence hotspot tables
-for each sample. If NULL, only pat_hotspots_list is used.}
+\item{influence_hotspots}{An optional named list of per-sample hotspot data
+frames to be passed as in_hotspots to get_overlap_scores. If NULL, symmetric
+overlaps are computed within each element of pattern_hotspots.}
 
-\item{patternList}{Optional character vector of pattern names to include.}
+\item{datasets}{A character vector of dataset names corresponding to the
+elements of pattern_hotspots. These become the column names in the wide output.}
 
-\item{method}{Character. Overlap metric to use. One of
-"Szymkiewicz-Simpson", "Jaccard", "Sorensen-Dice", "Ochiai", or "absolute".}
+\item{...}{Additional arguments passed to get_overlap_scores, such as
+patternList or method.}
 }
 \value{
-A list with two data.frames:
-\describe{
-\item{long}{Long-format table with one row per dataset and interaction.}
-\item{wide}{Wide-format table with interactions as rows and datasets as columns.}
-}
+A data frame in wide format with one row per interaction and one
+column per dataset containing overlap scores.
 }
 \description{
-Compute pairwise overlap scores per sample and assemble long and wide
-summaries across samples.
+This function applies get_overlap_scores to multiple samples and
+reshapes the results into a wide matrix with interactions as rows and datasets
+as columns.
 }

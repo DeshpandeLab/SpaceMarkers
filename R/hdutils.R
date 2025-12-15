@@ -198,44 +198,115 @@ find_hotspots_gmm <- function(df, threshold = 0.1,...){
 #'   patternpair        = c("Epi","Plasma")
 #' )
 #' }
-#' @export
-classify_spots <- function(pat_hotspots, influence_hotspots, patternpair = NULL) {
+classify_spots <- function(pat_hotspots,
+                           influence_hotspots,
+                           patternpair = NULL) {
   patnames <- setdiff(colnames(pat_hotspots), c("x", "y", "barcode"))
-  infnames <- setdiff(colnames(influence_hotspots), c("x", "y", "barcode"))  
-  #check if pat_hotspots and influence_hotspots have the same dimensions
+  infnames <- setdiff(colnames(influence_hotspots), c("x", "y", "barcode"))
+  
   if (!all(dim(pat_hotspots) == dim(influence_hotspots))) {
     stop("pat_hotspots and influence_hotspots must have the same dimensions.")
   } else if (!all(patnames == infnames)) {
     stop("pat_hotspots and influence_hotspots must have the same column names.")
   }
-  # Check if patternpair is NULL or is contained in patnames
+  
   if (!is.null(patternpair) && !all(patternpair %in% patnames)) {
     stop("patternpair must be NULL or contained in patnames.")
   } else if (is.null(patternpair) && length(patnames) > 2) {
     stop("More than 2 patterns found. Please provide patternpair.")
   }
+  
+  ## Case 1: influence_hotspots is NULL  ----
   if (is.null(influence_hotspots)) {
-    message("You only provided the pattern hotspots. Specify influence 
-              hotspots if present")
-    region <- ifelse(!is.na(pat_hotspots[, patternpair[1]]) & !is.na(pat_hotspots[, patternpair[2]]), "Interacting",
-                     ifelse(!is.na(pat_hotspots[, patternpair[1]]), pat_hotspots[, patternpair[1]],
-                            ifelse(!is.na(pat_hotspots[, patternpair[2]]),
-                                   pat_hotspots[, patternpair[2]], NA)))
+    message("You only provided the pattern hotspots. Specify influence hotspots if present")
+    
+    region <- ifelse(
+      !is.na(pat_hotspots[, patternpair[1]]) &
+        !is.na(pat_hotspots[, patternpair[2]]),
+      "Interacting",
+      ifelse(
+        !is.na(pat_hotspots[, patternpair[1]]),
+        pat_hotspots[, patternpair[1]],
+        ifelse(
+          !is.na(pat_hotspots[, patternpair[2]]),
+          pat_hotspots[, patternpair[2]],
+          NA
+        )
+      )
+    )
+    
     df <- data.frame(x = region)
-    colnames(df)[1] <- paste0(patternpair[1],"_",patternpair[2])
+    colnames(df)[1] <- paste0(patternpair[1], "_", patternpair[2])
     return(df)
   }
   
-  region <- pat_hotspots[,patternpair[1]]
-  pat1.inf2 <- ifelse(!is.na(region) & !is.na(influence_hotspots[,patternpair[2]]),"Interacting",
-                      ifelse(!is.na(region),region,NA))
+  ## Case 2: pattern + influence hotspots ----
+  region <- pat_hotspots[, patternpair[1]]
+  pat1.inf2 <- ifelse(
+    !is.na(region) & !is.na(influence_hotspots[, patternpair[2]]),
+    "Interacting",
+    ifelse(!is.na(region), region, NA)
+  )
   
-  region <- pat_hotspots[,patternpair[2]]
-  pat2.inf1 <- ifelse(!is.na(region) & !is.na(influence_hotspots[,patternpair[1]]),"Interacting",
-                      ifelse(!is.na(region),region,NA))
-  df <- data.frame(pat1.inf2=pat1.inf2, pat2.inf1=pat2.inf1)
-  colnames(df) <- c(paste0(patternpair[1],"_near_",patternpair[2]),paste0(patternpair[2],"_near_",patternpair[1]))
+  region <- pat_hotspots[, patternpair[2]]
+  pat2.inf1 <- ifelse(
+    !is.na(region) & !is.na(influence_hotspots[, patternpair[1]]),
+    "Interacting",
+    ifelse(!is.na(region), region, NA)
+  )
+  
+  df <- data.frame(
+    pat1.inf2 = pat1.inf2,
+    pat2.inf1 = pat2.inf1
+  )
+  colnames(df) <- c(
+    paste0(patternpair[1], "_near_", patternpair[2]),
+    paste0(patternpair[2], "_near_", patternpair[1])
+  )
+  
   return(df)
+}
+
+#' @title Classify all pattern pairs for each spot
+#' @description
+#' For all pairwise combinations of patterns in a hotspot matrix, classify
+#' each spot as interacting or belonging to one pattern, optionally using
+#' both pattern and influence hotspots.
+#'
+#' @param pat_hotspots Data frame with columns barcode, x, y and one or
+#' more pattern hotspot columns.
+#' @param influence_hotspots Optional data frame with the same structure
+#' as pat_hotspots, containing influence hotspots. If NULL, only pattern
+#' hotspots are used.
+#'
+#' @return A data.frame with one column per pattern pair and one row per
+#' spot containing classification labels.
+#' @export
+classify_allspots <- function(pat_hotspots,
+                              influence_hotspots = NULL) {
+  key_cols <- c("barcode", "x", "y")
+  patnames <- setdiff(colnames(pat_hotspots), key_cols)
+  
+  if (length(patnames) < 2L) {
+    stop("Need at least 2 pattern columns in pat_hotspots.")
+  }
+  
+  # All pairwise combinations of patterns
+  patternpairs <- utils::combn(patnames, 2, simplify = FALSE)
+  
+  # Run classify_spots for every pair
+  class_list <- lapply(patternpairs, function(pp) {
+    classify_spots(
+      pat_hotspots       = pat_hotspots,
+      influence_hotspots = influence_hotspots,
+      patternpair        = pp
+    )
+  })
+  
+  # cbind all interacting hotspot columns together
+  class_df <- do.call(cbind, class_list)
+  
+  class_df
 }
 
 #' @title Perform row-wise t-tests from scratch
@@ -376,4 +447,146 @@ calculate_gene_scores_directed <- function(data, pat_hotspots, influence_hotspot
         }
     }
     return(IMscores)
+}
+
+#' Create a long-format ligand–receptor dataframe
+#'
+#' Convert ligand, receptor, and ligand–receptor (LR) score matrices into a
+#' tidy long-format dataframe, with one row per ligand–receptor interaction and
+#' source–target cell-type pair.
+#'
+#' @param ligand_scores A numeric matrix or data.frame of ligand scores with
+#'   ligands in rows and source/target context in columns
+#'   (e.g. \code{"B_near_Epi"}).
+#' @param receptor_scores A numeric matrix or data.frame of receptor scores
+#'   with receptor complexes in rows and target cell types in columns
+#'   (e.g. \code{"Epi"}, \code{"Mast"}).
+#' @param lrscores A numeric matrix of ligand–receptor scores with
+#'   interactions in rows (e.g. \code{"TGFB1_TGFBR1_TGFBR2"}) and
+#'   source-to-target directions in columns
+#'   (e.g. \code{"B_to_Epi"}).
+#' @param complex_sep A character string specifying the separator used between
+#'   receptor components in \code{receptor_scores} rownames
+#'   (default is \code{", "}).
+#'
+#' @return A data.frame with columns:
+#'   \item{source_celltype}{Source cell type.}
+#'   \item{target_celltype}{Target cell type.}
+#'   \item{ligand}{Ligand gene/symbol.}
+#'   \item{receptor}{Receptor complex string.}
+#'   \item{source_to_target}{Source-to-target label (e.g. \code{"B_to_Epi"}).}
+#'   \item{interaction}{Ligand–receptor interaction identifier.}
+#'   \item{ligand_score}{Ligand score for this interaction/direction.}
+#'   \item{receptor_score}{Receptor score for this interaction/target.}
+#'   \item{lr_score}{Combined ligand–receptor score.}
+#'
+#' @importFrom reshape2 melt
+#' @importFrom dplyr select distinct
+#'
+#' @examples
+#' \dontrun{
+#' df <- create_lr_dataframe(ligand_scores, receptor_scores, lrscores)
+#' head(df)
+#' }
+create_lr_dataframe <- function(ligand_scores, receptor_scores, lrscores,complex_sep = ", ") {
+  
+  # --- 1. Melt lrscores to long format ---
+  # 'interaction' is in rownames, 'source_to_target' is in colnames
+  lr_long <- reshape2::melt(as.matrix(lrscores), varnames = c("interaction", "source_to_target"), value.name = "lr_score")
+  
+  # Remove rows where lr_score is NA or NaN (using is.finite is a good way to check for valid numbers)
+  #lr_long <- lr_long[is.finite(lr_long$lr_score) & !is.na(lr_long$lr_score), ]
+  
+  # --- 2. Extract components from 'source_to_target' ---
+  lr_long$source_celltype <- gsub("_to_.*", "", lr_long$source_to_target)
+  lr_long$target_celltype <- gsub(".*_to_", "", lr_long$source_to_target)
+  
+  # --- 3. Extract components from 'interaction' ---
+  # Split the interaction string (Ligand_Receptor1_Receptor2...) by underscore
+  # This part assumes the ligand is the first component, and receptors are the rest.
+  # The first component before the first underscore is the ligand.
+  lr_long$ligand <- sub("_.*", "", lr_long$interaction)
+  
+  # The receptor is the rest of the string after the first underscore.
+  # This is a simplification; in a multi-receptor complex, this column will contain
+  # all receptors concatenated by underscores (e.g., TGFBR1_TGFBR2).
+  lr_long$receptor <- sub("^[^_]*_", "", lr_long$interaction)
+  
+  # --- 4. Prepare and merge ligand_scores ---
+  
+  # Melt ligand_scores to long format
+  ligand_long <- reshape2::melt(as.matrix(ligand_scores), varnames = c("interaction", "ligand_col"), value.name = "ligand_score")
+  
+  # Remove NA/NaN scores
+  #ligand_long <- ligand_long[is.finite(ligand_long$ligand_score) & !is.na(ligand_long$ligand_score), ]
+  
+  
+  # Match the column names in ligand_scores (e.g., B_near_Epi) to the lr_long format (e.g., B_to_Epi)
+  ligand_long$source_to_target <- gsub("near_", "to_", ligand_long$ligand_col)
+  
+  # Select and rename columns for merging
+  ligand_scores_to_merge <- ligand_long %>%
+    dplyr::select(interaction, source_to_target, ligand_score)
+  
+  # Merge with lr_long
+  # lr_df <- merge(lr_long, ligand_scores_to_merge, by = c("interaction", "source_to_target"), all.x = TRUE)
+  #lr_long$source_to_target <- NULL
+  # Merge with lr_long
+  lr_df <- merge(lr_long, ligand_scores_to_merge, by = c("interaction", "source_to_target"), all.x = TRUE)
+  
+  
+  # --- 5. Prepare and merge receptor_scores ---
+  
+  # The column names in receptor_scores are the target cell types.
+  # The row names are the receptor components (comma-separated, e.g., TGFBR2, TGFBR1)
+  
+  # Convert rownames to a proper column before melting
+  rownames(receptor_scores) <- gsub(pattern = complex_sep,replacement = "_",rownames(receptor_scores))
+  receptor_scores <- data.frame(receptor_scores)
+  receptor_scores$receptor_components <- rownames(receptor_scores)
+  # Remove any suffixes after the last dot in receptor_components (if present) 
+  # e.g., TGFBR2_TGFBR1.1 -> TGFBR2_TGFBR1
+  receptor_scores$receptor_components <- sub("\\.[^.]*$", "", receptor_scores$receptor_components)
+  
+  # Melt receptor_scores
+  receptor_long <- reshape2::melt(receptor_scores, id.vars = "receptor_components", 
+                                  variable.name = "target_celltype_col", 
+                                  value.name = "receptor_score")
+  
+  
+  # Get everything after the first underscore since ligands typically don't have underscores
+  lr_df$receptor_components_match <- sub("^[^_]*_", "", lr_df$interaction)
+  
+  # The target_celltype_col is the target_celltype from lr_df
+  receptor_long$target_celltype <- as.character(receptor_long$target_celltype_col)
+  
+  # Select and rename columns for merging
+  receptor_scores_to_merge <- receptor_long %>%
+    dplyr::select(receptor_components, target_celltype, receptor_score)
+  
+  # Merge by 'receptor_components_match' and 'target_celltype'
+  lr_df <- merge(lr_df, receptor_scores_to_merge, 
+                 by.x = c("receptor_components_match", "target_celltype"), 
+                 by.y = c("receptor_components", "target_celltype"), 
+                 all.x = TRUE)
+  
+  # --- 6. Final cleanup and column selection ---
+  
+  # Re-order and select the specified columns
+  final_df <- lr_df %>%
+    dplyr::select(source_celltype, target_celltype, ligand, receptor, 
+                  source_to_target, interaction, ligand_score, 
+                  receptor_score, lr_score) %>%
+    # Remove the intermediate 'receptor_components_match' column used for merging
+    dplyr::distinct() # Use distinct to remove any duplicate rows introduced by the merging logic
+  
+  # Convert target_celltype/source_celltype to character if they were factors
+  final_df$source_celltype <- as.character(final_df$source_celltype)
+  final_df$target_celltype <- as.character(final_df$target_celltype)
+  final_df$source_to_target <- as.character(final_df$source_to_target)
+  final_df$interaction <- as.character(final_df$interaction)
+  
+  final_df$lr_score[is.na(final_df$lr_score)] <- 0
+  final_df$lr_score[which(final_df$lr_score == "NaN")] <- 0
+  return(final_df)
 }

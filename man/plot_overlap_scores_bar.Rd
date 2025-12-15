@@ -2,63 +2,24 @@
 % Please edit documentation in R/multisample.R
 \name{plot_overlap_scores_bar}
 \alias{plot_overlap_scores_bar}
-\title{Bar plot of median overlap scores}
+\title{Plot group-level median overlap scores}
 \usage{
-plot_overlap_scores_bar(
-  df,
-  condition_group,
-  feature_col = "interaction",
-  overlap_col = "overlapScore",
-  group_col = "group",
-  n_table = NULL,
-  reference_label = "reference",
-  title = NULL,
-  width = 7,
-  height = 10,
-  save_path = NULL,
-  dpi = 300,
-  transparent = FALSE,
-  ref_color = "#1F77B4",
-  cond_color = "#D62728"
-)
+plot_overlap_scores_bar(df, top = 10, out = "median_overlap_scores.tiff")
 }
 \arguments{
-\item{df}{Data.frame with feature, overlap, and group columns.}
+\item{df}{Data frame containing at least the columns interaction, group1,
+median_diff, and median_overlapScore.}
 
-\item{condition_group}{Character. Name of the condition group.}
+\item{top}{Integer specifying the number of top interactions to display.}
 
-\item{feature_col}{Character. Column name for the feature identifier.}
-
-\item{overlap_col}{Character. Column name for the overlap score.}
-
-\item{group_col}{Character. Column name for the group variable.}
-
-\item{n_table}{Integer or NULL. If not NULL, keep only the bottom and top
-n_table features by difference in medians.}
-
-\item{reference_label}{Character. Legend label for the reference bar.}
-
-\item{title}{Character or NULL. Plot title.}
-
-\item{width}{Numeric. Width in inches for saved output.}
-
-\item{height}{Numeric. Height in inches for saved output.}
-
-\item{save_path}{Character or NULL. If not NULL, path to save a TIFF file.}
-
-\item{dpi}{Integer. Resolution in dots per inch for saved output.}
-
-\item{transparent}{Logical. If TRUE, use a transparent background.}
-
-\item{ref_color}{Character. Color for the reference bars.}
-
-\item{cond_color}{Character. Color for the condition bars.}
+\item{out}{Character file name for the saved TIFF figure.}
 }
 \value{
-A ggplot object.
+An invisible list with components data (the plotted subset) and
+plot (the ggplot object).
 }
 \description{
-Plot horizontal bars for median overlap scores in a reference group
-and a condition group for each feature. Features are ordered by the
-difference between condition and reference medians.
+Create a horizontal bar plot of median overlap scores for the top
+interactions, typically using the output of compare_scores. Interactions
+are ranked by the absolute median difference between groups.
 }

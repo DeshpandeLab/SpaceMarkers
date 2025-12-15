@@ -2,33 +2,33 @@
 % Please edit documentation in R/multisample.R
 \name{compare_scores}
 \alias{compare_scores}
-\title{Compare scores between a reference and a condition}
+\title{Compute pairwise overlap differences}
 \usage{
-compare_scores(
-  df,
-  ref_condition = "Normal",
-  group_col = "group",
-  feature_col = "interaction",
-  value_col = "overlapScore"
-)
+compare_scores(mtx, sample_groups = NULL, feature_col = "interaction")
 }
 \arguments{
-\item{df}{Data.frame containing at least the group, feature, and value columns.}
+\item{mtx}{A data frame where the column given by \code{feature_col}
+contains interaction names and the remaining columns are datasets with
+numeric overlap scores.}
 
-\item{ref_condition}{Character. Name of the reference condition.}
+\item{sample_groups}{Optional named character vector mapping dataset
+names (column names of \code{mtx} excluding \code{feature_col}) to
+user-defined groups or conditions. If \code{NULL}, only dataset-level
+comparisons are returned.}
 
-\item{group_col}{Character. Column name for the group variable.}
-
-\item{feature_col}{Character. Column name for the feature identifier.}
-
-\item{value_col}{Character. Column name for the numeric values to compare.}
+\item{feature_col}{Character string giving the name of the interaction
+column in \code{mtx}. Default is \code{"interaction"}.}
 }
 \value{
-A data.frame with the same rows as df, grouped by feature, and
-additional columns p_value, fdr, ref_median, and condition_median.
+A data frame with one row per dataset pair and interaction,
+including columns for dataset-level differences. If \code{sample_groups}
+is not \code{NULL}, additional columns \code{comparison_group},
+\code{group1}, \code{group2}, \code{median_diff}, and
+\code{median_overlapScore} are added.
 }
 \description{
-For each feature, compare values between a reference condition and a
-second condition using a Wilcoxon rank-sum test. Add p values and
-adjusted p values to the input data.
+Given a wide overlap matrix with one column for \code{interaction} and the
+remaining columns as datasets, compute all pairwise differences between
+datasets in long format. Optionally, map datasets to higher-level groups
+and compute group-level summaries.
 }

@@ -13,15 +13,36 @@
 #'   \item{coords}{Filtered coordinate data.frame with rows in the same order as the counts columns.}
 #' }
 #'
+#' @examples
+#' aligned <- align_counts_coords(counts, coords)
+#' aligned$counts[1:5, 1:5]
+#' aligned$coords[1:5, ]
+#'
 #' @keywords internal
 align_counts_coords <- function(counts, coords_df) {
+  # --- sanity checks ---
+  if (is.null(colnames(counts))) {
+    stop("`counts` must have column names corresponding to barcodes.")
+  }
+  if (!("barcode" %in% colnames(coords_df))) {
+    stop("`coords_df` must contain a 'barcode' column.")
+  }
+  
+  # --- find common barcodes ---
   common <- intersect(colnames(counts), coords_df$barcode)
-  if (length(common) == 0L) stop("No overlapping barcodes between counts and coords.")
+  if (length(common) == 0L) {
+    stop("No overlapping barcodes between counts and coords.")
+  }
+  
+  # --- subset and reorder ---
   counts    <- counts[, common, drop = FALSE]
   coords_df <- coords_df[match(common, coords_df$barcode), , drop = FALSE]
   rownames(coords_df) <- coords_df$barcode
+  
+  # --- return aligned objects ---
   list(counts = counts, coords = coords_df)
 }
+
 
 
 #' @title Process multiple Visium or VisiumHD samples
@@ -229,141 +250,95 @@ make_sp_patterns <- function(spCounts, spCoords, spFeatures) {
   out
 }
 
-#' @title Compute multi-sample overlap scores
-#' @description
-#' Compute pairwise overlap scores per sample and assemble long and wide
-#' summaries across samples.
-#'
-#' @param pat_hotspots_list Named list of hotspot tables for each sample.
-#' @param in_hotspots_list Optional named list of influence hotspot tables
-#' for each sample. If NULL, only pat_hotspots_list is used.
-#' @param patternList Optional character vector of pattern names to include.
-#' @param method Character. Overlap metric to use. One of
-#' "Szymkiewicz-Simpson", "Jaccard", "Sorensen-Dice", "Ochiai", or "absolute".
-#'
-#' @return A list with two data.frames:
-#' \describe{
-#'   \item{long}{Long-format table with one row per dataset and interaction.}
-#'   \item{wide}{Wide-format table with interactions as rows and datasets as columns.}
-#' }
-#'
+#' @title Compute overlap scores across multiple samples
+#' @description This function applies get_overlap_scores to multiple samples and
+#' reshapes the results into a wide matrix with interactions as rows and datasets
+#' as columns.
+#' @param pattern_hotspots A named list of per-sample hotspot data frames to be
+#' passed as pat_hotspots to get_overlap_scores.
+#' @param influence_hotspots An optional named list of per-sample hotspot data
+#' frames to be passed as in_hotspots to get_overlap_scores. If NULL, symmetric
+#' overlaps are computed within each element of pattern_hotspots.
+#' @param datasets A character vector of dataset names corresponding to the
+#' elements of pattern_hotspots. These become the column names in the wide output.
+#' @param ... Additional arguments passed to get_overlap_scores, such as
+#' patternList or method.
+#' @return A data frame in wide format with one row per interaction and one
+#' column per dataset containing overlap scores.
 #' @export
-get_multi_sample_overlaps <- function(pat_hotspots_list,
-                                     in_hotspots_list = NULL,
-                                     patternList = NULL,
-                                     method = c("Szymkiewicz-Simpson",
-                                                "Jaccard",
-                                                "Sorensen-Dice",
-                                                "Ochiai",
-                                                "absolute")) {
-  # ---- method guard ----
-  if (length(method) > 1) {
-    method <- method[1]
-    message("Only one method can be used at a time. Using ", method)
+get_multi_sample_overlaps <- function(pattern_hotspots,
+                                      influence_hotspots = NULL,
+                                      datasets,
+                                      ...) {
+  # 1) If influence_hotspots is NULL, make a list of NULLs of the same length
+  if (is.null(influence_hotspots)) {
+    influence_hotspots <- replicate(length(pattern_hotspots), NULL, simplify = FALSE)
   }
   
-  if (is.null(pat_hotspots_list) || !length(pat_hotspots_list)) {
-    stop("pat_hotspots_list must be a non-empty named list.")
-  }
-  if (is.null(names(pat_hotspots_list)) || any(!nzchar(names(pat_hotspots_list)))) {
-    stop("pat_hotspots_list must be a *named* list (sample names as names()).")
-  }
+  combined_df <- do.call(
+    "rbind",
+    Map(
+      function(pat_hotspots, inf_hotspots, dataset, ...) {
+        # 2) Fix typo in argument names passed to get_overlap_scores
+        df <- get_overlap_scores(
+          pat_hotspots = pat_hotspots,
+          in_hotspots  = inf_hotspots,
+          ...
+        )
+        
+        df <- df[stats::complete.cases(df), , drop = FALSE]
+        
+        df <- transform(
+          df,
+          interaction = paste0(pattern1, "_", pattern2),
+          dataset     = dataset
+        )[, c("interaction", "dataset", "overlapScore"), drop = FALSE]
+        
+        df
+      },
+      pattern_hotspots,
+      influence_hotspots,
+      datasets,
+      ...
+    )
+  )
   
-  if (!is.null(in_hotspots_list)) {
-    common_names <- intersect(names(pat_hotspots_list), names(in_hotspots_list))
-    if (!length(common_names)) {
-      stop("No overlapping sample names between pat_hotspots_list and in_hotspots_list.")
-    }
-    pat_hotspots_list <- pat_hotspots_list[common_names]
-    in_hotspots_list  <- in_hotspots_list [common_names]
-  } else {
-    common_names <- names(pat_hotspots_list)
-  }
-  
-  per_sample <- lapply(common_names, function(s) {
-    if (!is.null(in_hotspots_list)) {
-      df <- get_overlap_scores(
-        hotspots     = NULL,
-        in_hotspots  = in_hotspots_list[[s]],
-        pat_hotspots = pat_hotspots_list[[s]],
-        patternList  = patternList,
-        method       = method
-      )
-    } else {
-      df <- get_overlap_scores(
-        hotspots    = pat_hotspots_list[[s]],
-        patternList = patternList,
-        method      = method
-      )
-    }
-    
-    if (!is.null(df) && nrow(df)) {
-      df <- df[stats::complete.cases(df), , drop = FALSE]
-      df$interaction <- paste0(df$pattern1, "_", df$pattern2)
-      df$dataset     <- s
-      df <- df[, c("dataset", "pattern1", "pattern2", "interaction", "overlapScore")]
-    } else {
-      df <- data.frame(
-        dataset      = character(0),
-        pattern1     = character(0),
-        pattern2     = character(0),
-        interaction  = character(0),
-        overlapScore = numeric(0),
-        stringsAsFactors = FALSE
-      )
-    }
-    df
-  })
-  names(per_sample) <- common_names
-  
-  long_df <- do.call(rbind, per_sample)
-  if (nrow(long_df)) {
-    p1 <- as.character(long_df$pattern1)
-    p2 <- as.character(long_df$pattern2)
-    long_df$._rm_self <- mapply(function(a, b) grepl(paste0("^near_", a, "$"), b),
-                                a = p1, b = p2)
-    long_df <- long_df[!long_df$._rm_self, , drop = FALSE]
-    long_df$._rm_self <- NULL
-  }
-  
-  if (nrow(long_df)) {
-    wide_df <- reshape2::dcast(long_df, interaction ~ dataset, value.var = "overlapScore")
-  } else {
-    wide_df <- data.frame(interaction = character(0), stringsAsFactors = FALSE)
-  }
-  
-  list(long = long_df, wide = wide_df)
+  wide_df <- reshape2::dcast(combined_df, interaction ~ dataset, value.var = "overlapScore")
+  return(wide_df)
 }
 
 
-#' @title Plot overlap scores across samples
+#' @title Plot overlap scores across samples as a heatmap
 #' @description
-#' Plot a heatmap of overlap scores where rows are interactions and columns
-#' are samples, using pheatmap.
+#' Visualize sample-level overlap scores in a heatmap using a wide overlap
+#' data frame, with optional scaling, clustering, column ordering, and
+#' numeric labels.
 #'
-#' @param wide_df A data.frame with column interaction and additional columns
-#' for each dataset containing numeric overlap scores.
-#' @param scale Character. One of "none", "row", or "column". Passed to pheatmap.
-#' @param cluster_rows Logical. If TRUE, cluster rows.
-#' @param cluster_cols Logical. If TRUE, cluster columns.
-#' @param color Optional color palette. If NULL, a default palette is used.
-#' @param na_color Color for NA tiles.
-#' @param display_numbers Logical. If TRUE, print values inside tiles.
-#' @param number_format Character. sprintf format for numbers, for example "%.2f".
-#' @param fontsize Numeric. Base font size.
-#' @param fontsize_row Numeric. Font size for row labels.
-#' @param fontsize_col Numeric. Font size for column labels.
-#' @param main Character. Plot title.
-#' @param filename Character. Output file name for pheatmap. If NULL, the plot
-#' is returned but not written.
-#' @param ... Additional arguments passed to pheatmap::pheatmap.
+#' @param wide_df Data frame with column interaction and one or more
+#' additional columns for datasets containing overlap scores.
+#' @param scale Character indicating if values should be scaled by row,
+#' column, or not at all. One of "none", "row", or "column".
+#' @param cluster_rows Logical indicating whether to cluster rows.
+#' @param cluster_cols Logical indicating whether to cluster columns.
+#' @param color Optional vector of colors to use for the heatmap.
+#' @param na_color Color for missing values.
+#' @param display_numbers Logical indicating whether to overlay numeric
+#' values on the heatmap.
+#' @param number_format Format string for numeric labels when
+#' display_numbers is TRUE.
+#' @param fontsize Numeric base font size for the heatmap.
+#' @param fontsize_row Numeric font size for row labels.
+#' @param fontsize_col Numeric font size for column labels.
+#' @param main Character title for the heatmap.
+#' @param filename Character file name for the output image.
+#' @param col_order Optional character vector specifying the order of
+#' dataset columns to plot. Columns not listed are omitted.
+#' @param ... Additional arguments passed to pheatmap.
 #'
-#' @return The filtered wide_df that was used for plotting.
-#'
-#' @importFrom pheatmap pheatmap
+#' @return Invisibly returns the input wide_df.
 #' @export
 plot_sample_overlaps <- function(wide_df,
-                                 scale = c("none","row","column"),
+                                 scale = c("none", "row", "column"),
                                  cluster_rows = TRUE,
                                  cluster_cols = TRUE,
                                  color = NULL,
@@ -371,15 +346,18 @@ plot_sample_overlaps <- function(wide_df,
                                  display_numbers = FALSE,
                                  number_format = "%.2f",
                                  fontsize = 9,
-                                 fontsize_row = 7 ,
+                                 fontsize_row = 7,
                                  fontsize_col = 9,
                                  main = "Overlap scores across samples",
                                  filename = "SampleOverlapScores.png",
+                                 col_order = NULL,
                                  ...) {
   scale <- match.arg(scale)
-  if (ncol(wide_df) < 2L) stop("wide_df must have \u22652 columns: interaction + \u22651 dataset.")
-  if (!"interaction" %in% names(wide_df)) stop("wide_df must contain column 'interaction'.")
   
+  if (ncol(wide_df) < 2L)
+    stop("wide_df must have ≥2 columns: interaction + ≥1 dataset.")
+  if (!"interaction" %in% names(wide_df))
+    stop("wide_df must contain column 'interaction'.")
   if (nrow(wide_df) == 0L) {
     warning("No interactions left after filtering.")
     return(wide_df)
@@ -391,8 +369,36 @@ plot_sample_overlaps <- function(wide_df,
   plot_df <- wide_df
   rownames(plot_df) <- plot_df$interaction
   plot_df$interaction <- NULL
-  for (j in seq_len(ncol(plot_df))) plot_df[[j]] <- as.numeric(plot_df[[j]])
   
+  # Coerce to numeric
+  for (j in seq_len(ncol(plot_df))) {
+    plot_df[[j]] <- as.numeric(plot_df[[j]])
+  }
+  
+  # ---- Optional column order override ----
+  if (!is.null(col_order)) {
+    # Check that requested columns exist
+    missing_cols <- setdiff(col_order, colnames(plot_df))
+    if (length(missing_cols) > 0L) {
+      stop("These col_order columns are not in wide_df: ",
+           paste(missing_cols, collapse = ", "))
+    }
+    
+    # Warn if some columns will be dropped (not included in col_order)
+    extra_cols <- setdiff(colnames(plot_df), col_order)
+    if (length(extra_cols) > 0L) {
+      warning("These columns in wide_df are not in col_order and will be omitted: ",
+              paste(extra_cols, collapse = ", "))
+    }
+    
+    # Reorder / subset columns
+    plot_df <- plot_df[, col_order, drop = FALSE]
+    
+    # If user is explicitly specifying order, disable column clustering
+    cluster_cols <- FALSE
+  }
+  
+  # ---- Colors ----
   if (is.null(color)) {
     if (scale == "none") {
       color <- c("#FFF7EC", "#FDBB84", "#D7301F")
@@ -401,221 +407,232 @@ plot_sample_overlaps <- function(wide_df,
     }
   }
   
+  # ---- Optional numbers overlay ----
   num_mat <- NULL
   if (display_numbers) {
     m <- as.matrix(plot_df)
     num_mat <- matrix(
       sprintf(number_format, m),
-      nrow = nrow(m), ncol = ncol(m),
+      nrow = nrow(m),
+      ncol = ncol(m),
       dimnames = dimnames(m)
     )
   }
   
+  # ---- Heatmap ----
   pheatmap::pheatmap(
     plot_df,
-    scale           = scale,
-    cluster_rows    = cluster_rows,
-    cluster_cols    = cluster_cols,
-    color           = color,
-    na_col          = na_color,
-    display_numbers = num_mat,
-    fontsize        = fontsize,
-    fontsize_row    = fontsize_row,
-    fontsize_col    = fontsize_col,
-    main            = main,
-    filename        = filename,
+    scale            = scale,
+    cluster_rows     = cluster_rows,
+    cluster_cols     = cluster_cols,
+    color            = color,
+    na_col           = na_color,
+    display_numbers  = num_mat,
+    fontsize         = fontsize,
+    fontsize_row     = fontsize_row,
+    fontsize_col     = fontsize_col,
+    main             = main,
+    filename         = filename,
     ...
   )
   
-  wide_df
+  invisible(wide_df)
 }
 
-#' @title Compare scores between a reference and a condition
+
+
+#' @title Compute pairwise overlap differences
 #' @description
-#' For each feature, compare values between a reference condition and a
-#' second condition using a Wilcoxon rank-sum test. Add p values and
-#' adjusted p values to the input data.
+#' Given a wide overlap matrix with one column for \code{interaction} and the
+#' remaining columns as datasets, compute all pairwise differences between
+#' datasets in long format. Optionally, map datasets to higher-level groups
+#' and compute group-level summaries.
 #'
-#' @param df Data.frame containing at least the group, feature, and value columns.
-#' @param ref_condition Character. Name of the reference condition.
-#' @param group_col Character. Column name for the group variable.
-#' @param feature_col Character. Column name for the feature identifier.
-#' @param value_col Character. Column name for the numeric values to compare.
+#' @param mtx A data frame where the column given by \code{feature_col}
+#'   contains interaction names and the remaining columns are datasets with
+#'   numeric overlap scores.
+#' @param sample_groups Optional named character vector mapping dataset
+#'   names (column names of \code{mtx} excluding \code{feature_col}) to
+#'   user-defined groups or conditions. If \code{NULL}, only dataset-level
+#'   comparisons are returned.
+#' @param feature_col Character string giving the name of the interaction
+#'   column in \code{mtx}. Default is \code{"interaction"}.
 #'
-#' @return A data.frame with the same rows as df, grouped by feature, and
-#' additional columns p_value, fdr, ref_median, and condition_median.
-#'
-#' @importFrom dplyr filter pull
-#' @importFrom rlang sym
-#' @importFrom stats wilcox.test p.adjust
-#' @export
-compare_scores <- function(
-    df,
-    ref_condition   = "Normal",
-    group_col       = "group",
-    feature_col     = "interaction",
-    value_col       = "overlapScore"
-) {
-  overlaps_list <- split(x = df, f = df[[feature_col]])
-  both_conditions <- unique(df[[group_col]])
-  conditions <- factor(
-    df[[group_col]],
-    levels = c(ref_condition, setdiff(both_conditions, c(ref_condition)))
+#' @return A data frame with one row per dataset pair and interaction,
+#'   including columns for dataset-level differences. If \code{sample_groups}
+#'   is not \code{NULL}, additional columns \code{comparison_group},
+#'   \code{group1}, \code{group2}, \code{median_diff}, and
+#'   \code{median_overlapScore} are added.
+compare_scores <- function(mtx,sample_groups = NULL,feature_col = "interaction") {
+  # wide matrix from df
+  rows     <- mtx[[feature_col ]]
+  wide_mat <- as.matrix(mtx[, -1, drop = FALSE])
+  rownames(wide_mat) <- rows
+  
+  # all pairwise dataset combinations
+  datasets <- colnames(wide_mat)
+  combs    <- t(combn(datasets, 2))
+  
+  # build two wide matrices for each side of the pair
+  wide_mat1 <- t(wide_mat[, combs[, 1], drop = FALSE])
+  wide_mat2 <- t(wide_mat[, combs[, 2], drop = FALSE])
+  # long format for dataset-level differences
+  overlap1 <- reshape2::melt(
+    wide_mat1,
+    varnames  = c("dataset1", "interaction"),
+    value.name = "dataset1_overlapScore"
+  ) %>% dplyr::pull(dataset1_overlapScore)
+  overlap2 <- reshape2::melt(
+    wide_mat2,
+    varnames  = c("dataset2", "interaction"),
+    value.name = "dataset2_overlapScore"
+  ) %>% dplyr::pull(dataset2_overlapScore)
+  
+  # raw differences
+  diff_mat <- wide_mat1 - wide_mat2
+  
+  # rownames encode dataset1_minus_dataset2
+  diff_rows <- paste0(rownames(wide_mat1), "_minus_", rownames(wide_mat2))
+  rownames(diff_mat) <- diff_rows
+  
+  # long format for dataset-level differences
+  diff_df <- reshape2::melt(
+    diff_mat,
+    varnames  = c("comparison", "interaction"),
+    value.name = "diff_overlapScore"
   )
-  other <- levels(conditions)[2]
-  df[[group_col]] <- conditions
+  diff_df$comparison  <- as.character(diff_df$comparison)
+  diff_df$interaction <- as.character(diff_df$interaction)
   
-  test_wrapper <- function(odf){
-    cd1_df <- odf %>% dplyr::filter(!!rlang::sym(group_col) == ref_condition)
-    cd2_df <- odf %>% dplyr::filter(!!rlang::sym(group_col) == other)
+  # split comparison into dataset1 / dataset2
+  split_data <- do.call("rbind", strsplit(diff_df$comparison, "_minus_"))
+  colnames(split_data) <- c("dataset1", "dataset2")
+  
+  final_df <- cbind(cbind(diff_df, split_data, stringsAsFactors = FALSE),
+                    dataset1_overlapScore = overlap1,
+                    dataset2_overlapScore = overlap2)
+  
+  # if sample_groups is provided, compute group-level comparison labels
+  if (!is.null(sample_groups)) {
+    # align sample_groups to datasets used in wide_mat1 / wide_mat2
+    sample_groups <- sample_groups[rownames(wide_mat1)]
     
-    tt <- stats::wilcox.test(
-      x = cd1_df %>% dplyr::pull(!!rlang::sym(value_col)),
-      y = cd2_df %>% dplyr::pull(!!rlang::sym(value_col)),
-      alternative = "two.sided"
+    diff_rows_group <- paste0(
+      sample_groups[rownames(wide_mat1)],
+      "_minus_",
+      sample_groups[rownames(wide_mat2)]
     )
-    odf$p_value <- tt$p.value
-    odf$fdr <- stats::p.adjust(odf$p_value, method = "BH")
-    cd1_median <- median(cd1_df[[value_col]])
-    cd2_median <- median(cd2_df[[value_col]])
+    rownames(diff_mat) <- diff_rows_group
     
-    odf$ref_median <- cd1_median
-    odf$condition_median <- cd2_median
-    odf
-  }
-  
-  out <- do.call('rbind', lapply(overlaps_list, test_wrapper))
-  rownames(out) <- NULL
-  out
-}
-
-
-#' @title Bar plot of median overlap scores
-#' @description
-#' Plot horizontal bars for median overlap scores in a reference group
-#' and a condition group for each feature. Features are ordered by the
-#' difference between condition and reference medians.
-#'
-#' @param df Data.frame with feature, overlap, and group columns.
-#' @param condition_group Character. Name of the condition group.
-#' @param feature_col Character. Column name for the feature identifier.
-#' @param overlap_col Character. Column name for the overlap score.
-#' @param group_col Character. Column name for the group variable.
-#' @param n_table Integer or NULL. If not NULL, keep only the bottom and top
-#' n_table features by difference in medians.
-#' @param reference_label Character. Legend label for the reference bar.
-#' @param title Character or NULL. Plot title.
-#' @param width Numeric. Width in inches for saved output.
-#' @param height Numeric. Height in inches for saved output.
-#' @param save_path Character or NULL. If not NULL, path to save a TIFF file.
-#' @param dpi Integer. Resolution in dots per inch for saved output.
-#' @param transparent Logical. If TRUE, use a transparent background.
-#' @param ref_color Character. Color for the reference bars.
-#' @param cond_color Character. Color for the condition bars.
-#'
-#' @return A ggplot object.
-#'
-#' @export
-plot_overlap_scores_bar <- function(
-    df,
-    condition_group,
-    feature_col = "interaction",
-    overlap_col = "overlapScore",
-    group_col   = "group",
-    n_table = NULL,
-    reference_label = "reference",
-    title = NULL,
-    width = 7, height = 10,
-    save_path = NULL,
-    dpi = 300,
-    transparent = FALSE,
-    ref_color  = "#1F77B4",
-    cond_color = "#D62728"
-) {
-  if (!requireNamespace("ggplot2", quietly = TRUE))
-    stop("Please install ggplot2.")
-  if (missing(condition_group) || is.null(condition_group) || !nzchar(condition_group))
-    stop("`condition_group` must be provided to define the condition.")
-  
-  ref_levels <- setdiff(unique(df[[group_col]]), condition_group)
-  if (length(ref_levels) < 1)
-    stop("Could not infer a reference group distinct from `condition_group`.")
-  
-  by_feat <- split(df, df[[feature_col]])
-  agg <- lapply(by_feat, function(x) {
-    cond_vals <- x[x[[group_col]] == condition_group, overlap_col, drop = TRUE]
-    ref_vals  <- x[x[[group_col]] %in% ref_levels, overlap_col, drop = TRUE]
-    med_cond <- if (length(cond_vals)) median(cond_vals, na.rm = TRUE) else NA_real_
-    med_ref  <- if (length(ref_vals))  median(ref_vals,  na.rm = TRUE) else NA_real_
-    diff_val <- med_cond - med_ref
-    data.frame(
-      feature     = unique(x[[feature_col]])[1],
-      median_ref  = med_ref,
-      median_cond = med_cond,
-      diff        = diff_val,
+    # long format for group-level comparisons
+    diff_df2 <- reshape2::melt(
+      diff_mat,
+      varnames  = c("comparison_group", "interaction"),
+      value.name = "diff_overlapScore"
+    )
+    diff_df2$comparison_group <- as.character(diff_df2$comparison_group)
+    diff_df2$interaction      <- as.character(diff_df2$interaction)
+    
+    split_data2 <- do.call("rbind", strsplit(diff_df2$comparison_group, "_minus_"))
+    colnames(split_data2) <- c("group1", "group2")
+    
+    diff_df2 <- cbind(
+      diff_df2[, c("comparison_group", "interaction")],
+      split_data2,
       stringsAsFactors = FALSE
     )
-  })
-  agg <- do.call(rbind, agg)
-  names(agg)[names(agg) == "feature"] <- feature_col
-  
-  agg <- agg[is.finite(agg$median_ref) & is.finite(agg$median_cond), , drop = FALSE]
-  if (nrow(agg) == 0) stop("No features with finite medians to plot.")
-  
-  agg <- agg[order(agg$diff), , drop = FALSE]
-  
-  if (!is.null(n_table) && is.numeric(n_table) && n_table > 0) {
-    n_table <- as.integer(min(n_table, floor(nrow(agg) / 2)))
-    if (n_table > 0) {
-      keep_idx <- unique(c(seq_len(n_table), seq.int(from = nrow(agg) - n_table + 1, to = nrow(agg))))
-      agg <- agg[keep_idx, , drop = FALSE]
-    }
+    
+    # combine dataset-level and group-level info (same ordering from melt)
+    final_df <- cbind(final_df, diff_df2[, c("comparison_group", "group1",
+                                             "group2")])
+    
+    # add median_diff per (group1, interaction)
+    final_df <- final_df %>%
+      dplyr::group_by(group1, interaction) %>%
+      dplyr::mutate(median_diff = median(diff_overlapScore, na.rm = TRUE)) %>%
+      dplyr::ungroup()
+    final_df <- final_df %>%
+      dplyr::group_by(group1, interaction) %>%
+      dplyr::mutate(median_overlapScore = median(dataset1_overlapScore, na.rm = TRUE)) %>%
+      dplyr::ungroup()
   }
   
-  agg[[feature_col]] <- factor(agg[[feature_col]], levels = agg[[feature_col]])
+  final_df
+}
+
+
+#' @title Plot group-level median overlap scores
+#' @description
+#' Create a horizontal bar plot of median overlap scores for the top
+#' interactions, typically using the output of compare_scores. Interactions
+#' are ranked by the absolute median difference between groups.
+#'
+#' @param df Data frame containing at least the columns interaction, group1,
+#' median_diff, and median_overlapScore.
+#' @param top Integer specifying the number of top interactions to display.
+#' @param out Character file name for the saved TIFF figure.
+#'
+#' @return An invisible list with components data (the plotted subset) and
+#' plot (the ggplot object).
+#' @export
+plot_overlap_scores_bar <- function(df,
+                                    top         = 10,
+                                    out         = "median_overlap_scores.tiff") {
+  # limit to relevant columns
+  df <- df %>%
+    dplyr::select(interaction, group1, median_diff, median_overlapScore) %>%
+    dplyr::distinct() %>%
+    dplyr::arrange(dplyr::desc(abs(median_diff)))
   
-  plot_df <- rbind(
-    data.frame(feature = agg[[feature_col]], group = "reference", value = agg$median_ref, stringsAsFactors = FALSE),
-    data.frame(feature = agg[[feature_col]], group = condition_group, value = agg$median_cond, stringsAsFactors = FALSE)
+  # Extract top n interactions based on absolute median difference
+  top_interactions <- df %>%
+    dplyr::pull(interaction) %>%
+    unique() %>%
+    head(top)
+  
+  # Ensure median_df has only top interactions arranged by median
+  median_df <- df %>%
+    dplyr::mutate(group = group1) %>%
+    dplyr::select(group, interaction, median_overlapScore) %>%
+    dplyr::distinct() %>%
+    dplyr::filter(interaction %in% top_interactions) %>%
+    dplyr::arrange(dplyr::desc(median_overlapScore))
+  
+  # Factorize interaction column for plotting order
+  median_df$interaction <- factor(
+    median_df$interaction,
+    levels = rev(top_interactions)
   )
-  names(plot_df)[names(plot_df) == "feature"] <- feature_col
-  plot_df$group <- factor(plot_df$group, levels = c("reference", condition_group))
   
-  cols <- c("reference" = ref_color, setNames(cond_color, condition_group))
-  
+  # Plot median_df
   p <- ggplot2::ggplot(
-    plot_df,
-    ggplot2::aes(x = .data[["value"]], y = .data[[feature_col]], fill = .data[["group"]])
+    median_df,
+    ggplot2::aes(
+      x    = median_overlapScore,
+      y    = interaction,
+      fill = group
+    )
   ) +
-    ggplot2::geom_col(position = "dodge", width = 0.75) +
-    ggplot2::scale_fill_manual(
-      values = cols,
-      breaks = c("reference", condition_group),
-      labels = c(reference_label, condition_group),
-      name = NULL
-    ) +
+    ggplot2::geom_col(position = ggplot2::position_dodge(width = 0.8)) +
     ggplot2::labs(
-      x = "Median Overlap Score",
-      y = "Feature",
-      title = if (is.null(title)) "" else title
+      x    = "Median overlap score",
+      y    = "Interaction",
+      fill = "Group"
     ) +
-    ggplot2::theme_bw(base_size = 14) +
-    ggplot2::theme(
-      legend.position = "bottom",
-      panel.grid.major.y = ggplot2::element_blank(),
-      panel.grid.minor = ggplot2::element_blank()
-    )
+    ggplot2::theme_classic()
   
-  if (!is.null(save_path)) {
-    dir.create(dirname(save_path), recursive = TRUE, showWarnings = FALSE)
-    ggplot2::ggsave(
-      filename = save_path, plot = p, width = width, height = height,
-      dpi = dpi, device = "tiff",
-      bg = ifelse(transparent, "transparent", "white")
-    )
-  }
+  ggplot2::ggsave(
+    filename    = out,
+    plot        = p,
+    device      = "tiff",
+    width       = 8,
+    height      = 6,
+    units       = "in",
+    dpi         = 300,
+    compression = "lzw"
+  )
   
-  return(p)
+  invisible(list(data = median_df, plot = p))
 }
 
 

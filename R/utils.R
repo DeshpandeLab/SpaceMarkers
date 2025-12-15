@@ -54,78 +54,62 @@ calc_overlap_scores <- function(hotspots, patternList = NULL,
 }
 
 
-#' @title get_overlap_scores
-#' @description Calculate the overlap scores between patterns in hotspots
-#' @param hotspots A data frame with columns x, y, barcode and pattern names
-#' @param in_hotspots Hotspots from the influence of patterns, Default: NULL
-#' @param pat_hotspots Hotspots from the pattern itself, Default: NULL
-#' @param patternList A character vector of pattern names to calculate overlap 
-#' scores for
-#' @param method The method to calculate overlap scores. Options are
-#' "Szymkiewicz-Simpson", "Jaccard", "Sorensen-Dice", "Ochiai" and "absolute"
-#' @details The function calculates the overlap scores between patterns hotspots
-#' using the specified method. The default method is "Szymkiewicz-Simpson"
-#' overlap coefficient.
-#' @return A data frame with columns pattern1, pattern2 and overlapScore
+#' @title Compute pairwise overlap scores between patterns
+#' @description This function computes overlap scores between pattern hotspots,
+#' either symmetrically within pat_hotspots or between pat_hotspots and in_hotspots,
+#' using a specified overlap metric.
+#' @param pat_hotspots A data frame with x, y, barcode columns and additional
+#' columns for pattern-specific hotspot values. If in_hotspots is NULL, symmetric
+#' overlaps are computed between these patterns.
+#' @param in_hotspots An optional data frame with x, y, barcode columns and
+#' pattern-specific hotspot values representing neighborhood or influence patterns.
+#' Must share barcodes with pat_hotspots when provided.
+#' @param patternList An optional character vector specifying a subset of patterns
+#' to use when computing symmetric overlap scores.
+#' @param method A character vector specifying the overlap metric to use.
+#' Options include "Szymkiewicz-Simpson", "Jaccard", "Sorensen-Dice", "Ochiai",
+#' and "absolute". Only the first value is used.
+#' @return A data frame with columns pattern1, pattern2, and overlapScore,
+#' containing pairwise overlap scores for the selected patterns.
 #' @export
-#' @examples
-#' in_hotspots <- data.frame(x = c(1,2,3,4,5),
-#'                           y = c(1,2,3,4,5),
-#'                           barcode = c("A","B","C","D","E"),
-#'                           pattern1 = c(1,0,1,0,1),
-#'                           pattern2 = c(1,1,0,0,1))
-#' pat_hotspots <- data.frame(x = c(1,2,3,4,5),y = c(1,2,3,4,5),
-#'                           barcode = c("A","B","C","D","E"),
-#'                            pattern1 = c(0.3,1,0,0,1),
-#'                            pattern3 = c(0,NA,1,0,NA))
-#' get_overlap_scores(hotspots = NULL, in_hotspots = in_hotspots, 
-#'                    pat_hotspots = pat_hotspots, method = "absolute")
-#'
-#' @importFrom ggplot2 ggplot geom_tile geom_text theme_minimal
-#' @importFrom reshape2 melt
-#' @importFrom stats complete.cases
-get_overlap_scores <- function(hotspots = NULL, in_hotspots = NULL, pat_hotspots = NULL,
-                               patternList = NULL,
-                               method = c("Szymkiewicz-Simpson", "Jaccard", "Sorensen-Dice",
-                                          "Ochiai", "absolute")) {
-  
-  if (!is.null(hotspots) & (is.null(in_hotspots) | is.null(pat_hotspots))) {
+get_overlap_scores <- function ( pat_hotspots = NULL, in_hotspots = NULL,
+                                 patternList = NULL, method = c("Szymkiewicz-Simpson", "Jaccard", 
+                                                                "Sorensen-Dice", "Ochiai", "absolute")) 
+{
+  if (!is.null(pat_hotspots) & is.null(in_hotspots) ) {
     message("Assuming symmetric overlap scores. Setting upper triangle and diagonal to NA.")
-    overlapScore <- calc_overlap_scores(hotspots = hotspots, patternList = patternList, method = method)
+    overlapScore <- calc_overlap_scores(hotspots = pat_hotspots, 
+                                        patternList = patternList, method = method)
     overlapScore[upper.tri(overlapScore, diag = TRUE)] <- NA
-    
     dfOverlap <- reshape2::melt(overlapScore)
-    dfOverlap <- dfOverlap[stats::complete.cases(dfOverlap), ]
+    dfOverlap <- dfOverlap[stats::complete.cases(dfOverlap), 
+    ]
     colnames(dfOverlap) <- c("pattern2", "pattern1", "overlapScore")
     dfOverlap <- dfOverlap[, c(2, 1, 3)]
-    
-  } else {
-    patternList_in <- setdiff(colnames(in_hotspots), c("x", "y", "barcode"))
+  }
+  else {
+    patternList_in <- setdiff(colnames(in_hotspots), c("x", 
+                                                       "y", "barcode"))
     rownames(in_hotspots) <- in_hotspots$barcode
     in_hotspots <- in_hotspots[, patternList_in, drop = FALSE]
-    # prefix influence columns with "near_"
     colnames(in_hotspots) <- paste0("near_", patternList_in)
-    
-    patternList_pat <- setdiff(colnames(pat_hotspots), c("x", "y", "barcode"))
+    patternList_pat <- setdiff(colnames(pat_hotspots), c("x", 
+                                                         "y", "barcode"))
     rownames(pat_hotspots) <- pat_hotspots$barcode
-    
-    hotspots <- cbind(
-      pat_hotspots[, patternList_pat, drop = FALSE],
-      in_hotspots[rownames(pat_hotspots), , drop = FALSE]
-    )
-    
-    overlapScore <- calc_overlap_scores(hotspots = hotspots, method = method)
-    
+    hotspots <- cbind(pat_hotspots[, patternList_pat, drop = FALSE], 
+                      in_hotspots[rownames(pat_hotspots), , drop = FALSE])
+    overlapScore <- calc_overlap_scores(hotspots = hotspots, 
+                                        method = method)
     dfOverlap <- reshape2::melt(overlapScore)
-    dfOverlap <- dfOverlap[stats::complete.cases(dfOverlap), ]
+    dfOverlap <- dfOverlap[stats::complete.cases(dfOverlap), 
+    ]
     colnames(dfOverlap) <- c("pattern2", "pattern1", "overlapScore")
     dfOverlap <- dfOverlap[, c(2, 1, 3)]
-    
-    # filter using "near_" instead of "_in"
-    dfOverlap <- dfOverlap[!grepl("^near_", dfOverlap$pattern1), ]
-    dfOverlap <- dfOverlap[grepl("^near_",  dfOverlap$pattern2), ]
+    dfOverlap <- dfOverlap[!grepl("^near_", dfOverlap$pattern1), 
+    ]
+    dfOverlap <- dfOverlap[grepl("^near_", dfOverlap$pattern2), 
+    ]
   }
-  
   return(dfOverlap)
 }
 

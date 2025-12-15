@@ -23,4 +23,10 @@ Align a sparse counts matrix and a coordinates data frame so that they use
 the same set of barcodes in the same order. The coordinates are reordered
 to match the column order of the counts matrix.
 }
+\examples{
+aligned <- align_counts_coords(counts, coords)
+aligned$counts[1:5, 1:5]
+aligned$coords[1:5, ]
+
+}
 \keyword{internal}

@@ -2,7 +2,7 @@
 % Please edit documentation in R/multisample.R
 \name{plot_sample_overlaps}
 \alias{plot_sample_overlaps}
-\title{Plot overlap scores across samples}
+\title{Plot overlap scores across samples as a heatmap}
 \usage{
 plot_sample_overlaps(
   wide_df,
@@ -18,44 +18,51 @@ plot_sample_overlaps(
   fontsize_col = 9,
   main = "Overlap scores across samples",
   filename = "SampleOverlapScores.png",
+  col_order = NULL,
   ...
 )
 }
 \arguments{
-\item{wide_df}{A data.frame with column interaction and additional columns
-for each dataset containing numeric overlap scores.}
+\item{wide_df}{Data frame with column interaction and one or more
+additional columns for datasets containing overlap scores.}
 
-\item{scale}{Character. One of "none", "row", or "column". Passed to pheatmap.}
+\item{scale}{Character indicating if values should be scaled by row,
+column, or not at all. One of "none", "row", or "column".}
 
-\item{cluster_rows}{Logical. If TRUE, cluster rows.}
+\item{cluster_rows}{Logical indicating whether to cluster rows.}
 
-\item{cluster_cols}{Logical. If TRUE, cluster columns.}
+\item{cluster_cols}{Logical indicating whether to cluster columns.}
 
-\item{color}{Optional color palette. If NULL, a default palette is used.}
+\item{color}{Optional vector of colors to use for the heatmap.}
 
-\item{na_color}{Color for NA tiles.}
+\item{na_color}{Color for missing values.}
 
-\item{display_numbers}{Logical. If TRUE, print values inside tiles.}
+\item{display_numbers}{Logical indicating whether to overlay numeric
+values on the heatmap.}
 
-\item{number_format}{Character. sprintf format for numbers, for example "\%.2f".}
+\item{number_format}{Format string for numeric labels when
+display_numbers is TRUE.}
 
-\item{fontsize}{Numeric. Base font size.}
+\item{fontsize}{Numeric base font size for the heatmap.}
 
-\item{fontsize_row}{Numeric. Font size for row labels.}
+\item{fontsize_row}{Numeric font size for row labels.}
 
-\item{fontsize_col}{Numeric. Font size for column labels.}
+\item{fontsize_col}{Numeric font size for column labels.}
 
-\item{main}{Character. Plot title.}
+\item{main}{Character title for the heatmap.}
 
-\item{filename}{Character. Output file name for pheatmap. If NULL, the plot
-is returned but not written.}
+\item{filename}{Character file name for the output image.}
 
-\item{...}{Additional arguments passed to pheatmap::pheatmap.}
+\item{col_order}{Optional character vector specifying the order of
+dataset columns to plot. Columns not listed are omitted.}
+
+\item{...}{Additional arguments passed to pheatmap.}
 }
 \value{
-The filtered wide_df that was used for plotting.
+Invisibly returns the input wide_df.
 }
 \description{
-Plot a heatmap of overlap scores where rows are interactions and columns
-are samples, using pheatmap.
+Visualize sample-level overlap scores in a heatmap using a wide overlap
+data frame, with optional scaling, clustering, column ordering, and
+numeric labels.
 }
