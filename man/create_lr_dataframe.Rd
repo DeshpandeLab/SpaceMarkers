@@ -2,53 +2,37 @@
 % Please edit documentation in R/hdutils.R
 \name{create_lr_dataframe}
 \alias{create_lr_dataframe}
-\title{Create a long-format ligand–receptor dataframe}
+\title{Create a long-format ligand–receptor score data frame}
 \usage{
 create_lr_dataframe(
+  lrscores,
   ligand_scores,
   receptor_scores,
-  lrscores,
+  lrpairs,
   complex_sep = ", "
 )
 }
 \arguments{
-\item{ligand_scores}{A numeric matrix or data.frame of ligand scores with
-ligands in rows and source/target context in columns
-(e.g. \code{"B_near_Epi"}).}
+\item{lrscores}{Matrix of LR scores (rows = interactions, columns = source-to-target pairs).}
 
-\item{receptor_scores}{A numeric matrix or data.frame of receptor scores
-with receptor complexes in rows and target cell types in columns
-(e.g. \code{"Epi"}, \code{"Mast"}).}
+\item{ligand_scores}{Matrix of ligand scores (same shape as \code{lrscores}).}
 
-\item{lrscores}{A numeric matrix of ligand–receptor scores with
-interactions in rows (e.g. \code{"TGFB1_TGFBR1_TGFBR2"}) and
-source-to-target directions in columns
-(e.g. \code{"B_to_Epi"}).}
+\item{receptor_scores}{Matrix of receptor scores (rows = interactions, columns = target cell types).}
 
-\item{complex_sep}{A character string specifying the separator used between
-receptor components in \code{receptor_scores} rownames
-(default is \code{", "}).}
+\item{lrpairs}{Data frame with columns \code{ligand} and \code{receptor}; rownames are interaction IDs.}
+
+\item{complex_sep}{Separator used for multi-gene complexes in \code{lrpairs}; replaced with \code{"_"}.}
 }
 \value{
-A data.frame with columns:
-\item{source_celltype}{Source cell type.}
-\item{target_celltype}{Target cell type.}
-\item{ligand}{Ligand gene/symbol.}
-\item{receptor}{Receptor complex string.}
-\item{source_to_target}{Source-to-target label (e.g. \code{"B_to_Epi"}).}
-\item{interaction}{Ligand–receptor interaction identifier.}
-\item{ligand_score}{Ligand score for this interaction/direction.}
-\item{receptor_score}{Receptor score for this interaction/target.}
-\item{lr_score}{Combined ligand–receptor score.}
+A data frame with columns:
+\code{source_celltype}, \code{ligand}, \code{receptor}, \code{target_celltype},
+\code{ligand_score}, \code{receptor_score}, \code{lr_score}, \code{interaction}.
+The interaction and cell types are parsed from the combined \code{lr_cell} key.
 }
 \description{
-Convert ligand, receptor, and ligand–receptor (LR) score matrices into a
-tidy long-format dataframe, with one row per ligand–receptor interaction and
-source–target cell-type pair.
-}
-\examples{
-\dontrun{
-df <- create_lr_dataframe(ligand_scores, receptor_scores, lrscores)
-head(df)
-}
+Takes LR, ligand, and receptor score matrices and combines them into a single
+long data frame with one row per interaction and source/target cell-type pair.
+Ligand and receptor gene names are added from \code{lrpairs}. Any missing LR
+scores are set to 0. Column names in \code{ligand_scores} that start with
+\code{near_} are converted to \code{to_} to match LR columns.
 }
