@@ -6,16 +6,13 @@
 \usage{
 plot_lr_alluvial(
   df,
-  sample_groups = NULL,
-  col_score = "score",
-  col_source = "source_cell_type",
-  col_target = "target_cell_type",
-  col_ligand = "ligand",
-  col_receptor = "receptor",
-  col_sample = "sample",
+  score_col = "score",
+  source_col = "source_cell_type",
+  target_col = "target_cell_type",
+  ligand_col = "ligand",
+  receptor_col = "receptor",
   title = NULL,
   min_score = 0,
-  top_k_per_pair = NULL,
   alpha = 0.8,
   knot_pos = 0.4,
   label_size = 2.7,
@@ -23,30 +20,24 @@ plot_lr_alluvial(
 )
 }
 \arguments{
-\item{df}{Data.frame with score, source, target, ligand, receptor, and
-optionally sample columns.}
+\item{df}{A data frame containing ligand–receptor scores and the required
+columns for source, ligand, receptor, target, and score.}
 
-\item{sample_groups}{Optional named vector that maps sample IDs to group
-labels. Names must match the sample column values.}
+\item{score_col}{Character. Name of the score column. Default is \code{"score"}.}
 
-\item{col_score}{Character. Column name for the interaction score.}
+\item{source_col}{Character. Name of the source cell type column. Default is
+\code{"source_cell_type"}.}
 
-\item{col_source}{Character. Column name for the source cell type.}
+\item{target_col}{Character. Name of the target cell type column. Default is
+\code{"target_cell_type"}.}
 
-\item{col_target}{Character. Column name for the target cell type.}
+\item{ligand_col}{Character. Name of the ligand column. Default is \code{"ligand"}.}
 
-\item{col_ligand}{Character. Column name for the ligand.}
+\item{receptor_col}{Character. Name of the receptor column. Default is \code{"receptor"}.}
 
-\item{col_receptor}{Character. Column name for the receptor.}
+\item{title}{Optional plot title. If \code{NULL}, a default title is used.}
 
-\item{col_sample}{Character. Column name for the sample ID.}
-
-\item{title}{Optional plot title. If NULL, a default title is used.}
-
-\item{min_score}{Numeric. Minimum score to keep.}
-
-\item{top_k_per_pair}{Optional integer. If not NULL, keep at most this many
-top rows per source and target pair.}
+\item{min_score}{Numeric. Minimum score to keep before plotting.}
 
 \item{alpha}{Numeric between 0 and 1. Alpha transparency for flows.}
 
@@ -54,52 +45,14 @@ top rows per source and target pair.}
 
 \item{label_size}{Numeric. Text size for node labels.}
 
-\item{wrap_width}{Integer or NULL. If not NULL, wrap long labels to this width.}
+\item{wrap_width}{Integer or \code{NULL}. If not \code{NULL}, wraps labels to
+this width.}
 }
 \value{
 A ggplot object.
 }
 \description{
-Make an alluvial (Sankey style) plot showing flows from source cell type
+Creates an alluvial (Sankey-style) plot showing flows from source cell type
 to ligand, receptor, and target cell type. Flow width is proportional to an
-interaction score. Flows can be colored by sample group or by the
-source to target pair.
-}
-\examples{
-\dontrun{
-if (requireNamespace("ggplot2", quietly = TRUE) &&
-    requireNamespace("ggalluvial", quietly = TRUE) &&
-    requireNamespace("RColorBrewer", quietly = TRUE) &&
-    requireNamespace("circlize", quietly = TRUE)) {
-
-  set.seed(123)
-  top_normal <- data.frame(
-    score            = runif(20, 0.1, 1),
-    source_cell_type = sample(c("Keratinocyte", "Fibroblast"), 20, TRUE),
-    target_cell_type = sample(c("T cell", "Macrophage"), 20, TRUE),
-    ligand           = sample(c("CXCL12", "CCL5", "TNF"), 20, TRUE),
-    receptor         = sample(c("CXCR4", "CCR5", "TNFRSF1A"), 20, TRUE),
-    sample           = sample(c("NS_1", "NS_2", "VU_1", "VU_2"), 20, TRUE),
-    stringsAsFactors = FALSE
-  )
-
-  # Sample to group mapping
-  sample_groups <- c(
-    NS_1 = "Normal skin",
-    NS_2 = "Normal skin",
-    VU_1 = "Venous ulcer",
-    VU_2 = "Venous ulcer"
-  )
-
-  # Basic usage with grouping and custom title
-  p <- plot_lr_alluvial(
-    df             = top_normal,
-    sample_groups  = sample_groups,
-    top_k_per_pair = NULL,
-    title = "Top Normal LR Interactions"
-  )
-  print(p)
-}
-}
-
+interaction score, and flows are colored by the source cell type.
 }

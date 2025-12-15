@@ -975,553 +975,136 @@ create_lr_dataframe_multi <- function(lr_scores_list, lrpairs, sample_groups = N
 }
 
 
-
-
-
-#' @title Extract top ligand receptor interactions
-#' @description
-#' Extract a long-format table of ligand receptor interactions from a score
-#' matrix or from a list of score matrices (one per sample). Optionally return
-#' only the top scoring interactions per sample or per sample group.
+#' @title Get top ligand–receptor interactions per condition
 #'
-#' @param lrscores Either a numeric matrix (rows are interaction IDs and
-#' columns are cell pair columns), or a named list of such matrices where the
-#' list names are sample IDs.
-#' @param lrpairs Data.frame describing each interaction row, with at least
-#' ligand and receptor columns. Row names must match the interaction IDs used
-#' as rownames in lrscores.
-#' @param top_n_table Integer. Number of top entries to keep. If samples is
-#' NULL, the function returns the top N rows per sample and column. If samples
-#' is provided, the function returns the top N interactions per group as
-#' defined by rank_by. If top_n_table is NULL, the full long table is returned.
-#' @param name_split_token Character. Token used to split column names into
-#' source and target cell types. Default is "_to_".
-#' @param na_replace Numeric. Value used to replace missing scores. Default is 0.
-#' @param ligand_col Character. Column name in lrpairs that contains ligand
-#' gene names. Default is "ligand".
-#' @param receptor_col Character. Column name in lrpairs that contains receptor
-#' gene names. Default is "receptor".
-#' @param samples Optional named character vector that maps sample IDs
-#' (names) to group labels (values). When provided, group wise medians are
-#' used to select top interactions.
-#' @param rank_by Character. Mode used for group level selection when samples
-#' is provided. Possible values are "interaction" and "interaction_col".
-#' In "interaction" mode, the function selects the top N interactions per
-#' group based on the strongest median score across all columns. In
-#' "interaction_col" mode, the function selects the top N interaction and
-#' column pairs per group.
+#' @description Identifies the highest-scoring ligand–receptor interactions within each condition
+#' by ranking interactions based on the median LR score across datasets. The function first removes
+#' self-interactions where ligand and receptor are identical, then computes a per-condition median
+#' score for each (source–target, interaction) pair. The top interactions per condition are selected
+#' and returned with all original per-dataset rows retained, along with the computed median score.
 #'
-#' @return A data.frame in long format with columns score, interaction,
-#' source_cell_type, target_cell_type, ligand, receptor, sample and, when
-#' samples is provided, sample_group. When top_n_table is NULL, all rows are
-#' returned. Otherwise only the selected top rows are returned.
+#' @param df A data frame of ligand–receptor scores containing at least the columns
+#' \code{ligand}, \code{receptor}, \code{score}, \code{dataset}, \code{condition},
+#' \code{interaction}, and \code{source_to_target}.
+#' @param top Integer specifying the number of top interactions to return per condition
+#' based on median score.
 #'
-#' @examples
-#' \dontrun{
-#' # Single matrix example
-#' lrs <- matrix(
-#'   c(0.9, 0.1,
-#'     0.2, 0.8),
-#'   nrow = 2, byrow = TRUE,
-#'   dimnames = list(
-#'     c("LGF1_REC1", "LGF2_REC2"),
-#'     c("Epi_to_Plasma", "Plasma_to_Epi")
-#'   )
-#' )
+#' @return A data frame containing all rows from the original input corresponding to the
+#' top-ranked interactions per condition, with two additional columns:
+#' \code{median_score} (median LR score across datasets) and \code{n_datasets}
+#' (number of datasets contributing to the interaction).
 #'
-#' lrpairs <- data.frame(
-#'   ligand   = c("LGF1","LGF2"),
-#'   receptor = c("REC1","REC2"),
-#'   row.names = c("LGF1_REC1","LGF2_REC2"),
-#'   stringsAsFactors = FALSE
-#' )
-#'
-#' top_df <- get_top_lr_interactions(
-#'   lrscores        = lrs,
-#'   lrpairs         = lrpairs,
-#'   top_n_table     = 1,
-#'   name_split_token = "_to_"
-#' )
-#'
-#' # List of matrices with sample groups
-#' lrs_list <- list(S1 = lrs, S2 = lrs * 1.2)
-#' sample_groups <- c(S1 = "Control", S2 = "Case")
-#'
-#' top_grp <- get_top_lr_interactions(
-#'   lrscores    = lrs_list,
-#'   lrpairs     = lrpairs,
-#'   top_n_table = 2,
-#'   samples     = sample_groups,
-#'   rank_by     = "interaction"
-#' )
-#' }
-#'
-#' @importFrom dplyr bind_rows arrange group_by summarise slice_max ungroup
-#'   filter select inner_join desc
-#' @importFrom stats median
 #' @export
-get_top_lr_interactions <- function(
-    lrscores,
-    lrpairs,
-    top_n_table = 10,                 # NULL => return full long table
-    name_split_token = "_to_",
-    na_replace = 0,
-    ligand_col = "ligand",
-    receptor_col = "receptor",
-    samples = NULL,                   # named vector: sample -> group (optional)
-    rank_by = "interaction"
-){
-  if (!requireNamespace("dplyr", quietly = TRUE)) stop("Please install 'dplyr'.")
-  rank_by <- match.arg(rank_by)
+get_top_lr_interactions <- function(df, top = 10) {
+  # 1) drop ligand == receptor
+  df2 <- df %>%
+    dplyr::filter(is.na(ligand) | is.na(receptor) | ligand != receptor)
   
-  # --- validate lrpairs ---
-  if (!is.data.frame(lrpairs)) stop("`lrpairs` must be a data.frame.")
-  if (is.null(rownames(lrpairs))) stop("`lrpairs` must have rownames matching interaction IDs.")
-  if (!all(c(ligand_col, receptor_col) %in% colnames(lrpairs))) {
-    stop(sprintf("`lrpairs` must contain columns '%s' and '%s'.", ligand_col, receptor_col))
-  }
-  
-  # --- helper: matrix -> long ---
-  .mat_to_long <- function(mat, sample_name){
-    if (!is.matrix(mat)) stop("Each entry of `lrscores` must be a matrix.")
-    if (is.null(rownames(mat))) stop("`lrscores` matrices must have rownames (interaction IDs).")
-    df <- as.data.frame(as.table(mat), stringsAsFactors = FALSE)
-    colnames(df) <- c("interaction","colname","score")
-    df$sample <- sample_name
-    df
-  }
-  
-  # --- build long table from matrix or list ---
-  long <-
-    if (is.list(lrscores)) {
-      if (is.null(names(lrscores)) || any(names(lrscores) == "")) {
-        stop("`lrscores` list must be *named*: names are sample IDs.")
-      }
-      dplyr::bind_rows(lapply(names(lrscores), function(s)
-        .mat_to_long(lrscores[[s]], s)))
-    } else {
-      .mat_to_long(lrscores, "sample")
-    }
-  
-  # coerce & replace NA scores
-  long$score <- suppressWarnings(as.numeric(long$score))
-  long$score[is.na(long$score)] <- na_replace
-  
-  # keep only interactions present in lrpairs, align L/R
-  long <- long[long$interaction %in% rownames(lrpairs), , drop = FALSE]
-  if (!nrow(long)) return(long)
-  
-  lrsub <- lrpairs[long$interaction, , drop = FALSE]
-  long$ligand   <- gsub(", ", "|", lrsub[[ligand_col]],   fixed = TRUE)
-  long$receptor <- gsub(", ", "|", lrsub[[receptor_col]], fixed = TRUE)
-  
-  # parse source/target from column name
-  parts <- strsplit(long$colname, split = name_split_token, fixed = TRUE)
-  long$source_cell_type <- vapply(parts, function(x) if (length(x)) x[[1]] else NA_character_, character(1))
-  long$target_cell_type <- vapply(parts, function(x) if (length(x) >= 2) x[[2]] else NA_character_, character(1))
-  
-  # add sample_group if mapping provided
-  if (!is.null(samples)) {
-    if (is.null(names(samples))) stop("`samples` must be a named vector: names=sample IDs, values=group labels.")
-    long$sample_group <- unname(samples[long$sample])
-  }
-  
-  # --- FULL TABLE MODE ---
-  if (is.null(top_n_table)) {
-    keep <- c("score","interaction","source_cell_type","target_cell_type",
-              "ligand","receptor","sample", if (!is.null(samples)) "sample_group")
-    out <- long[, keep, drop = FALSE] |>
-      dplyr::arrange(dplyr::desc(.data$score))
-    return(as.data.frame(out))
-  }
-  
-  # --- SINGLE-MATRIX (no groups provided): Top-N per column ---
-  if (is.null(samples)) {
-    out <- long |>
-      dplyr::group_by(.data$sample, .data$colname) |>
-      dplyr::slice_max(order_by = .data$score, n = top_n_table, with_ties = FALSE) |>
-      dplyr::ungroup() |>
-      dplyr::select(.data$score, .data$interaction, .data$source_cell_type, .data$target_cell_type,
-                    .data$ligand, .data$receptor, .data$sample) |>
-      dplyr::arrange(dplyr::desc(.data$score), .data$sample, .data$interaction)
-    return(as.data.frame(out))
-  }
-  
-  # --- GROUP-AWARE SELECTION: compute medians across samples in each group ---
-  # median per (group, interaction, column)
-  grp_col_med <- long |>
-    dplyr::filter(!is.na(.data$sample_group)) |>
-    dplyr::group_by(.data$sample_group, .data$interaction, .data$colname) |>
-    dplyr::summarise(med_score = stats::median(.data$score, na.rm = TRUE), .groups = "drop")
-  
-  # pick keys per group
-  if (rank_by == "interaction_col") {
-    # Top-N *interaction+column* per group
-    keys <- grp_col_med |>
-      dplyr::group_by(.data$sample_group) |>
-      dplyr::slice_max(order_by = .data$med_score, n = top_n_table, with_ties = FALSE) |>
-      dplyr::ungroup() |>
-      dplyr::select(.data$sample_group, .data$interaction, .data$colname)
-    
-    out <- long |>
-      dplyr::inner_join(keys, by = c("sample_group","interaction","colname")) |>
-      dplyr::select(.data$score, .data$interaction, .data$source_cell_type, .data$target_cell_type,
-                    .data$ligand, .data$receptor, .data$sample, .data$sample_group) |>
-      dplyr::arrange(.data$sample_group, dplyr::desc(.data$score), .data$sample, .data$interaction)
-    
-  } else {
-    # Top-N **unique interactions** per group (ignore column); use the strongest median across columns
-    grp_int_med <- grp_col_med |>
-      dplyr::group_by(.data$sample_group, .data$interaction) |>
-      dplyr::summarise(med_score = max(.data$med_score, na.rm = TRUE), .groups = "drop") |>
-      dplyr::group_by(.data$sample_group) |>
-      dplyr::slice_max(order_by = .data$med_score, n = top_n_table, with_ties = FALSE) |>
-      dplyr::ungroup() |>
-      dplyr::select(.data$sample_group, .data$interaction)
-    
-    out <- long |>
-      dplyr::inner_join(grp_int_med, by = c("sample_group","interaction")) |>
-      dplyr::select(.data$score, .data$interaction, .data$source_cell_type, .data$target_cell_type,
-                    .data$ligand, .data$receptor, .data$sample, .data$sample_group) |>
-      dplyr::arrange(.data$sample_group, dplyr::desc(.data$score), .data$sample, .data$interaction)
-  }
-  
-  as.data.frame(out)
-}
-
-
-
-#' @title Assemble ligand receptor interaction table
-#' @description
-#' Combine LR scores, ligand-only scores, and receptor-only scores into a single
-#' long-format data.frame for downstream plotting. Works with either single
-#' matrices or named lists of matrices (one per sample).
-#'
-#' @param lr_scores Matrix or named list of matrices with LR scores. Rows are
-#' interaction IDs and columns are Source_to_Target combinations.
-#' @param ligand_scores Matrix or named list of matrices with ligand-only
-#' scores. Rows are interaction IDs and columns are Source_near_Target labels.
-#' @param receptor_scores Matrix or named list of matrices with receptor-only
-#' scores. Rows are interaction IDs and columns are target cell types.
-#' @param lrpairs Data.frame with row names equal to interaction IDs and
-#' annotation columns for ligand and receptor genes.
-#' @param ligand_col Character. Column name in lrpairs containing ligand genes.
-#' @param receptor_col Character. Column name in lrpairs containing receptor genes.
-#' @param name_split_token Character. Token used to split Source_to_Target
-#' column names in lr_scores.
-#' @param ligand_near_token Character. Token used to construct Source_near_Target
-#' column names in ligand_scores.
-#' @param na_replace Numeric. Value used to replace NA scores.
-#'
-#' @return A data.frame where each row is one interaction for one
-#' Source_to_Target column and one sample. Columns include ligand, ligand_score,
-#' receptor, receptor_score, interaction, score, source_cell_type,
-#' target_cell_type, source_to_target, and sample.
-#'
-#' @examples
-#' \dontrun{
-#' # Toy example with a single "sample"
-#' set.seed(1)
-#'
-#' # interaction IDs
-#' ints <- c("INT1","INT2")
-#'
-#' # LR scores: rows = interactions, cols = "Source_to_Target"
-#' lr_mat <- matrix(runif(4), nrow = 2,
-#'                  dimnames = list(ints, c("Epi_to_Tcell","Fibro_to_Tcell")))
-#'
-#' # ligand scores: rows = interactions, cols = "Source_near_Target"
-#' lig_mat <- matrix(runif(4), nrow = 2,
-#'                   dimnames = list(ints, c("Epi_near_Tcell","Fibro_near_Tcell")))
-#'
-#' # receptor scores: rows = interactions, cols = target cell types
-#' rec_mat <- matrix(runif(2), nrow = 2,
-#'                   dimnames = list(ints, "Tcell"))
-#'
-#' # ligand/receptor annotation
-#' lrpairs <- data.frame(
-#'   ligand   = c("LIG1","LIG2"),
-#'   receptor = c("REC1","REC2"),
-#'   row.names = ints
-#' )
-#'
-#' df_long <- get_all_lr_interactions(
-#'   lr_scores       = lr_mat,
-#'   ligand_scores   = lig_mat,
-#'   receptor_scores = rec_mat,
-#'   lrpairs         = lrpairs
-#' )
-#' head(df_long)
-#' }
-#'
-#' @importFrom dplyr bind_rows arrange
-#' @export
-get_all_lr_interactions <- function(
-    lr_scores,                 # matrix OR *named list* of matrices (rows=interaction IDs, cols="Source_to_Target")
-    ligand_scores,             # matrix OR *named list* (rows=interaction IDs, cols like "Source_near_Target")
-    receptor_scores,           # matrix OR *named list* (rows=interaction IDs, cols are target cell types)
-    lrpairs,                   # data.frame with rownames = interaction IDs; has ligand/receptor cols
-    ligand_col       = "ligand",
-    receptor_col     = "receptor",
-    name_split_token = "_to_",
-    ligand_near_token= "_near_",
-    na_replace       = 0
-){
-  if (!requireNamespace("dplyr", quietly = TRUE)) stop("Please install 'dplyr'.")
-  
-  # --- basic checks ---
-  if (!is.data.frame(lrpairs) || is.null(rownames(lrpairs)))
-    stop("`lrpairs` must be a data.frame with rownames = interaction IDs.")
-  if (!all(c(ligand_col, receptor_col) %in% colnames(lrpairs)))
-    stop(sprintf("`lrpairs` must contain columns '%s' and '%s'.", ligand_col, receptor_col))
-  
-  .chk_same_type <- function(a, b, nmA, nmB){
-    if (is.list(a) != is.list(b)) {
-      stop(sprintf("`%s` and `%s` must both be matrices or both be *named* lists.", nmA, nmB))
-    }
-  }
-  .chk_same_type(lr_scores, ligand_scores, "lr_scores", "ligand_scores")
-  .chk_same_type(lr_scores, receptor_scores, "lr_scores", "receptor_scores")
-  
-  # --- coerce to unified iterator of (sample_name, lr_mat, lig_mat, rec_mat) ---
-  .as_iter <- function(lr, lig, rec){
-    if (is.list(lr)) {
-      if (is.null(names(lr)) || any(names(lr) == "")) {
-        stop("`lr_scores` list must be *named* (sample IDs).")
-      }
-      if (!all(names(lr) %in% names(lig))) {
-        stop("`ligand_scores` missing samples found in `lr_scores`.")
-      }
-      if (!all(names(lr) %in% names(rec))) {
-        stop("`receptor_scores` missing samples found in `lr_scores`.")
-      }
-      lapply(
-        names(lr),
-        function(s) list(sample = s, lr = lr[[s]], lig = lig[[s]], rec = rec[[s]])
-      )
-    } else {
-      list(list(sample = "sample", lr = lr, lig = lig, rec = rec))
-    }
-  }
-  iter <- .as_iter(lr_scores, ligand_scores, receptor_scores)
-  
-  # --- helpers ---
-  .check_mat <- function(m, nm){
-    if (!is.matrix(m) || is.null(rownames(m))) {
-      stop(sprintf("`%s` must be a matrix with rownames=interaction IDs.", nm))
-    }
-  }
-  
-  # Build long DF
-  out_list <- vector("list", length(iter))
-  for (i in seq_along(iter)) {
-    samp <- iter[[i]]$sample
-    mLR  <- iter[[i]]$lr
-    mL   <- iter[[i]]$lig
-    mR   <- iter[[i]]$rec
-    
-    .check_mat(mLR, paste0("lr_scores[['", samp, "']]"))
-    .check_mat(mL,  paste0("ligand_scores[['", samp, "']]"))
-    .check_mat(mR,  paste0("receptor_scores[['", samp, "']]"))
-    
-    # keep only interactions present in lrpairs
-    keep_rown <- intersect(rownames(mLR), rownames(lrpairs))
-    if (!length(keep_rown)) next
-    mLR <- mLR[keep_rown, , drop = FALSE]
-    mL  <- mL [keep_rown, , drop = FALSE]
-    mR  <- mR [keep_rown, , drop = FALSE]
-    
-    # long form for LR
-    dfLR <- as.data.frame(as.table(mLR), stringsAsFactors = FALSE)
-    colnames(dfLR) <- c("interaction","colname","score")
-    dfLR$score <- suppressWarnings(as.numeric(dfLR$score))
-    dfLR$score[is.na(dfLR$score)] <- na_replace
-    
-    # parse source/target from "Source_to_Target"
-    parts <- strsplit(dfLR$colname, split = name_split_token, fixed = TRUE)
-    dfLR$source_cell_type <- vapply(
-      parts, function(x) if (length(x)) x[[1]] else NA_character_, character(1)
+  # 2) median score per (condition, source_to_target, interaction)
+  med_tbl <- df2 %>%
+    dplyr::group_by(condition, source_to_target, interaction) %>%
+    dplyr::summarise(
+      median_score = median(score, na.rm = TRUE),
+      n_datasets   = dplyr::n_distinct(dataset),
+      .groups = "drop"
     )
-    dfLR$target_cell_type <- vapply(
-      parts, function(x) if (length(x) >= 2) x[[2]] else NA_character_, character(1)
-    )
-    dfLR$source_to_target <- paste0(dfLR$source_cell_type, name_split_token, dfLR$target_cell_type)
-    dfLR$sample <- samp
-    
-    # locate corresponding ligand & receptor columns
-    lig_cols <- paste0(dfLR$source_cell_type, ligand_near_token, dfLR$target_cell_type)
-    rec_cols <- dfLR$target_cell_type
-    
-    # pull ligand/receptor scores by matching columns; use NA if col missing
-    dfLR$ligand_score <- mapply(function(inter, lc){
-      if (!is.null(lc) && lc %in% colnames(mL)) {
-        as.numeric(mL[inter, lc])
-      } else NA_real_
-    }, dfLR$interaction, lig_cols)
-    
-    dfLR$receptor_score <- mapply(function(inter, rc){
-      if (!is.null(rc) && rc %in% colnames(mR)) {
-        as.numeric(mR[inter, rc])
-      } else NA_real_
-    }, dfLR$interaction, rec_cols)
-    
-    # attach ligand/receptor names from lrpairs
-    lrsub <- lrpairs[dfLR$interaction, , drop = FALSE]
-    dfLR$ligand   <- gsub(", ", "|", lrsub[[ligand_col]],   fixed = TRUE)
-    dfLR$receptor <- gsub(", ", "|", lrsub[[receptor_col]], fixed = TRUE)
-    
-    out_list[[i]] <- dfLR[, c(
-      "ligand","ligand_score",
-      "receptor","receptor_score",
-      "interaction","score",
-      "source_cell_type","target_cell_type","source_to_target",
-      "sample"
-    ), drop = FALSE]
-  }
   
-  out <- dplyr::bind_rows(out_list)
-  out$ligand_score[is.na(out$ligand_score)]     <- na_replace
-  out$receptor_score[is.na(out$receptor_score)] <- na_replace
+  # 3) pick top N per condition (tie-broken by n_datasets)
+  top_keys <- med_tbl %>%
+    dplyr::arrange(condition, dplyr::desc(median_score), dplyr::desc(n_datasets)) %>%
+    dplyr::group_by(condition) %>%
+    dplyr::slice_head(n = top) %>%
+    dplyr::ungroup()
   
-  out <- out |>
-    dplyr::arrange(.data$source_to_target, .data$sample, dplyr::desc(.data$score), .data$interaction)
+  # 4) return full rows from original df + median_score (+ n_datasets)
+  out <- df2 %>%
+    dplyr::inner_join(
+      top_keys,
+      by = c("condition", "source_to_target", "interaction")
+    ) %>%
+    dplyr::arrange(condition, dplyr::desc(median_score), dplyr::desc(score))
   
-  as.data.frame(out)
+  out
 }
-
 
 #' @title Plot ligand receptor alluvial diagram
-#' @description
-#' Make an alluvial (Sankey style) plot showing flows from source cell type
-#' to ligand, receptor, and target cell type. Flow width is proportional to an
-#' interaction score. Flows can be colored by sample group or by the
-#' source to target pair.
 #'
-#' @param df Data.frame with score, source, target, ligand, receptor, and
-#' optionally sample columns.
-#' @param sample_groups Optional named vector that maps sample IDs to group
-#' labels. Names must match the sample column values.
-#' @param col_score Character. Column name for the interaction score.
-#' @param col_source Character. Column name for the source cell type.
-#' @param col_target Character. Column name for the target cell type.
-#' @param col_ligand Character. Column name for the ligand.
-#' @param col_receptor Character. Column name for the receptor.
-#' @param col_sample Character. Column name for the sample ID.
-#' @param title Optional plot title. If NULL, a default title is used.
-#' @param min_score Numeric. Minimum score to keep.
-#' @param top_k_per_pair Optional integer. If not NULL, keep at most this many
-#' top rows per source and target pair.
+#' @description
+#' Creates an alluvial (Sankey-style) plot showing flows from source cell type
+#' to ligand, receptor, and target cell type. Flow width is proportional to an
+#' interaction score, and flows are colored by the source cell type.
+#'
+#' @param df A data frame containing ligand–receptor scores and the required
+#' columns for source, ligand, receptor, target, and score.
+#' @param score_col Character. Name of the score column. Default is \code{"score"}.
+#' @param source_col Character. Name of the source cell type column. Default is
+#' \code{"source_cell_type"}.
+#' @param target_col Character. Name of the target cell type column. Default is
+#' \code{"target_cell_type"}.
+#' @param ligand_col Character. Name of the ligand column. Default is \code{"ligand"}.
+#' @param receptor_col Character. Name of the receptor column. Default is \code{"receptor"}.
+#' @param title Optional plot title. If \code{NULL}, a default title is used.
+#' @param min_score Numeric. Minimum score to keep before plotting.
 #' @param alpha Numeric between 0 and 1. Alpha transparency for flows.
 #' @param knot_pos Numeric between 0 and 1. Knot position along the flow.
 #' @param label_size Numeric. Text size for node labels.
-#' @param wrap_width Integer or NULL. If not NULL, wrap long labels to this width.
+#' @param wrap_width Integer or \code{NULL}. If not \code{NULL}, wraps labels to
+#' this width.
 #'
 #' @return A ggplot object.
 #'
-#' @examples
-#' \dontrun{
-#' if (requireNamespace("ggplot2", quietly = TRUE) &&
-#'     requireNamespace("ggalluvial", quietly = TRUE) &&
-#'     requireNamespace("RColorBrewer", quietly = TRUE) &&
-#'     requireNamespace("circlize", quietly = TRUE)) {
-#'
-#'   set.seed(123)
-#'   top_normal <- data.frame(
-#'     score            = runif(20, 0.1, 1),
-#'     source_cell_type = sample(c("Keratinocyte", "Fibroblast"), 20, TRUE),
-#'     target_cell_type = sample(c("T cell", "Macrophage"), 20, TRUE),
-#'     ligand           = sample(c("CXCL12", "CCL5", "TNF"), 20, TRUE),
-#'     receptor         = sample(c("CXCR4", "CCR5", "TNFRSF1A"), 20, TRUE),
-#'     sample           = sample(c("NS_1", "NS_2", "VU_1", "VU_2"), 20, TRUE),
-#'     stringsAsFactors = FALSE
-#'   )
-#'
-#'   # Sample to group mapping
-#'   sample_groups <- c(
-#'     NS_1 = "Normal skin",
-#'     NS_2 = "Normal skin",
-#'     VU_1 = "Venous ulcer",
-#'     VU_2 = "Venous ulcer"
-#'   )
-#'
-#'   # Basic usage with grouping and custom title
-#'   p <- plot_lr_alluvial(
-#'     df             = top_normal,
-#'     sample_groups  = sample_groups,
-#'     top_k_per_pair = NULL,
-#'     title = "Top Normal LR Interactions"
-#'   )
-#'   print(p)
-#' }
-#' }
-#'
-#' @import ggplot2
-#' @import ggalluvial
-#' @import RColorBrewer
-#' @import circlize
 #' @export
 plot_lr_alluvial <- function(
     df,
-    sample_groups = NULL,      # named vector: names = sample IDs, values = group labels (optional)
-    col_score       = "score",
-    col_source      = "source_cell_type",
-    col_target      = "target_cell_type",
-    col_ligand      = "ligand",
-    col_receptor    = "receptor",
-    col_sample      = "sample",
-    title = NULL,
-    min_score       = 0,       # drop tiny flows
-    top_k_per_pair  = NULL,    # optional: keep top-K per (source,target) by score
-    alpha           = 0.8,
-    knot_pos        = 0.4,
-    label_size      = 2.7,     # slightly smaller for dense plots
-    wrap_width      = 12       # set NULL to disable wrapping
+    score_col    = "score",
+    source_col   = "source_cell_type",
+    target_col   = "target_cell_type",
+    ligand_col   = "ligand",
+    receptor_col = "receptor",
+    title        = NULL,
+    min_score    = 0,
+    alpha        = 0.8,
+    knot_pos     = 0.4,
+    label_size   = 2.7,
+    wrap_width   = 12
 ) {
   for (pkg in c("ggplot2","ggalluvial","RColorBrewer","circlize")) {
     if (!requireNamespace(pkg, quietly = TRUE)) stop(sprintf("Please install '%s'.", pkg))
   }
   
   # resolve columns (case tolerant)
-  .res <- function(nm) { hit <- which(tolower(names(df)) == tolower(nm)); if (length(hit)) names(df)[hit[1]] else nm }
-  col_score    <- .res(col_score);  col_source <- .res(col_source); col_target <- .res(col_target)
-  col_ligand   <- .res(col_ligand); col_receptor <- .res(col_receptor); col_sample <- .res(col_sample)
+  .res <- function(nm) {
+    hit <- which(tolower(names(df)) == tolower(nm))
+    if (length(hit)) names(df)[hit[1]] else nm
+  }
+  score_col    <- .res(score_col)
+  source_col   <- .res(source_col)
+  target_col   <- .res(target_col)
+  ligand_col   <- .res(ligand_col)
+  receptor_col <- .res(receptor_col)
   
-  need <- c(col_score, col_source, col_target, col_ligand, col_receptor)
-  miss <- setdiff(need, names(df)); if (length(miss)) stop("Missing columns: ", paste(miss, collapse = ", "))
+  need <- c(score_col, source_col, target_col, ligand_col, receptor_col)
+  miss <- setdiff(need, names(df))
+  if (length(miss)) stop("Missing columns: ", paste(miss, collapse = ", "))
   
   d <- df
-  d[[col_score]] <- as.numeric(d[[col_score]])
-  d <- d[is.finite(d[[col_score]]) & d[[col_score]] >= min_score, , drop = FALSE]
+  d[[score_col]] <- as.numeric(d[[score_col]])
+  d <- d[is.finite(d[[score_col]]) & d[[score_col]] >= min_score, , drop = FALSE]
   if (!nrow(d)) stop("No rows to plot after filtering.")
   
-  if (!is.null(top_k_per_pair) && top_k_per_pair > 0) {
-    ord <- order(d[[col_source]], d[[col_target]], -d[[col_score]]); d <- d[ord, ]
-    idx <- ave(d[[col_score]], paste(d[[col_source]], d[[col_target]], sep = "->"),
-               FUN = function(x) seq_along(x) <= top_k_per_pair)
-    d <- d[idx, , drop = FALSE]
+  # wrap labels only (no abbreviation)
+  wrap_names <- function(v) {
+    if (is.null(wrap_width)) return(v)
+    vapply(v, function(s) paste(strwrap(s, width = wrap_width), collapse = "\n"), "")
   }
+  d[[source_col]]   <- wrap_names(d[[source_col]])
+  d[[ligand_col]]   <- wrap_names(d[[ligand_col]])
+  d[[receptor_col]] <- wrap_names(d[[receptor_col]])
+  d[[target_col]]   <- wrap_names(d[[target_col]])
   
-  # map fill: groups if provided, otherwise Source->Target interaction
-  if (!is.null(sample_groups)) {
-    if (!(col_sample %in% names(d))) stop("`sample_groups` provided but no 'sample' column in data.")
-    d$.__group__ <- unname(sample_groups[ as.character(d[[col_sample]]) ])
-    d <- d[!is.na(d$.__group__), , drop = FALSE]
-    if (!nrow(d)) stop("No rows left after mapping samples to `sample_groups`.")
-    d$fill_key <- factor(d$.__group__)
-    fill_name  <- "Group"
-  } else {
-    d$fill_key <- factor(paste(d[[col_source]], d[[col_target]], sep = "->"))
-    fill_name  <- "Cell interaction"
-  }
+  # color by source cell type
+  d$fill_key <- factor(d[[source_col]])
   
-  # wrapping only (no abbreviation)
-  wrap_names <- function(v) if (is.null(wrap_width)) v else vapply(v, function(s) paste(strwrap(s, width = wrap_width), collapse = "\n"), "")
-  d[[col_source]]   <- wrap_names(d[[col_source]])
-  d[[col_ligand]]   <- wrap_names(d[[col_ligand]])
-  d[[col_receptor]] <- wrap_names(d[[col_receptor]])
-  d[[col_target]]   <- wrap_names(d[[col_target]])
-  
-  # palette: RColorBrewer first, extend with circlize for many levels
   .discrete_palette <- function(n) {
     if (n <= 8) {
       RColorBrewer::brewer.pal(max(3, n), "Set2")[1:n]
@@ -1537,24 +1120,30 @@ plot_lr_alluvial <- function(
   names(pal_vals) <- levels(d$fill_key)
   
   dp <- data.frame(
-    source   = d[[col_source]],
-    ligand   = d[[col_ligand]],
-    receptor = d[[col_receptor]],
-    target   = d[[col_target]],
-    score    = d[[col_score]],
+    source   = d[[source_col]],
+    ligand   = d[[ligand_col]],
+    receptor = d[[receptor_col]],
+    target   = d[[target_col]],
+    score    = d[[score_col]],
     fill_key = d$fill_key,
     stringsAsFactors = FALSE
   )
   
-  p <- ggplot2::ggplot(
+  default_title <- "LR Alluvial: Source -> Ligand -> Receptor -> Target"
+  
+  ggplot2::ggplot(
     dp,
     ggplot2::aes(axis1 = source, axis2 = ligand, axis3 = receptor, axis4 = target, y = score)
   ) +
-    ggplot2::scale_x_discrete(limits = c("Source", "Ligand", "Receptor", "Target"),
-                              expand = c(.08, .05)) +
+    ggplot2::scale_x_discrete(
+      limits = c("Source", "Ligand", "Receptor", "Target"),
+      expand = c(.08, .05)
+    ) +
     ggalluvial::geom_alluvium(
       ggplot2::aes(fill = fill_key),
-      alpha = alpha, knot.pos = knot_pos, show.legend = TRUE
+      alpha = alpha,
+      knot.pos = knot_pos,
+      show.legend = TRUE
     ) +
     ggalluvial::geom_stratum(width = 0.25, color = "grey30", fill = "grey85") +
     ggalluvial::stat_stratum(
@@ -1563,15 +1152,13 @@ plot_lr_alluvial <- function(
       size = label_size,
       check_overlap = TRUE
     ) +
-    ggplot2::scale_fill_manual(values = pal_vals, name = fill_name, drop = FALSE) +
+    ggplot2::scale_fill_manual(values = pal_vals, name = "Source cell type", drop = FALSE) +
     ggplot2::guides(fill = ggplot2::guide_legend(override.aes = list(alpha = 1))) +
     ggplot2::labs(
-      title = "LR Alluvial: Source -> Ligand -> Receptor -> Target",
-      subtitle = if (is.null(sample_groups))
-        "Flow width ~ score; color ~ Cell interaction (Source->Target)"
-      else
-        "Flow width ~ score; color ~ Group",
-      y = "Score", x = NULL
+      title    = if (is.null(title)) default_title else title,
+      subtitle = "Flow width ~ score; color ~ source_cell_type",
+      y = "Score",
+      x = NULL
     ) +
     ggplot2::coord_cartesian(clip = "off") +
     ggplot2::theme_minimal(base_size = 12) +
@@ -1581,160 +1168,91 @@ plot_lr_alluvial <- function(
       axis.text.x = ggplot2::element_text(size = 11),
       plot.margin = ggplot2::margin(10, 30, 10, 30)
     )
-  
-  default_title <- "LR Alluvial: Source -> Ligand -> Receptor -> Target"
-  p <- p +
-    ggplot2::labs(
-      title    = if (is.null(title)) default_title else title,
-      y = "Score",
-      x = NULL
-    )
-  return(p)
 }
 
-#' @title Plot ligand receptor scores by interaction
-#' @description
-#' Make scatter plots of ligand score versus receptor score, colored by
-#' interaction and shaped by sample, and save one TIFF file per
-#' source_to_target combination.
+
+
+#' @title Plot ligand vs receptor scores scatter
 #'
-#' @param df_long Long-format data.frame, usually from get_all_lr_interactions,
-#' containing ligand_score, receptor_score, interaction, sample, and
-#' source_to_target columns.
-#' @param out_dir Character. Output directory for TIFF files. Created if needed.
-#' @param filename_prefix Character. Prefix for output file names.
-#' @param source_to_target Character vector of source_to_target values to plot.
-#' If NULL, all unique values are used.
-#' @param point_size Numeric. Point size for geom_point.
-#' @param point_alpha Numeric between 0 and 1. Alpha transparency for points.
+#' @description Creates a scatter plot of ligand scores versus receptor scores and
+#' saves it to a TIFF file. Points are colored by a user-specified column and shaped
+#' by a user-specified column, using ggplot2 default discrete color scales.
+#'
+#' @param df A data frame containing at least \code{ligand_score} and
+#' \code{receptor_score}, plus the columns specified by \code{color_by} and
+#' \code{shape_by}.
+#' @param out Output file path for the saved plot (should end in \code{.tiff}).
+#' @param color_by Character. Column name used for point color. Default is
+#' \code{"interaction"}.
+#' @param shape_by Character. Column name used for point shape. Default is
+#' \code{"source_to_target"}.
+#' @param point_size Numeric. Point size.
+#' @param point_alpha Numeric between 0 and 1. Point transparency.
 #' @param width Numeric. Plot width in inches.
 #' @param height Numeric. Plot height in inches.
-#' @param dpi Numeric. Resolution in dots per inch for the saved TIFF files.
+#' @param dpi Integer. Plot resolution.
 #'
-#' @return Invisibly, a character vector of paths to the saved TIFF files.
+#' @return Invisibly returns the output file path \code{out}.
 #'
-#' @examples
-#' \dontrun{
-#' if (requireNamespace("ggplot2", quietly = TRUE) &&
-#'     requireNamespace("RColorBrewer", quietly = TRUE) &&
-#'     requireNamespace("circlize", quietly = TRUE)) {
-#'
-#'   set.seed(123)
-#'   df_long <- data.frame(
-#'     ligand_score    = runif(50, 0, 1),
-#'     receptor_score  = runif(50, 0, 1),
-#'     interaction     = sample(c("LGF1_REC1", "LGF2_REC2", "LGF3_REC3"), 50, TRUE),
-#'     sample          = sample(c("NS_1", "NS_2", "VU_1"), 50, TRUE),
-#'     source_to_target = sample(c("Epi_to_Tcell", "Fibro_to_Myeloid"), 50, TRUE),
-#'     stringsAsFactors = FALSE
-#'   )
-#'
-#'   out_dir <- tempdir()
-#'
-#'   # Plot all source_to_target combinations
-#'   files_all <- plot_lr_scores_scatter(
-#'     df_long        = df_long,
-#'     out_dir        = out_dir,
-#'     filename_prefix = "lr_scatter",
-#'     source_to_target = NULL,
-#'     point_size      = 2,
-#'     point_alpha     = 0.8
-#'   )
-#'
-#'   # Plot only one specific source_to_target
-#'   files_one <- plot_lr_scores_scatter(
-#'     df_long        = df_long,
-#'     out_dir        = out_dir,
-#'     filename_prefix = "Epi_Tcell_lr_scatter",
-#'     source_to_target = "Epi_to_Tcell"
-#'   )
-#' }
-#' }
-#'
-#' @import ggplot2
-#' @import RColorBrewer
-#' @import circlize
 #' @export
-plot_lr_scores_scatter <- function(
-    df_long,                       # from get_all_lr_interactions()
-    out_dir,
-    filename_prefix = "lr_scatter",
-    source_to_target = NULL,       # if set, filter to this "Source_to_Target" and plot just one
-    point_size      = 2,
-    point_alpha     = 0.8,
-    width           = 8,           # inches
-    height          = 6,           # inches
-    dpi             = 300
-){
-  if (!requireNamespace("ggplot2",      quietly = TRUE)) stop("Please install 'ggplot2'.")
-  if (!requireNamespace("RColorBrewer", quietly = TRUE)) stop("Please install 'RColorBrewer'.")
-  if (!requireNamespace("circlize",     quietly = TRUE)) stop("Please install 'circlize'.")
-  if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+plot_lr_scores_scatter <- function(df,
+                                   out = "lr_scores_scatter.tiff",
+                                   color_by = "interaction",
+                                   shape_by = "source_to_target",
+                                   point_size = 2,
+                                   point_alpha = 0.8,
+                                   width = 8,
+                                   height = 6,
+                                   dpi = 300) {
+  if (!requireNamespace("ggplot2", quietly = TRUE))
+    stop("Please install 'ggplot2'.")
   
-  # choose which source_to_target values to plot
-  st_vals <- if (is.null(source_to_target)) unique(df_long$source_to_target) else source_to_target
-  st_vals <- st_vals[st_vals %in% unique(df_long$source_to_target)]
-  if (!length(st_vals)) stop("No matching 'source_to_target' in data.")
-  
-  # discrete palette using RColorBrewer + circlize (no 'scales' dependency)
-  .discrete_palette <- function(n) {
-    if (n <= 8) {
-      RColorBrewer::brewer.pal(max(3, n), "Set2")[1:n]
-    } else if (n <= 12) {
-      RColorBrewer::brewer.pal(max(3, n), "Set3")[1:n]
-    } else {
-      base <- RColorBrewer::brewer.pal(12, "Set3")
-      colfun <- circlize::colorRamp2(seq(0, 1, length.out = length(base)), base)
-      colfun(seq(0, 1, length.out = n))
-    }
+  needed_cols <- c("ligand_score", "receptor_score", color_by, shape_by)
+  missing_cols <- setdiff(needed_cols, colnames(df))
+  if (length(missing_cols)) {
+    stop("Missing required columns in 'df': ",
+         paste(missing_cols, collapse = ", "))
   }
   
-  saved <- character(0)
-  for (st in st_vals) {
-    dd <- df_long[df_long$source_to_target == st, , drop = FALSE]
-    if (!nrow(dd)) next
-    
-    # color by interaction, shape by sample
-    n_inter <- length(unique(dd$interaction))
-    cols <- .discrete_palette(n_inter)
-    names(cols) <- unique(dd$interaction)
-    
-    p <- ggplot2::ggplot(
-      dd,
-      ggplot2::aes(x = ligand_score, y = receptor_score,
-                   color = interaction, shape = sample)
+  out_dir <- dirname(out)
+  if (!dir.exists(out_dir))
+    dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+  
+  p <- ggplot2::ggplot(
+    df,
+    ggplot2::aes_string(
+      x = "ligand_score",
+      y = "receptor_score",
+      color = color_by,
+      shape = shape_by
+    )
+  ) +
+    ggplot2::geom_point(size = point_size, alpha = point_alpha) +
+    ggplot2::labs(
+      title = "Ligand vs Receptor scores",
+      x = "Ligand score",
+      y = "Receptor score",
+      color = color_by,
+      shape = shape_by
     ) +
-      ggplot2::geom_point(size = point_size, alpha = point_alpha) +
-      ggplot2::scale_color_manual(values = cols, name = "Interaction") +
-      ggplot2::labs(
-        title = st,
-        x = "Ligand score",
-        y = "Receptor score"
-      ) +
-      ggplot2::theme_minimal(base_size = 12) +
-      ggplot2::theme(
-        legend.position = "right",
-        panel.grid.minor = ggplot2::element_blank()
-      )
-    
-    out_file <- file.path(
-      out_dir,
-      paste0(
-        filename_prefix, "_",
-        gsub("[^A-Za-z0-9._-]+","_", st),
-        ".tiff"
-      )
+    ggplot2::theme_minimal(base_size = 12) +
+    ggplot2::theme(
+      legend.position = "right",
+      panel.grid.minor = ggplot2::element_blank()
     )
-    ggplot2::ggsave(
-      filename = out_file, plot = p, device = "tiff",
-      width = width, height = height, dpi = dpi,
-      units = "in", compress = "lzw"
-    )
-    saved <- c(saved, out_file)
-  }
   
-  invisible(saved)
+  ggplot2::ggsave(
+    filename = out,
+    plot = p,
+    device = "tiff",
+    width = width,
+    height = height,
+    dpi = dpi,
+    units = "in",
+    compress = "lzw"
+  )
+  
+  invisible(out)
 }
-
 
 

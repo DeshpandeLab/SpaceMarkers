@@ -2,105 +2,28 @@
 % Please edit documentation in R/multisample.R
 \name{get_top_lr_interactions}
 \alias{get_top_lr_interactions}
-\title{Extract top ligand receptor interactions}
+\title{Get top ligand–receptor interactions per condition}
 \usage{
-get_top_lr_interactions(
-  lrscores,
-  lrpairs,
-  top_n_table = 10,
-  name_split_token = "_to_",
-  na_replace = 0,
-  ligand_col = "ligand",
-  receptor_col = "receptor",
-  samples = NULL,
-  rank_by = "interaction"
-)
+get_top_lr_interactions(df, top = 10)
 }
 \arguments{
-\item{lrscores}{Either a numeric matrix (rows are interaction IDs and
-columns are cell pair columns), or a named list of such matrices where the
-list names are sample IDs.}
+\item{df}{A data frame of ligand–receptor scores containing at least the columns
+\code{ligand}, \code{receptor}, \code{score}, \code{dataset}, \code{condition},
+\code{interaction}, and \code{source_to_target}.}
 
-\item{lrpairs}{Data.frame describing each interaction row, with at least
-ligand and receptor columns. Row names must match the interaction IDs used
-as rownames in lrscores.}
-
-\item{top_n_table}{Integer. Number of top entries to keep. If samples is
-NULL, the function returns the top N rows per sample and column. If samples
-is provided, the function returns the top N interactions per group as
-defined by rank_by. If top_n_table is NULL, the full long table is returned.}
-
-\item{name_split_token}{Character. Token used to split column names into
-source and target cell types. Default is "\emph{to}".}
-
-\item{na_replace}{Numeric. Value used to replace missing scores. Default is 0.}
-
-\item{ligand_col}{Character. Column name in lrpairs that contains ligand
-gene names. Default is "ligand".}
-
-\item{receptor_col}{Character. Column name in lrpairs that contains receptor
-gene names. Default is "receptor".}
-
-\item{samples}{Optional named character vector that maps sample IDs
-(names) to group labels (values). When provided, group wise medians are
-used to select top interactions.}
-
-\item{rank_by}{Character. Mode used for group level selection when samples
-is provided. Possible values are "interaction" and "interaction_col".
-In "interaction" mode, the function selects the top N interactions per
-group based on the strongest median score across all columns. In
-"interaction_col" mode, the function selects the top N interaction and
-column pairs per group.}
+\item{top}{Integer specifying the number of top interactions to return per condition
+based on median score.}
 }
 \value{
-A data.frame in long format with columns score, interaction,
-source_cell_type, target_cell_type, ligand, receptor, sample and, when
-samples is provided, sample_group. When top_n_table is NULL, all rows are
-returned. Otherwise only the selected top rows are returned.
+A data frame containing all rows from the original input corresponding to the
+top-ranked interactions per condition, with two additional columns:
+\code{median_score} (median LR score across datasets) and \code{n_datasets}
+(number of datasets contributing to the interaction).
 }
 \description{
-Extract a long-format table of ligand receptor interactions from a score
-matrix or from a list of score matrices (one per sample). Optionally return
-only the top scoring interactions per sample or per sample group.
-}
-\examples{
-\dontrun{
-# Single matrix example
-lrs <- matrix(
-  c(0.9, 0.1,
-    0.2, 0.8),
-  nrow = 2, byrow = TRUE,
-  dimnames = list(
-    c("LGF1_REC1", "LGF2_REC2"),
-    c("Epi_to_Plasma", "Plasma_to_Epi")
-  )
-)
-
-lrpairs <- data.frame(
-  ligand   = c("LGF1","LGF2"),
-  receptor = c("REC1","REC2"),
-  row.names = c("LGF1_REC1","LGF2_REC2"),
-  stringsAsFactors = FALSE
-)
-
-top_df <- get_top_lr_interactions(
-  lrscores        = lrs,
-  lrpairs         = lrpairs,
-  top_n_table     = 1,
-  name_split_token = "_to_"
-)
-
-# List of matrices with sample groups
-lrs_list <- list(S1 = lrs, S2 = lrs * 1.2)
-sample_groups <- c(S1 = "Control", S2 = "Case")
-
-top_grp <- get_top_lr_interactions(
-  lrscores    = lrs_list,
-  lrpairs     = lrpairs,
-  top_n_table = 2,
-  samples     = sample_groups,
-  rank_by     = "interaction"
-)
-}
-
+Identifies the highest-scoring ligand–receptor interactions within each condition
+by ranking interactions based on the median LR score across datasets. The function first removes
+self-interactions where ligand and receptor are identical, then computes a per-condition median
+score for each (source–target, interaction) pair. The top interactions per condition are selected
+and returned with all original per-dataset rows retained, along with the computed median score.
 }
