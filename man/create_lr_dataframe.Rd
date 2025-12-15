@@ -25,8 +25,8 @@ create_lr_dataframe(
 }
 \value{
 A data frame with columns:
-\code{source_celltype}, \code{ligand}, \code{receptor}, \code{target_celltype},
-\code{ligand_score}, \code{receptor_score}, \code{lr_score}, \code{interaction}.
+\code{source_cell_type}, \code{ligand}, \code{receptor}, \code{target_cell_type},
+\code{ligand_score}, \code{receptor_score}, \code{score}, \code{interaction}.
 The interaction and cell types are parsed from the combined \code{lr_cell} key.
 }
 \description{

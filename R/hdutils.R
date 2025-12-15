@@ -450,9 +450,9 @@ calculate_gene_scores_directed <- function(data, pat_hotspots, influence_hotspot
     return(IMscores)
 }
 
-#' Create a long-format ligand–receptor score data frame
+#' @title Create a long-format ligand–receptor score data frame
 #'
-#' Takes LR, ligand, and receptor score matrices and combines them into a single
+#' @description Takes LR, ligand, and receptor score matrices and combines them into a single
 #' long data frame with one row per interaction and source/target cell-type pair.
 #' Ligand and receptor gene names are added from \code{lrpairs}. Any missing LR
 #' scores are set to 0. Column names in \code{ligand_scores} that start with
@@ -465,46 +465,60 @@ calculate_gene_scores_directed <- function(data, pat_hotspots, influence_hotspot
 #' @param complex_sep Separator used for multi-gene complexes in \code{lrpairs}; replaced with \code{"_"}.
 #'
 #' @return A data frame with columns:
-#' \code{source_celltype}, \code{ligand}, \code{receptor}, \code{target_celltype},
-#' \code{ligand_score}, \code{receptor_score}, \code{lr_score}, \code{interaction}.
+#' \code{source_cell_type}, \code{ligand}, \code{receptor}, \code{target_cell_type},
+#' \code{ligand_score}, \code{receptor_score}, \code{score}, \code{interaction}.
 #' The interaction and cell types are parsed from the combined \code{lr_cell} key.
-#'
 #' @export
 create_lr_dataframe <- function(lrscores, ligand_scores, receptor_scores,lrpairs,complex_sep = ", "){
   # Lr scores
   lrscores[is.na(lrscores)] <- 0
-  lr_long <- reshape2::melt(as.matrix(lrscores), varnames = c("interaction", "source_to_target"), value.name = "lr_score")
-  lr_long$lr_cell <- paste0(lr_long$interaction,"_and_",lr_long$source_to_target) # merge on this
-  
+  lr_long <- reshape2::melt(as.matrix(lrscores),
+                            varnames = c("interaction", "source_to_target"),
+                            value.name = "score")
+  lr_long$lr_cell <- paste0(
+    lr_long$interaction,"_and_",lr_long$source_to_target) # merge on this
   # Ligand scores
-  ligand_long <- reshape2::melt(as.matrix(ligand_scores), varnames = c("interaction", "source_to_target"), value.name = "ligand_score")
-  ligand_long$source_to_target <- gsub("near_", "to_", ligand_long$source_to_target)
-  ligand_long$lr_cell <- paste0(ligand_long$interaction,"_and_",ligand_long$source_to_target) # merge on this
-  
+  ligand_long <- reshape2::melt(as.matrix(ligand_scores),
+                                varnames = c("interaction", "source_to_target"),
+                                value.name = "ligand_score")
+  ligand_long$source_to_target <- gsub(
+    "near_", "to_", ligand_long$source_to_target)
+  ligand_long$lr_cell <- paste0(
+    ligand_long$interaction,"_and_",ligand_long$source_to_target) # merge on this
   # LR scores + ligand scores
-  lr_ligand <- dplyr::inner_join(lr_long %>% dplyr::select(c(-source_to_target,-interaction)),ligand_long  %>% dplyr::select(c(-source_to_target, -interaction)),by = "lr_cell")
+  lr_ligand <- dplyr::inner_join(
+    lr_long %>% dplyr::select(c(-source_to_target,-interaction)),
+    ligand_long  %>% dplyr::select(c(-source_to_target, -interaction)),
+    by = "lr_cell")
   ##  extract  relevant columns
   lr_ligand$interaction <- sub("_and_.*$", "", lr_ligand$lr_cell)
-  lr_ligand$source_celltype <- sub("^.*_and_(.*)_to_.*$", "\\1", lr_ligand$lr_cell)
-  lr_ligand$target_celltype <- sub("^.*_to_", "", lr_ligand$lr_cell)
-  
+  lr_ligand$source_cell_type <- sub("^.*_and_(.*)_to_.*$", "\\1",
+                                    lr_ligand$lr_cell)
+  lr_ligand$target_cell_type <- sub("^.*_to_", "", lr_ligand$lr_cell)
   # Receptor scores (merge on targets))
-  receptor_long <- reshape2::melt(as.matrix(receptor_scores), varnames = c("interaction", "target_celltype"), value.name = "receptor_score")
-  receptor_long$lr_target <- paste0(receptor_long$interaction,"_and_",receptor_long$target_celltype)
-  
-  
+  receptor_long <- reshape2::melt(
+    as.matrix(receptor_scores),
+    varnames = c("interaction", "target_cell_type"),
+    value.name = "receptor_score")
+  receptor_long$lr_target <- paste0(receptor_long$interaction,
+                                    "_and_",receptor_long$target_cell_type)
   # LR scores + receptor scores
-  lr_ligand$lr_target <- paste0(lr_ligand$interaction,"_and_",lr_ligand$target_celltype)
-  lr_receptor <- dplyr::inner_join(lr_ligand,receptor_long %>% dplyr::select(c(-target_celltype,-interaction)) , by = "lr_target")
-  
-  
+  lr_ligand$lr_target <- paste0(
+    lr_ligand$interaction,"_and_",lr_ligand$target_cell_type)
+  lr_receptor <- dplyr::inner_join(
+    lr_ligand,receptor_long %>%
+      dplyr::select(c(-target_cell_type,-interaction)) , by = "lr_target")
   # Get ligands and receptors
   lrpairs$interaction <- rownames(lrpairs)
   final_lrscores <- dplyr::inner_join(lr_receptor,lrpairs,by = "interaction")
   # format ligand and receptors
-  final_lrscores$receptor <- gsub(pattern = complex_sep,replacement = "_",final_lrscores$receptor)
-  final_lrscores$ligand <- gsub(pattern = complex_sep,replacement = "_",final_lrscores$ligand)
-  final_lrscores <- final_lrscores %>% dplyr::select(source_celltype,ligand,receptor,target_celltype,ligand_score,receptor_score,lr_score,interaction)
+  final_lrscores$receptor <- gsub(pattern = complex_sep,
+                                  replacement = "_",final_lrscores$receptor)
+  final_lrscores$ligand <- gsub(pattern = complex_sep,
+                                replacement = "_",final_lrscores$ligand)
+  final_lrscores <- final_lrscores %>%
+    dplyr::select(source_cell_type,ligand,receptor,target_cell_type,
+                  ligand_score,receptor_score,score,interaction)
   return(final_lrscores)
 }
 
