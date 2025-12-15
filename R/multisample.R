@@ -579,25 +579,19 @@ compare_scores <- function(mtx,sample_groups = NULL,feature_col = "interaction")
 plot_overlap_scores_bar <- function(df,
                                     top = 10,
                                     out = "median_overlap_scores.tiff") {
-  # limit to relevant columns
+  
   df <- df %>%
     dplyr::select(interaction, group1, median_diff, median_overlapScore) %>%
-    dplyr::distinct() %>%
-    dplyr::arrange(dplyr::desc(abs(median_diff)))
+    dplyr::distinct()
   
-  # Extract top n interactions based on absolute median difference
-  top_interactions <- df %>%
-    dplyr::pull(interaction) %>%
-    unique() %>%
-    # remove self interactions like B_near_B, Strom_to_Strom, B_B, Strom_Strom, etc.
-    (\(x) x[
+  # helper: remove self interactions like B_near_B, Strom_to_Strom, B_B, Strom_Strom
+  drop_self <- function(x) {
+    x[
       {
-        # handle near/to patterns
         left1  <- sub("^(.*)_(near|to)_.*$", "\\1", x)
         right1 <- sub("^.*_(near|to)_", "", x)
         is_near_to <- grepl("_(near|to)_", x)
         
-        # handle underscore-only patterns (e.g., B_B, Strom_Strom)
         left2  <- sub("_.*$", "", x)
         right2 <- sub("^.*_", "", x)
         is_uscore <- grepl("_", x) & !is_near_to
@@ -607,40 +601,60 @@ plot_overlap_scores_bar <- function(df,
         
         keep1 & keep2
       }
-    ])() %>%
-    head(top)
+    ]
+  }
   
-
+  # rank interactions per group
+  ranked_by_group <- df %>%
+    dplyr::arrange(group1, dplyr::desc(abs(median_diff))) %>%
+    dplyr::group_by(group1) %>%
+    dplyr::summarise(ranked = list(drop_self(unique(interaction))), .groups = "drop")
   
-  # Ensure median_df has only top interactions arranged by median
+  # build ordered_levels so each group contributes up to `top` *new* interactions
+  used <- character(0)
+  ordered_levels <- character(0)
+  top_table_list <- vector("list", nrow(ranked_by_group))
+  
+  for (i in seq_len(nrow(ranked_by_group))) {
+    g <- ranked_by_group$group1[i]
+    cand <- ranked_by_group$ranked[[i]]
+    new_for_group <- cand[!cand %in% used]
+    
+    # take top new ones; if not enough exist, you'll get fewer than `top`
+    pick <- head(new_for_group, top)
+    
+    ordered_levels <- c(ordered_levels, pick)
+    used <- c(used, pick)
+    
+    top_table_list[[i]] <- data.frame(
+      group1 = g,
+      top_interactions = I(list(pick)),
+      group_order = i,
+      stringsAsFactors = FALSE
+    )
+  }
+  
+  top_tbl <- dplyr::bind_rows(top_table_list)
+  
+  # keep only those interactions (union across groups, but "filled" to preserve top-per-group intent)
   median_df <- df %>%
     dplyr::mutate(group = group1) %>%
     dplyr::select(group, interaction, median_overlapScore) %>%
     dplyr::distinct() %>%
-    dplyr::filter(interaction %in% top_interactions) %>%
-    dplyr::arrange(dplyr::desc(median_overlapScore))
+    dplyr::filter(interaction %in% unique(ordered_levels))
   
-  # Factorize interaction column for plotting order
+  # y-axis order: group1 block, then group2 block, etc.
   median_df$interaction <- factor(
     median_df$interaction,
-    levels = rev(top_interactions)
+    levels = rev(unique(ordered_levels))
   )
   
-  # Plot median_df
   p <- ggplot2::ggplot(
     median_df,
-    ggplot2::aes(
-      x    = median_overlapScore,
-      y    = interaction,
-      fill = group
-    )
+    ggplot2::aes(x = median_overlapScore, y = interaction, fill = group)
   ) +
     ggplot2::geom_col(position = ggplot2::position_dodge(width = 0.8)) +
-    ggplot2::labs(
-      x    = "Median overlap score",
-      y    = "Interaction",
-      fill = "Group"
-    ) +
+    ggplot2::labs(x = "Median overlap score", y = "Interaction", fill = "Group") +
     ggplot2::theme_classic()
   
   ggplot2::ggsave(
@@ -654,7 +668,7 @@ plot_overlap_scores_bar <- function(df,
     compression = "lzw"
   )
   
-  invisible(list(data = median_df, plot = p))
+  invisible(list(data = median_df, plot = p, top_table = top_tbl, ordered_levels = ordered_levels))
 }
 
 
@@ -902,6 +916,62 @@ generate_sample_lr_scores <- function(
     receptor_scores_list = receptor_scores_list
   )
 }
+
+
+#' @title Create ligand–receptor score table across multiple datasets
+#'
+#' @description Applies \code{create_lr_dataframe} to each dataset in a score-list object, then
+#' combines results into one data frame and adds dataset-level metadata.
+#'
+#' @param lr_scores_list A list containing \code{res_list} (LR score matrices),
+#' \code{ligand_scores_list} (ligand score matrices), and \code{receptor_scores_list}
+#' (receptor score matrices). Each must be a named list with matching names.
+#' @param lrpairs A data frame with columns \code{ligand} and \code{receptor} where
+#' row names are the ligand–receptor interaction IDs used to join to scores.
+#' @param sample_groups Optional named character vector mapping dataset names
+#' (names of \code{lr_scores_list$res_list}) to a condition label. If \code{NULL},
+#' \code{condition} is set to \code{NA}.
+#' @param complex_sep Character separator used for ligand/receptor complexes, passed
+#' to \code{create_lr_dataframe}.
+#'
+#' @return A data frame combining all per-dataset outputs of \code{create_lr_dataframe},
+#' with two additional columns: \code{dataset} (dataset name) and \code{condition}
+#' (mapped from \code{sample_groups}, or \code{NA}).
+#' 
+#' @export
+create_lr_dataframe_multi <- function(lr_scores_list, lrpairs, sample_groups = NULL, complex_sep = ", ") {
+  lrscores_list        <- lr_scores_list$res_list
+  ligand_scores_list   <- lr_scores_list$ligand_scores_list
+  receptor_scores_list <- lr_scores_list$receptor_scores_list
+  
+  # basic checks
+  stopifnot(is.list(lrscores_list), is.list(ligand_scores_list), is.list(receptor_scores_list))
+  stopifnot(length(lrscores_list) == length(ligand_scores_list),
+            length(lrscores_list) == length(receptor_scores_list))
+  
+  datasets <- names(lrscores_list)
+  if (is.null(datasets) || any(datasets == "")) {
+    stop("lr_scores_list$res_list must be a *named* list so we can populate the 'dataset' column.")
+  }
+  
+  out_list <- Map(function(lrs, lig, rec, ds) {
+    df <- create_lr_dataframe(
+      lrscores        = lrs,
+      ligand_scores   = lig,
+      receptor_scores = rec,
+      lrpairs         = lrpairs,
+      complex_sep     = complex_sep
+    )
+    
+    df$dataset <- ds
+    df$condition <- if (!is.null(sample_groups)) unname(sample_groups[ds]) else NA_character_
+    df
+  }, lrscores_list, ligand_scores_list, receptor_scores_list, datasets)
+  
+  dplyr::bind_rows(out_list)
+}
+
+
 
 
 
