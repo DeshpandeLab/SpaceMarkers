@@ -577,8 +577,8 @@ compare_scores <- function(mtx,sample_groups = NULL,feature_col = "interaction")
 #' plot (the ggplot object).
 #' @export
 plot_overlap_scores_bar <- function(df,
-                                    top         = 10,
-                                    out         = "median_overlap_scores.tiff") {
+                                    top = 10,
+                                    out = "median_overlap_scores.tiff") {
   # limit to relevant columns
   df <- df %>%
     dplyr::select(interaction, group1, median_diff, median_overlapScore) %>%
@@ -589,7 +589,28 @@ plot_overlap_scores_bar <- function(df,
   top_interactions <- df %>%
     dplyr::pull(interaction) %>%
     unique() %>%
+    # remove self interactions like B_near_B, Strom_to_Strom, B_B, Strom_Strom, etc.
+    (\(x) x[
+      {
+        # handle near/to patterns
+        left1  <- sub("^(.*)_(near|to)_.*$", "\\1", x)
+        right1 <- sub("^.*_(near|to)_", "", x)
+        is_near_to <- grepl("_(near|to)_", x)
+        
+        # handle underscore-only patterns (e.g., B_B, Strom_Strom)
+        left2  <- sub("_.*$", "", x)
+        right2 <- sub("^.*_", "", x)
+        is_uscore <- grepl("_", x) & !is_near_to
+        
+        keep1 <- !is_near_to | (left1 != right1)
+        keep2 <- !is_uscore  | (left2 != right2)
+        
+        keep1 & keep2
+      }
+    ])() %>%
     head(top)
+  
+
   
   # Ensure median_df has only top interactions arranged by median
   median_df <- df %>%
