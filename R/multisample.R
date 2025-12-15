@@ -1032,8 +1032,9 @@ get_top_lr_interactions <- function(df, top = 10) {
 #' @description
 #' Make an alluvial (Sankey-style) plot showing flows from source cell type
 #' to ligand, receptor, and target cell type. Flow width is proportional to an
-#' interaction score. Ribbons are filled by source cell type and optionally
-#' distinguished by condition using alpha (transparency) with a separate legend.
+#' interaction score. Ribbons are filled by a user-selected column (default:
+#' source cell type) and optionally distinguished by condition using alpha
+#' (transparency) with a separate legend.
 #'
 #' @param df Data frame containing ligand/receptor scores and identifiers.
 #' @param score_col Character. Column name for the interaction score.
@@ -1044,6 +1045,9 @@ get_top_lr_interactions <- function(df, top = 10) {
 #' @param condition_col Optional character. Column name for condition used to
 #' distinguish ribbons via alpha. If \code{NULL} or not present, no condition
 #' distinction is applied.
+#' @param color_by Character. Column name used to fill ribbons. Default is
+#' \code{source_cell_type}. This column is coerced to a factor and used for the
+#' fill legend.
 #' @param title Optional plot title. If \code{NULL}, a default title is used.
 #' @param min_score Numeric. Minimum score to keep.
 #' @param alpha Numeric between 0 and 1. Base alpha used when \code{condition_col}
@@ -1064,6 +1068,7 @@ plot_lr_alluvial <- function(
     ligand_col    = "ligand",
     receptor_col  = "receptor",
     condition_col = "condition",
+    color_by      = "source_cell_type",
     title         = NULL,
     min_score     = 0,
     alpha         = 0.8,
@@ -1085,9 +1090,10 @@ plot_lr_alluvial <- function(
   target_col    <- .res(target_col)
   ligand_col    <- .res(ligand_col)
   receptor_col  <- .res(receptor_col)
+  color_by      <- .res(color_by)
   condition_col <- if (!is.null(condition_col)) .res(condition_col) else NULL
   
-  need <- c(score_col, source_col, target_col, ligand_col, receptor_col)
+  need <- c(score_col, source_col, target_col, ligand_col, receptor_col, color_by)
   miss <- setdiff(need, names(df))
   if (length(miss)) stop("Missing columns: ", paste(miss, collapse = ", "))
   
@@ -1106,8 +1112,8 @@ plot_lr_alluvial <- function(
   d[[receptor_col]] <- wrap_names(d[[receptor_col]])
   d[[target_col]]   <- wrap_names(d[[target_col]])
   
-  # fill by source cell type
-  d$fill_key <- factor(d[[source_col]])
+  # fill by user-selected column
+  d$fill_key <- factor(d[[color_by]])
   
   .discrete_palette <- function(n) {
     if (n <= 8) {
@@ -1183,16 +1189,16 @@ plot_lr_alluvial <- function(
       size = label_size,
       check_overlap = TRUE
     ) +
-    ggplot2::scale_fill_manual(values = pal_vals, name = "Source cell type", drop = FALSE) +
+    ggplot2::scale_fill_manual(values = pal_vals, name = color_by, drop = FALSE) +
     ggplot2::guides(
       fill = ggplot2::guide_legend(override.aes = list(alpha = 1))
     ) +
     ggplot2::labs(
       title    = if (is.null(title)) default_title else title,
       subtitle = if (has_condition)
-        "Flow width ~ score; fill ~ source_cell_type; alpha ~ condition"
+        sprintf("Flow width ~ score; fill ~ %s; alpha ~ condition", color_by)
       else
-        "Flow width ~ score; fill ~ source_cell_type",
+        sprintf("Flow width ~ score; fill ~ %s", color_by),
       y = "Score",
       x = NULL
     ) +

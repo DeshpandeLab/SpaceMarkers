@@ -12,6 +12,7 @@ plot_lr_alluvial(
   ligand_col = "ligand",
   receptor_col = "receptor",
   condition_col = "condition",
+  color_by = "source_cell_type",
   title = NULL,
   min_score = 0,
   alpha = 0.8,
@@ -37,6 +38,10 @@ plot_lr_alluvial(
 distinguish ribbons via alpha. If \code{NULL} or not present, no condition
 distinction is applied.}
 
+\item{color_by}{Character. Column name used to fill ribbons. Default is
+\code{source_cell_type}. This column is coerced to a factor and used for the
+fill legend.}
+
 \item{title}{Optional plot title. If \code{NULL}, a default title is used.}
 
 \item{min_score}{Numeric. Minimum score to keep.}
@@ -57,6 +62,7 @@ A ggplot object.
 \description{
 Make an alluvial (Sankey-style) plot showing flows from source cell type
 to ligand, receptor, and target cell type. Flow width is proportional to an
-interaction score. Ribbons are filled by source cell type and optionally
-distinguished by condition using alpha (transparency) with a separate legend.
+interaction score. Ribbons are filled by a user-selected column (default:
+source cell type) and optionally distinguished by condition using alpha
+(transparency) with a separate legend.
 }
