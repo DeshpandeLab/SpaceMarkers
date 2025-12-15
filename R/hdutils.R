@@ -198,6 +198,7 @@ find_hotspots_gmm <- function(df, threshold = 0.1,...){
 #'   patternpair        = c("Epi","Plasma")
 #' )
 #' }
+#' @export 
 classify_spots <- function(pat_hotspots,
                            influence_hotspots,
                            patternpair = NULL) {
