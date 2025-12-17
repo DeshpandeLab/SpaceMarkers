@@ -66,7 +66,7 @@ process SPACEMARKERS {
     IMScores <- get_im_scores(spaceMarkers)
     rownames(IMScores) <- IMScores[,"Gene"]
     IMScores[,"Gene"] <- NULL
-    write.csv(IMScores, file = "${prefix}/spaceMarkers.rds", row.names = FALSE)
+    saveRDS(IMScores, file = "${prefix}/spaceMarkers.rds")
 
     # Get the versions of the packages
     spaceMarkersVersion <- packageVersion("SpaceMarkers")
