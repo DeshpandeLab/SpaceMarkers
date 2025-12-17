@@ -135,7 +135,7 @@ test_hotspots <- classify_spots(
 )
 
 multiway_test_hotspots <- cbind(spHotspots_all, test_hotspots)
-test_hotspot_expr <- get_hotspot_expr(multiway_test_hotspots, spCounts)
+test_hotspot_expr <- cbind(multiway_test_hotspots, t(as.matrix(spCounts)))
 
 # --- Demonstration using mode = "both" ---
 p <- plot_multi_way_violin(
