@@ -1457,106 +1457,157 @@ plot_multi_way_violin <- function(
     expr_hotspots,
     patternpair,
     gene,
-    cell_id   = "barcode",
-    mode      = c("directed","undirected","both"),
+    cell_id = "barcode",
+    mode = c("directed", "undirected", "both"),
     remove_na = TRUE,
-    colors    = c("blue","orange","red","purple","darkgreen"),
-    out       = NULL,
-    width = 10, height = 10, text_size = 14
-){
+    colors = c("blue", "orange", "red", "purple", "darkgreen"),
+    out = NULL,
+    width = 10,
+    height = 10,
+    text_size = 14
+) {
   stopifnot(length(patternpair) == 2, all(nzchar(patternpair)))
   mode <- match.arg(mode)
-  cell1 <- patternpair[1]; cell2 <- patternpair[2]
   
-  col_near12 <- paste0(cell1, "_near_", cell2)  # e.g., Epi_near_Plasma
-  col_near21 <- paste0(cell2, "_near_", cell1)  # e.g., Plasma_near_Epi
-  col_undir  <- paste0(cell1, "_", cell2)       # e.g., Epi_Plasma
+  cell1 <- patternpair[1]
+  cell2 <- patternpair[2]
   
-  make_directed_df <- function(col_lab) {
-    if (!col_lab %in% names(expr_hotspots)) return(NULL)
-    raw_vals <- expr_hotspots[[col_lab]]
-    vals_chr <- as.character(raw_vals)
-    vals_chr[is.na(raw_vals)] <- NA_character_
+  col_near12 <- paste0(cell1, "_near_", cell2)
+  col_near21 <- paste0(cell2, "_near_", cell1)
+  col_undir  <- paste0(cell1, "_", cell2)
+  
+  if (!cell_id %in% names(expr_hotspots)) stop("cell_id column not found.")
+  if (!gene %in% names(expr_hotspots)) stop("gene column not found.")
+  
+  
+  #internal controls
+  make_controls_df <- function() {
+    if (!all(c(cell1, cell2) %in% names(expr_hotspots))) return(NULL)
     
-    reg <- ifelse(is.na(vals_chr), NA_character_,
-                  ifelse(vals_chr == "Interacting", col_lab, vals_chr))
+    v1 <- as.character(expr_hotspots[[cell1]])
+    v2 <- as.character(expr_hotspots[[cell2]])
     
-    data.frame(
-      id     = expr_hotspots[[cell_id]],
-      expr   = expr_hotspots[[gene]],
-      region = reg,
+    # Explicit regions
+    cell1_only_idx <- which(!is.na(v1) & v1 == cell1 & (is.na(v2) | v2 != cell2))
+    cell2_only_idx <- which(!is.na(v2) & v2 == cell2 & (is.na(v1) | v1 != cell1))
+    
+    df1 <- data.frame(
+      id     = expr_hotspots[[cell_id]][cell1_only_idx],
+      expr   = expr_hotspots[[gene]][cell1_only_idx],
+      region = paste0(cell1),
       stringsAsFactors = FALSE
     )
+    
+    df2 <- data.frame(
+      id     = expr_hotspots[[cell_id]][cell2_only_idx],
+      expr   = expr_hotspots[[gene]][cell2_only_idx],
+      region = paste0(cell2),
+      stringsAsFactors = FALSE
+    )
+    
+    rbind(df1, df2)
   }
   
-  make_undirected_df <- function(col_lab, keep_only_interacting = FALSE, rename_to = NULL) {
-    if (!col_lab %in% names(expr_hotspots)) return(NULL)
-    raw_vals <- expr_hotspots[[col_lab]]
-    vals_chr <- as.character(raw_vals)
-    vals_chr[is.na(raw_vals)] <- NA_character_
+  # Exclusive directional interacting only
+  make_directed_df_exclusive <- function() {
+    if (!mode %in% c("directed", "both")) return(NULL)
+    if (!all(c(col_near12, col_near21) %in% names(expr_hotspots))) return(NULL)
     
-    df <- data.frame(
-      id     = expr_hotspots[[cell_id]],
-      expr   = expr_hotspots[[gene]],
-      region = vals_chr,  # "cell1" / "Interacting" / "cell2"
+    a <- as.character(expr_hotspots[[col_near12]])
+    b <- as.character(expr_hotspots[[col_near21]])
+    a[is.na(expr_hotspots[[col_near12]])] <- NA_character_
+    b[is.na(expr_hotspots[[col_near21]])] <- NA_character_
+    
+    idx_12_only <- which(!is.na(a) & a == "Interacting" & (is.na(b) | b != "Interacting"))
+    idx_21_only <- which(!is.na(b) & b == "Interacting" & (is.na(a) | a != "Interacting"))
+    
+    df_12 <- data.frame(
+      id     = expr_hotspots[[cell_id]][idx_12_only],
+      expr   = expr_hotspots[[gene]][idx_12_only],
+      region = paste0(col_near12),
       stringsAsFactors = FALSE
     )
     
-    if (keep_only_interacting) {
-      df <- df[!is.na(df$region) & df$region == "Interacting", , drop = FALSE]
-      if (nrow(df)) df$region <- if (is.null(rename_to)) col_lab else rename_to
+    df_21 <- data.frame(
+      id     = expr_hotspots[[cell_id]][idx_21_only],
+      expr   = expr_hotspots[[gene]][idx_21_only],
+      region = paste0(col_near21),
+      stringsAsFactors = FALSE
+    )
+    
+    rbind(df_12, df_21)
+  }
+  
+  # Undirected (and "both" adds undirected interacting-only group)
+  make_undirected_df <- function() {
+    if (!mode %in% c("undirected", "both")) return(NULL)
+    if (!col_undir %in% names(expr_hotspots)) return(NULL)
+    
+    u <- as.character(expr_hotspots[[col_undir]])
+    u[is.na(expr_hotspots[[col_undir]])] <- NA_character_
+    
+    if (mode == "both") {
+      idx <- which(!is.na(u) & u == "Interacting")
+      data.frame(
+        id     = expr_hotspots[[cell_id]][idx],
+        expr   = expr_hotspots[[gene]][idx],
+        region = paste0(col_undir, "_Interacting"),
+        stringsAsFactors = FALSE
+      )
+    } else {
+      data.frame(
+        id     = expr_hotspots[[cell_id]],
+        expr   = expr_hotspots[[gene]],
+        region = u,
+        stringsAsFactors = FALSE
+      )
     }
-    df
   }
   
-  # build per mode
-  dfs <- list()
-  if (mode %in% c("directed","both")) {
-    dfs <- c(dfs, list(
-      make_directed_df(col_near12),
-      make_directed_df(col_near21)
-    ))
-  }
-  if (mode == "undirected") {
-    message('Assuming SpaceMarkers was run in undirected mode.')
-    dfs <- c(dfs, list(make_undirected_df(col_undir, keep_only_interacting = FALSE)))
-  }
-  if (mode == "both") {
-    dfs <- c(dfs, list(make_undirected_df(col_undir, keep_only_interacting = TRUE, rename_to = col_undir)))
-  }
+  # Build plotting dataframe
+  dfs <- list(
+    make_controls_df(),
+    make_directed_df_exclusive(),
+    make_undirected_df()
+  )
   
   df <- do.call(rbind, dfs[!vapply(dfs, is.null, logical(1))])
-  if (is.null(df) || nrow(df) == 0) stop("No applicable columns found for the requested mode/patternpair.")
+  
+  if (is.null(df) || nrow(df) == 0) {
+    stop("No applicable rows found for the requested mode/patternpair after applying exclusivity filters.")
+  }
+  
   if (remove_na) df <- df[!is.na(df$region), , drop = FALSE]
   if (!nrow(df)) stop("All rows were NA after filtering.")
   
-  # desired orders INCLUDING base labels
-  desired_order <- switch(
-    mode,
-    "directed"   = c(cell1, col_near12, col_near21, cell2),
-    "undirected" = c(cell1, "Interacting", cell2),
-    "both"       = c(cell1, col_near12, col_undir, col_near21, cell2)
+  # Ordering + colors
+  desired_order <- c(
+    paste0(cell1),
+    paste0(col_near12),
+    if (mode == "both" && col_undir %in% names(expr_hotspots)) paste0(col_undir, "_Interacting") else NULL,
+    paste0(col_near21),
+    paste0(cell2)
   )
+  desired_order <- desired_order[!is.null(desired_order)]
   
   present_levels <- unique(df$region)
-  enforce_order <- (length(intersect(desired_order, present_levels)) == length(desired_order)) &&
-    (length(present_levels) >= 3)
+  lvl <- c(desired_order[desired_order %in% present_levels],
+           setdiff(present_levels, desired_order))
   
-  if (enforce_order) {
-    df$region <- factor(df$region, levels = desired_order)
-    need <- length(desired_order)
-    if (length(colors) < need) colors <- rep(colors, length.out = need)
-    col_vec <- setNames(colors[seq_len(need)], desired_order)
-  } else {
-    df$region <- factor(df$region, levels = present_levels)
-    need <- length(present_levels)
-    if (length(colors) < need) colors <- rep(colors, length.out = need)
-    col_vec <- setNames(colors[seq_len(need)], levels(df$region))
-  }
+  df$region <- factor(df$region, levels = lvl)
   
+  need <- length(levels(df$region))
+  if (length(colors) < need) colors <- rep(colors, length.out = need)
+  col_vec <- setNames(colors[seq_len(need)], levels(df$region))
+  
+  # Plot
   p <- ggplot2::ggplot(df, ggplot2::aes(x = region, y = expr, fill = region)) +
     ggplot2::geom_violin(trim = TRUE) +
-    ggplot2::geom_jitter(width = 0.2, size = 0.5, shape = 21, color = "black") +
+    ggplot2::geom_point(
+      position = ggplot2::position_jitter(width = 0.15),
+      size = 0.4,
+      alpha = 0.4
+    ) +
     ggplot2::scale_fill_manual(values = col_vec, drop = FALSE) +
     ggplot2::labs(title = gene, x = "Region", y = "Expression") +
     ggplot2::theme_minimal(base_size = text_size) +
@@ -1565,5 +1616,6 @@ plot_multi_way_violin <- function(
   if (!is.null(out)) {
     ggplot2::ggsave(out, p, width = width, height = height, units = "in")
   }
+  
   invisible(p)
 }
