@@ -9,7 +9,7 @@ process SPACEMARKERS {
     tuple val(meta), path("${prefix}/spPatterns.rds"),         val(source),   emit: spPatterns
     tuple val(meta), path("${prefix}/optParams.rds"),          val(source),   emit: optParams
     tuple val(meta), path("${prefix}/spaceMarkersObject.rds"), val(source),   emit: spaceMarkers
-    tuple val(meta), path("${prefix}/spaceMarkers.csv"),       val(source),   emit: spaceMarkersScores
+    tuple val(meta), path("${prefix}/spaceMarkers.rds"),       val(source),   emit: spaceMarkersScores
     tuple val(meta), path("${prefix}/hotspots.rds"),           val(source),   emit: hotspots
     tuple val(meta), path("${prefix}/overlapScores.csv"),      val(source),   emit: overlapScores
     path  "versions.yml",                                                     emit: versions
@@ -64,7 +64,9 @@ process SPACEMARKERS {
 
     #save SpaceMarkers Interaction Scores
     IMScores <- get_im_scores(spaceMarkers)
-    write.csv(IMScores, file = "${prefix}/spaceMarkers.csv", row.names = FALSE)
+    rownames(IMScores) <- IMScores[,"Gene"]
+    IMScores[,"Gene"] <- NULL
+    write.csv(IMScores, file = "${prefix}/IMScores.rds", row.names = FALSE)
 
     # Get the versions of the packages
     spaceMarkersVersion <- packageVersion("SpaceMarkers")
@@ -81,7 +83,7 @@ process SPACEMARKERS {
     mkdir -p "${prefix}"
     touch "${prefix}/spPatterns.rds"
     touch "${prefix}/optParams.rds"
-    touch "${prefix}/spaceMarkers.csv"
+    touch "${prefix}/spaceMarkers.rds"
     touch "${prefix}/spaceMarkersObject.rds"
     touch "${prefix}/hotspots.rds"
     touch "${prefix}/overlapScores.csv"
@@ -126,8 +128,8 @@ process SPACEMARKERS_PLOTS {
   ggplot2::ggsave("${prefix}/overlapScores.png", plot)
 
   #plot interaction plots
-  sm <- read.csv("$spaceMarkers")
-  plot_names <- names(sm[,(tolower(names(sm))!="gene")])
+  sm <- readRDS("$spaceMarkers")
+  plot_names <- colnames(sm)
   for (plot_name in plot_names) {
     plot <- plotIMScores(sm, plot_name) + ggplot2::labs(subtitle="$meta.id")
     ggplot2::ggsave(paste0("${prefix}/", plot_name, "_interacting_genes.png"), plot)
@@ -278,7 +280,7 @@ workflow {
 
     ch_sm_inputs = Channel.fromPath(params.input)
     .splitCsv(header:true, sep: ",")
-    .map { row-> tuple(meta:[id:row.sample], features:file(row.annotation_file), data:file(row.data_dir)) }
+    .map { row-> [meta:[id:row.sample], features:file(row.annotation_file), data:file(row.data_dir)] }
 
     //spacemarkers - main
     SPACEMARKERS( ch_sm_inputs )
