@@ -940,6 +940,7 @@ calculate_gene_set_score <- function(IMscores, gene_sets, weighted = TRUE, metho
 #' @param sp_dir path to the spatial directory
 #' @param res a character string specifying the resolution of the image
 #' @return a character string of the image file name
+#' 
 .pick_image <- function(sp_dir, res) {
   files <- list.files(sp_dir, full.names = TRUE)
   low   <- grep("^tissue_.*lowres.*\\.(png|jpg|jpeg|tif|tiff)$",
@@ -1009,11 +1010,11 @@ plot_spatial_data_over_image <- function (visiumDir, df, feature_col, barcode_co
     df <- dplyr::rename(df, barcode = !!rlang::sym(barcode_col))
   }
   if (!is.null(version) && identical(version, "HD")) {
+    if (missing(resolution)) resolution <- "lowres"
     message(
       "HD specified assuming coordinates are in present in df. ",
-      "Assuming resolution is ", paste0(version), " unless otherwise specified."
+      "Assuming resolution is ", paste0(resolution), " unless otherwise specified."
     )
-    if (missing(resolution)) resolution <- "lowres"
     
     if (!all(c("x", "y") %in% names(df))) {
       stop('version = "HD" requires df to have columns: x and y.')
