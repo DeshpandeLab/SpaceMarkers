@@ -992,60 +992,92 @@ calculate_gene_set_score <- function(IMscores, gene_sets, weighted = TRUE, metho
 #' @importFrom ggplot2 scale_fill_gradientn ggplot annotation_raster 
 #' geom_point aes coord_fixed labs theme_bw theme element_rect element_blank
 #' @importFrom dplyr mutate rename
-
-plot_spatial_data_over_image <- function(
-    visiumDir, df, feature_col, barcode_col="barcode",
-    resolution=c("lowres","hires","fullres"), version=NULL, colors=NULL,
-    point_size=2.5, stroke=0.05, alpha=0.5, title="Spatial Heatmap",
-    bg_color=NULL, crop=TRUE, text_size = 15) {
+#' 
+plot_spatial_data_over_image <- function (visiumDir, df, feature_col, barcode_col = "barcode", 
+                                          resolution = c("lowres", "hires", "fullres"), version = NULL, 
+                                          colors = NULL, point_size = 2.5, stroke = 0.05, alpha = 0.5, 
+                                          title = "Spatial Heatmap", bg_color = NULL, crop = TRUE, 
+                                          text_size = 15) 
+{
   resolution <- match.arg(resolution)
+  
   if (is.null(barcode_col)) {
-    if (!is.null(rownames(df))) df$barcode <- rownames(df) else
-      stop("barcode_col is NULL and df has no rownames.")
-  } else if (barcode_col != "barcode") 
-    df <- dplyr::rename(
-    df, barcode = !!rlang::sym(barcode_col))
-  pos <- SpaceMarkers::load10XCoords(visiumDir, resolution, version)
-  names(pos) <- c("barcode","y","x"); df <- merge(
-    df[, c("barcode", feature_col)], pos, by="barcode")
-  img <- readbitmap::read.bitmap(.pick_image(
-    file.path(visiumDir, "spatial"), resolution))
-  if (crop) {xr <- range(df$x, na.rm=TRUE); yr <- range(df$y, na.rm=TRUE)
-  xmin <- max(1L, floor(xr[1])); xmax <- min(ncol(img), ceiling(xr[2]))
-  ymin <- max(1L, floor(yr[1])); ymax <- min(nrow(img), ceiling(yr[2]))
-  img <- img[ymin:ymax, xmin:xmax,, drop=FALSE]
-  df <- dplyr::mutate(df, x_c=x-xmin+1L, y_c=y-ymin+1L)
-  xl <- c(0, xmax-xmin+1L); yl <- c(0, ymax-ymin+1L)
+    if (!is.null(rownames(df))) 
+      df$barcode <- rownames(df)
+    else stop("barcode_col is NULL and df has no rownames.")
+  } else if (barcode_col != "barcode") {
+    df <- dplyr::rename(df, barcode = !!rlang::sym(barcode_col))
+  }
+  if (!is.null(version) && identical(version, "HD")) {
+    message(
+      "HD specified assuming coordinates are in present in df. ",
+      "Assuming resolution is ", paste0(version), " unless otherwise specified."
+    )
+    if (missing(resolution)) resolution <- "lowres"
+    
+    if (!all(c("x", "y") %in% names(df))) {
+      stop('version = "HD" requires df to have columns: x and y.')
+    }
+    
+    df <- df[, unique(c("barcode", feature_col, "x", "y")), drop = FALSE]
+    
   } else {
-    df <- dplyr::mutate(df, x_c=x, y_c=y);xl<-c(0, ncol(img));yl<-c(0, nrow(img))}
-    p <- ggplot2::ggplot() +
-      ggplot2::annotation_raster(as.raster(img), 0, diff(xl), 0, diff(yl)) +
-      ggplot2::geom_point(
-        data = df,
-        ggplot2::aes(x_c, yl[2] - y_c, fill = .data[[feature_col]]),
-        shape = 21, color = "black", size = point_size,
-        stroke = stroke, alpha = alpha
-      ) +
-      ggplot2::coord_fixed(xlim = xl, ylim = yl, expand = FALSE) +
-      ggplot2::labs(fill = feature_col, x = NULL, y = NULL, title = title) +
-      ggplot2::theme_bw(text_size) +
-      ggplot2::theme(
-        plot.background = if (!is.null(bg_color))
-          ggplot2::element_rect(fill = bg_color, color = NA)
-        else ggplot2::element_blank()
-      )
+    pos <- SpaceMarkers::load10XCoords(visiumDir, resolution, version)
+    names(pos) <- c("barcode", "y", "x")
+    df <- merge(df[, c("barcode", feature_col)], pos, by = "barcode")
+  }
+  img <- readbitmap::read.bitmap(.pick_image(file.path(visiumDir, "spatial"), resolution))
+  
+  if (crop) {
+    xr <- range(df$x, na.rm = TRUE)
+    yr <- range(df$y, na.rm = TRUE)
+    xmin <- max(1L, floor(xr[1]))
+    xmax <- min(ncol(img), ceiling(xr[2]))
+    ymin <- max(1L, floor(yr[1]))
+    ymax <- min(nrow(img), ceiling(yr[2]))
+    img <- img[ymin:ymax, xmin:xmax, , drop = FALSE]
+    df <- dplyr::mutate(df, x_c = x - xmin + 1L, y_c = y - ymin + 1L)
+    xl <- c(0, xmax - xmin + 1L)
+    yl <- c(0, ymax - ymin + 1L)
+  } else {
+    df <- dplyr::mutate(df, x_c = x, y_c = y)
+    xl <- c(0, ncol(img))
+    yl <- c(0, nrow(img))
+  }
+  
+  p <- ggplot2::ggplot() +
+    ggplot2::annotation_raster(as.raster(img), 0, diff(xl), 0, diff(yl)) +
+    ggplot2::geom_point(
+      data = df,
+      ggplot2::aes(x_c, yl[2] - y_c, fill = .data[[feature_col]]),
+      shape = 21, color = "black", size = point_size, stroke = stroke, alpha = alpha
+    ) +
+    ggplot2::coord_fixed(xlim = xl, ylim = yl, expand = FALSE) +
+    ggplot2::labs(fill = feature_col, x = NULL, y = NULL, title = title) +
+    ggplot2::theme_bw(text_size) +
+    ggplot2::theme(plot.background = if (!is.null(bg_color))
+      ggplot2::element_rect(fill = bg_color, color = NA)
+      else ggplot2::element_blank())
+  
   if (is.numeric(df[[feature_col]])) {
-    p <- p + (if (!is.null(colors)) ggplot2::scale_fill_gradientn(colours=colors)
-              else viridis::scale_fill_viridis())
+    p <- p + (if (!is.null(colors))
+      ggplot2::scale_fill_gradientn(colours = colors)
+      else viridis::scale_fill_viridis())
   } else {
     vals <- unique(stats::na.omit(df[[feature_col]]))
-    p <- p + if (!is.null(colors)) ggplot2::scale_fill_manual(values=colors) else
-      if (length(vals) > 1) ggplot2::scale_fill_manual(values = stats::setNames(
-        RColorBrewer::brewer.pal(max(3, min(length(vals), 9)), "Set1")
-        [seq_along(vals)], vals)) else ggplot2::scale_fill_manual(values="red")
+    p <- p + if (!is.null(colors))
+      ggplot2::scale_fill_manual(values = colors)
+    else if (length(vals) > 1)
+      ggplot2::scale_fill_manual(values = stats::setNames(
+        RColorBrewer::brewer.pal(max(3, min(length(vals), 9)), "Set1")[seq_along(vals)],
+        vals
+      ))
+    else ggplot2::scale_fill_manual(values = "red")
   }
+  
   return(p)
 }
+
 
 
 
