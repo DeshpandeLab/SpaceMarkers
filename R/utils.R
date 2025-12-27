@@ -1001,7 +1001,6 @@ plot_spatial_data_over_image <- function (visiumDir, df, feature_col, barcode_co
                                           text_size = 15) 
 {
   resolution <- match.arg(resolution)
-  
   if (is.null(barcode_col)) {
     if (!is.null(rownames(df))) 
       df$barcode <- rownames(df)
@@ -1012,8 +1011,8 @@ plot_spatial_data_over_image <- function (visiumDir, df, feature_col, barcode_co
   if (!is.null(version) && identical(version, "HD")) {
     if (missing(resolution)) resolution <- "lowres"
     message(
-      "HD specified assuming coordinates are in present in df. ",
-      "Assuming resolution is ", paste0(resolution), " unless otherwise specified."
+      "HD specified. Assuming coordinates are in present in df.",
+      "Resolution ", paste0(resolution), " is being used."
     )
     
     if (!all(c("x", "y") %in% names(df))) {
@@ -1028,7 +1027,6 @@ plot_spatial_data_over_image <- function (visiumDir, df, feature_col, barcode_co
     df <- merge(df[, c("barcode", feature_col)], pos, by = "barcode")
   }
   img <- readbitmap::read.bitmap(.pick_image(file.path(visiumDir, "spatial"), resolution))
-  
   if (crop) {
     xr <- range(df$x, na.rm = TRUE)
     yr <- range(df$y, na.rm = TRUE)
@@ -1045,7 +1043,6 @@ plot_spatial_data_over_image <- function (visiumDir, df, feature_col, barcode_co
     xl <- c(0, ncol(img))
     yl <- c(0, nrow(img))
   }
-  
   p <- ggplot2::ggplot() +
     ggplot2::annotation_raster(as.raster(img), 0, diff(xl), 0, diff(yl)) +
     ggplot2::geom_point(
@@ -1059,7 +1056,6 @@ plot_spatial_data_over_image <- function (visiumDir, df, feature_col, barcode_co
     ggplot2::theme(plot.background = if (!is.null(bg_color))
       ggplot2::element_rect(fill = bg_color, color = NA)
       else ggplot2::element_blank())
-  
   if (is.numeric(df[[feature_col]])) {
     p <- p + (if (!is.null(colors))
       ggplot2::scale_fill_gradientn(colours = colors)
@@ -1073,13 +1069,9 @@ plot_spatial_data_over_image <- function (visiumDir, df, feature_col, barcode_co
         RColorBrewer::brewer.pal(max(3, min(length(vals), 9)), "Set1")[seq_along(vals)],
         vals
       ))
-    else ggplot2::scale_fill_manual(values = "red")
-  }
-  
+    else ggplot2::scale_fill_manual(values = "red") }
   return(p)
 }
-
-
 
 
 #' @title calculate_lr_scores

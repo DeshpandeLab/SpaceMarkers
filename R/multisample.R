@@ -155,36 +155,31 @@ process_visium_samples <- function(
     counts  <- aligned$counts
     coords  <- aligned$coords
     
-    # 4) Save per-sample .rds
-    counts_path <- file.path(out_dir, paste0(s, "_counts.rds"))
-    coords_path <- file.path(out_dir, paste0(s, "_coords.rds"))
-    saveRDS(counts, counts_path)
-    saveRDS(coords,  coords_path)
-    
+    # 4) per-sample path
+    counts_path <- file.path(out_dir, paste0(s, "_counts"))
+    coords_path <- file.path(out_dir, paste0(s, "_coord"))
+
     # 5) Keep in memory
     spCounts_list[[s]] <- counts
     spCoords_list[[s]] <- coords
-    path_counts[[s]]   <- counts_path
-    path_coords[[s]]   <- coords_path
-    
+     
     if (verbose) {
-      cat(sprintf("Saved: %s [%d genes x %d spots]\n",
+      cat(sprintf("Read: %s [%d genes x %d spots]\n",
                   basename(counts_path), nrow(counts), ncol(counts)))
-      cat(sprintf("Saved: %s [%d spots]\n",
+      cat(sprintf("Read: %s [%d spots]\n",
                   basename(coords_path), nrow(coords)))
     }
   }
   
   # 6) Save combined object
   all_path <- file.path(out_dir, "all_samples_counts_coords.rds")
-  saveRDS(list(counts = spCounts_list, coords = spCoords_list), all_path)
+  saveRDS(list(counts = spCounts_list, coords = spCoords_list))
   if (verbose) cat("\nAll samples saved to:", all_path, "\n")
   
   # return structured result
   list(
     counts = spCounts_list,
-    coords = spCoords_list,
-    paths  = list(counts = path_counts, coords = path_coords, all = all_path)
+    coords = spCoords_list
   )
 }
 
@@ -1072,6 +1067,7 @@ plot_lr_alluvial <- function(
     title         = NULL,
     min_score     = 0,
     alpha         = 0.8,
+    condition_alphas = c(0.2,0.9),
     knot_pos      = 0.4,
     label_size    = 2.7,
     wrap_width    = 12
@@ -1165,7 +1161,7 @@ plot_lr_alluvial <- function(
         show.legend = TRUE
       ) +
       ggplot2::scale_alpha_discrete(
-        range = c(0.45, 0.90),
+        range = condition_alphas,
         name  = "Condition"
       ) +
       ggplot2::guides(

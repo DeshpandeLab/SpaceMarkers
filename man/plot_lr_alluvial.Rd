@@ -16,6 +16,7 @@ plot_lr_alluvial(
   title = NULL,
   min_score = 0,
   alpha = 0.8,
+  condition_alphas = c(0.2, 0.9),
   knot_pos = 0.4,
   label_size = 2.7,
   wrap_width = 12

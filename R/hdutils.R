@@ -356,6 +356,7 @@ classify_allspots <- function(pat_hotspots,
     colnames(t_scores) <- c("statistic", "p.value", "n1", "n2", "effect_size")
     return(t_scores)
 }
+
 #' @title Calculate interaction scores for a specific pattern pair
 #' @description This function calculates interaction scores for a specific pattern pair
 #' using the ` classify_spots` function to determine the region of each spot.
