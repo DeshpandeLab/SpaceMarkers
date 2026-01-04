@@ -10,7 +10,6 @@ process_visium_samples(
   counts_file = "filtered_feature_bc_matrix.h5",
   good_gene_threshold = 10L,
   bin_subdir = "binned_outputs/square_016um",
-  out_dir = NULL,
   coords_resolution = "fullres",
   verbose = TRUE
 )
@@ -28,9 +27,6 @@ this many spots per sample.}
 \item{bin_subdir}{Character. Relative path under each sample directory
 where the 10X files live.}
 
-\item{out_dir}{Character or NULL. Output directory for RDS files. If NULL,
-file.path(data_dir, "outputs") is used.}
-
 \item{coords_resolution}{Character. Resolution argument passed to load10XCoords.}
 
 \item{verbose}{Logical. If TRUE, print progress messages.}
@@ -40,13 +36,12 @@ A list with three elements:
 \describe{
 \item{counts}{Named list of filtered dgCMatrix objects per sample.}
 \item{coords}{Named list of aligned coordinate data.frames per sample.}
-\item{paths}{List of per-sample RDS paths and a combined RDS path.}
 }
 }
 \description{
 Load counts and spatial coordinates for multiple samples, filter genes by
-a per-sample nonzero threshold, align barcodes between counts and coordinates,
-and save per-sample and combined RDS files.
+a per-sample nonzero threshold, align barcodes between counts and
+coordinates.
 }
 \details{
 This function assumes load10XExpr returns a dgCMatrix with log-transformed

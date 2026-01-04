@@ -48,8 +48,8 @@ align_counts_coords <- function(counts, coords_df) {
 #' @title Process multiple Visium or VisiumHD samples
 #' @description
 #' Load counts and spatial coordinates for multiple samples, filter genes by
-#' a per-sample nonzero threshold, align barcodes between counts and coordinates,
-#' and save per-sample and combined RDS files.
+#' a per-sample nonzero threshold, align barcodes between counts and
+#' coordinates.
 #'
 #' @param data_dir Character. Root directory containing sample folders.
 #' @param samples Character vector of sample folder names under data_dir.
@@ -58,8 +58,6 @@ align_counts_coords <- function(counts, coords_df) {
 #' this many spots per sample.
 #' @param bin_subdir Character. Relative path under each sample directory
 #' where the 10X files live.
-#' @param out_dir Character or NULL. Output directory for RDS files. If NULL,
-#' file.path(data_dir, "outputs") is used.
 #' @param coords_resolution Character. Resolution argument passed to load10XCoords.
 #' @param verbose Logical. If TRUE, print progress messages.
 #'
@@ -71,116 +69,80 @@ align_counts_coords <- function(counts, coords_df) {
 #' \describe{
 #'   \item{counts}{Named list of filtered dgCMatrix objects per sample.}
 #'   \item{coords}{Named list of aligned coordinate data.frames per sample.}
-#'   \item{paths}{List of per-sample RDS paths and a combined RDS path.}
 #' }
 #'
 #' @export
 process_visium_samples <- function(
-    data_dir,
-    samples,
-    counts_file         = "filtered_feature_bc_matrix.h5",
-    good_gene_threshold = 10L,
-    bin_subdir          = "binned_outputs/square_016um",
-    out_dir             = NULL,
-    coords_resolution   = "fullres",
-    verbose             = TRUE
-) {
-  # ---- validate inputs ----
-  if (!is.character(data_dir) || length(data_dir) != 1L)
+    data_dir,samples, counts_file = "filtered_feature_bc_matrix.h5",
+    good_gene_threshold = 10L, bin_subdir = "binned_outputs/square_016um",
+    coords_resolution = "fullres", verbose = TRUE){
+  if (!is.character(data_dir) || length(data_dir) != 1L) 
     stop("`data_dir` must be a single character path.")
-  if (!dir.exists(data_dir))
+  if (!dir.exists(data_dir)) 
     stop("`data_dir` does not exist: ", data_dir)
-  
-  if (!is.character(samples) || length(samples) == 0L)
+  if (!is.character(samples) || length(samples) == 0L) 
     stop("`samples` must be a non-empty character vector of folder names.")
-  
-  if (!is.character(counts_file) || length(counts_file) != 1L)
+  if (!is.character(counts_file) || length(counts_file) != 
+      1L) 
     stop("`counts_file` must be a single character filename.")
-  
-  if (!is.numeric(good_gene_threshold) || length(good_gene_threshold) != 1L || good_gene_threshold < 1)
+  if (!is.numeric(good_gene_threshold) || length(good_gene_threshold) != 
+      1L || good_gene_threshold < 1) 
     stop("`good_gene_threshold` must be a single integer >= 1.")
-  
-  if (is.null(out_dir)) {
-    out_dir <- file.path(data_dir, "outputs")
-  }
-  if (!dir.exists(out_dir)) {
-    dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
-  }
-  
-  # containers
-  spCounts_list <- vector("list", length(samples)); names(spCounts_list) <- samples
-  spCoords_list <- vector("list", length(samples)); names(spCoords_list) <- samples
-  path_counts   <- setNames(vector("character", length(samples)), samples)
-  path_coords   <- setNames(vector("character", length(samples)), samples)
-  
-  # ---- process each sample ----
+  spCounts_list <- vector("list", length(samples))
+  names(spCounts_list) <- samples
+  spCoords_list <- vector("list", length(samples))
+  names(spCoords_list) <- samples
+  path_counts <- setNames(vector("character", length(samples)), 
+                          samples)
+  path_coords <- setNames(vector("character", length(samples)), 
+                          samples)
   for (s in samples) {
-    if (verbose) cat("\n=== Processing:", s, "===\n")
+    if (verbose) 
+      cat("\n=== Processing:", s, "===\n")
     visium_dir <- file.path(data_dir, s, bin_subdir)
-    
     if (!dir.exists(visium_dir)) {
-      stop("Expected directory not found for sample '", s, "': ", visium_dir)
+      stop("Expected directory not found for sample '", 
+           s, "': ", visium_dir)
     }
-    
-    # 1) Load counts & coords
-    counts <- load10XExpr(visiumDir = visium_dir, h5filename = counts_file)
-    coords <- load10XCoords(visiumDir = visium_dir, resolution = coords_resolution)
-    
+    counts <- load10XExpr(visiumDir = visium_dir,h5filename = counts_file)
+    coords <- load10XCoords(visiumDir = visium_dir,resolution=coords_resolution)
     if (!("barcode" %in% colnames(coords))) {
-      stop("`coords` must contain a 'barcode' column for sample '", s, "'.")
+      stop("`coords` must contain a 'barcode' column for sample '", 
+           s, "'.")
     }
     rownames(coords) <- coords$barcode
-    
-    # Ensure sparse type
     if (!inherits(counts, "dgCMatrix")) {
       if (is.matrix(counts)) {
         counts <- Matrix::Matrix(counts, sparse = TRUE)
         counts <- methods::as(counts, "dgCMatrix")
-      } else {
-        stop("`counts` is not a dgCMatrix and could not be coerced (sample '", s, "').")
+      }
+      else {
+        stop("`counts` is not a dgCMatrix and could not be coerced (sample '", 
+             s, "').")
       }
     }
-    
-    # 2) Per-sample gene filter: nnz per gene (row) from CSC @i
     nnz_by_row <- tabulate(counts@i + 1L, nbins = nrow(counts))
     keep <- nnz_by_row >= as.integer(good_gene_threshold)
     if (!any(keep)) {
-      stop("After filtering, zero genes remain for sample '", s, "'. ",
-           "Consider lowering `good_gene_threshold`.")
+      stop("After filtering, zero genes remain for sample '", 
+           s, "'. ", "Consider lowering `good_gene_threshold`.")
     }
     counts <- counts[keep, , drop = FALSE]
-    
-    # 3) Align barcodes between counts/coords
     aligned <- align_counts_coords(counts, coords)
-    counts  <- aligned$counts
-    coords  <- aligned$coords
-    
-    # 4) per-sample path
-    counts_path <- file.path(out_dir, paste0(s, "_counts"))
-    coords_path <- file.path(out_dir, paste0(s, "_coord"))
-
-    # 5) Keep in memory
+    counts <- aligned$counts
+    coords <- aligned$coords
+    counts_path <- paste0(s, "_counts")
+    coords_path <- paste0(s, "_coord")
     spCounts_list[[s]] <- counts
     spCoords_list[[s]] <- coords
-     
     if (verbose) {
-      cat(sprintf("Read: %s [%d genes x %d spots]\n",
-                  basename(counts_path), nrow(counts), ncol(counts)))
-      cat(sprintf("Read: %s [%d spots]\n",
-                  basename(coords_path), nrow(coords)))
+      cat(sprintf("Read: %s [%d genes x %d spots]\n", basename(counts_path), 
+                  nrow(counts), ncol(counts)))
+      cat(sprintf("Read: %s [%d spots]\n", basename(coords_path), 
+                  nrow(coords)))
     }
   }
-  
-  # 6) Save combined object
-  all_path <- file.path(out_dir, "all_samples_counts_coords.rds")
-  saveRDS(list(counts = spCounts_list, coords = spCoords_list))
-  if (verbose) cat("\nAll samples saved to:", all_path, "\n")
-  
-  # return structured result
-  list(
-    counts = spCounts_list,
-    coords = spCoords_list
-  )
+  list(counts = spCounts_list, coords = spCoords_list)
 }
 
 
