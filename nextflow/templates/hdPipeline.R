@@ -44,11 +44,11 @@ patnames <- setdiff(colnames(spPatterns),c("x","y","barcode"))
 # Calculate hotspots and influence for each pattern
 print("Calculating hotspots and influence for each pattern...")
 patthresholds <- calculate_thresholds(spPatterns, minvals=0.1, maxvals=0.8)
-pat_hotspots <- find_all_hotspots(spPatterns, threshold=patthresholds)
+pat_hotspots <- find_hotspots_gmm(spPatterns, threshold=patthresholds)
 
 spInfluence <-  calculate_influence(spPatterns,optParams)
 infthresholds <- calculate_thresholds(spInfluence, minvals=0.01, maxvals=0.5)
-influence_hotspots <- find_all_hotspots(spInfluence, threshold=infthresholds)
+influence_hotspots <- find_hotspots_gmm(spInfluence, threshold=infthresholds)
 
 #create a table of pattern pairs
 pattern_pairs <- t(combn(patnames,2))
