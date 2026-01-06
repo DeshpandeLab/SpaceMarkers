@@ -9,7 +9,7 @@ process SPACEMARKERS {
     tuple val(meta), path("${prefix}/spPatterns.rds"),         val(source),   emit: spPatterns
     tuple val(meta), path("${prefix}/optParams.rds"),          val(source),   emit: optParams
     tuple val(meta), path("${prefix}/spaceMarkersObject.rds"), val(source),   emit: spaceMarkers
-    tuple val(meta), path("${prefix}/spaceMarkers.rds"),       val(source),   emit: spaceMarkersScores
+    tuple val(meta), path("${prefix}/IMScores.rds"),           val(source),   emit: spaceMarkersScores
     tuple val(meta), path("${prefix}/hotspots.rds"),           val(source),   emit: hotspots
     tuple val(meta), path("${prefix}/overlapScores.csv"),      val(source),   emit: overlapScores
     path  "versions.yml",                                                     emit: versions
@@ -66,7 +66,7 @@ process SPACEMARKERS {
     IMScores <- get_im_scores(spaceMarkers)
     rownames(IMScores) <- IMScores[,"Gene"]
     IMScores[,"Gene"] <- NULL
-    write.csv(IMScores, file = "${prefix}/IMScores.rds", row.names = FALSE)
+    saveRDS(IMScores, file = "${prefix}/IMScores.rds")
 
     # Get the versions of the packages
     spaceMarkersVersion <- packageVersion("SpaceMarkers")
