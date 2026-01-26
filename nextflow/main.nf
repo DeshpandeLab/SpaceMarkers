@@ -48,7 +48,7 @@ process SPACEMARKERS {
     saveRDS(hotspots, file = "${prefix}/hotspots.rds");
 
     #find regions of overlapping spatial patterns
-    overlaps <- calculate_overlap_undirected(hotspots);
+    overlaps <- get_overlap_scores(hotspots);
     write.csv(overlaps, file = "${prefix}/overlapScores.csv", row.names = FALSE);
 
     #find genes that are differentially expressed in spatial patterns
