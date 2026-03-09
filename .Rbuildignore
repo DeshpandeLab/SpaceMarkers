@@ -4,3 +4,5 @@ Dockerfile
 .dockerignore
 nextflow
 /vignettes/test-args.Rmd
+^.*\.Rproj$
+^\.Rproj\.user$

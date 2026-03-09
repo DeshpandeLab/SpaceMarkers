@@ -1,51 +1,52 @@
-#' @importFrom matrixTests row_kruskalwallis
-#' @importFrom rstatix filter
-#' @importFrom matrixStats count
-#' @importFrom stats lag dist pnorm sd
+#' @importFrom sparseMatrixStats rowRanks rowSums2 rowMeans2 rowVars
+#' @importFrom Matrix rowSums
+#' @importFrom stats pchisq pnorm
 #' @importFrom qvalue qvalue
 ## author: Atul Deshpande
 ## email: adeshpande@jhu.edu
 
-.row_dunn_test <- function(in.data,region,pattern1,pattern2){
-    
-    in.ranks <- matrixStats::rowRanks(in.data,cols = !is.na(region),
-                                        ties.method = "average")
-
-    rsub <- region[!is.na(region)]
-
-    N <- length(rsub)
-    N1 <- sum(rsub==pattern1)
-    N2 <- sum(rsub==pattern2)
-    NI <- sum(rsub=="Interacting")
-
-    tiesStat <- apply(in.ranks,1,function(rr) {
-        rr_table <- table(rr)
-        sum(rr_table * (rr_table^2 - 1))
-    })
-
-    tiesStat2 <- sqrt(1 - tiesStat/N/(N-1)/(N+1))
-
-    SEI1 <- sqrt(N*(N+1)/12*(1/NI+1/N1))
-    SEI2 <- sqrt(N*(N+1)/12*(1/NI+1/N2))
-    SE12 <- sqrt(N*(N+1)/12*(1/N1+1/N2))
-
-    mInt<- apply(in.ranks[,rsub=="Interacting"],1,mean)
-    mP1<- apply(in.ranks[,rsub==pattern1],1,mean)
-    mP2<- apply(in.ranks[,rsub==pattern2],1,mean)
-
-    zP1_Int <- (mP1-mInt)/SEI1/tiesStat2
-    zP2_Int <- (mP2-mInt)/SEI2/tiesStat2
-    zP2_P1 <- (mP2-mP1)/SE12/tiesStat2
-    zVals <-cbind(zP1_Int,zP2_Int,zP2_P1)
-
-    pval_1_Int <- ifelse(2*(pnorm(zP1_Int,lower.tail = TRUE))
-                        <=1,2*(pnorm(zP1_Int,lower.tail = TRUE)),1)
-    pval_2_Int <- ifelse(2*(pnorm(zP2_Int,lower.tail = TRUE))
-                            <=1,2*(pnorm(zP2_Int,lower.tail = TRUE)),1)
-    pval_2_1 <- ifelse(zP2_P1>0,2*(pnorm(zP2_P1,lower.tail = FALSE)),
-                        2*(pnorm(zP2_P1,lower.tail = TRUE)))
-    pvals<-cbind(pval_1_Int,pval_2_Int,pval_2_1)
-return(cbind(zVals,pvals))
+.row_dunn_test <- function(in.data, region, pattern1, pattern2) {
+  keep_cols <- !is.na(region)
+  rsub <- region[keep_cols]
+  
+  # ranking on sparse subset
+  in.ranks <- sparseMatrixStats::rowRanks(in.data[, keep_cols], ties.method = "average")
+  
+  N <- length(rsub)
+  idx_int <- which(rsub == "Interacting")
+  idx_p1  <- which(rsub == pattern1)
+  idx_p2  <- which(rsub == pattern2)
+  NI <- length(idx_int); N1 <- length(idx_p1); N2 <- length(idx_p2)
+  
+  # Tie correction using variance (Sparse)
+  row_vars <- sparseMatrixStats::rowVars(in.ranks)
+  tiesStat2 <- sqrt(row_vars / ((N * (N + 1)) / 12))
+  tiesStat2[row_vars == 0] <- 1 # Avoid division by zero
+  
+  # Mean Ranks
+  mInt <- sparseMatrixStats::rowMeans2(in.ranks[, idx_int, drop=FALSE])
+  mP1  <- sparseMatrixStats::rowMeans2(in.ranks[, idx_p1, drop=FALSE])
+  mP2  <- sparseMatrixStats::rowMeans2(in.ranks[, idx_p2, drop=FALSE])
+  
+  SE_const <- N * (N + 1) / 12
+  SEI1 <- sqrt(SE_const * (1/NI + 1/N1))
+  SEI2 <- sqrt(SE_const * (1/NI + 1/N2))
+  SE12 <- sqrt(SE_const * (1/N1 + 1/N2))
+  
+  zP1_Int <- (mP1-mInt)/SEI1/tiesStat2
+  zP2_Int <- (mP2-mInt)/SEI2/tiesStat2
+  zP2_P1 <- (mP2-mP1)/SE12/tiesStat2
+  
+  zVals <- cbind(zP1_Int, zP2_Int, zP2_P1)
+  pvals <- cbind(
+    pmin(1, 2 * pnorm(zP1_Int, lower.tail = TRUE)),
+    pmin(1, 2 * pnorm(zP2_Int, lower.tail = TRUE)),
+    2 * pnorm(abs(zP2_P1), lower.tail = FALSE)
+  )
+  
+  colnames(zVals) <- c("zP1_Int", "zP2_Int", "zP2_P1")
+  colnames(pvals) <- c("pval_1_Int", "pval_2_Int", "pval_2_1")
+  return(cbind(zVals, pvals))
 }
 
 #===================
@@ -74,80 +75,111 @@ return(cbind(zVals,pvals))
 #' the Interaction region of the two #' patterns compared to regions with 
 #' exclusive influence from either pattern.
 
-.find_genes_of_interest<-function(
-        testMat,goodGenes=NULL,region, fdr.level=0.05,
-        analysis=c("enrichment","overlap"),...) {
-    
-    # Default analysis = enrichment
-    if ("enrichment" %in% analysis) {analysis <- "enrichment"}
-    else if ("overlap" %in% analysis) {analysis <- "overlap"}
-    else stop("analysis must be either 'enrichment' or 'overlap'")
-    
-    region <- factor(region)
-    patnames <- levels(region)[which(levels(region)!="Interacting")]
-    
-    pattern1 <- patnames[1]
-    pattern2 <- patnames[2]
-    
-    #we lose sparsity here, it is necessary for row tests (dunn, kruskal)
-    testMat <- as.matrix(testMat)
-    
-    if (!is.null(goodGenes)){
-        subset_goodGenes <- intersect(rownames(testMat),goodGenes)
-    } else 
-        {
-        subset_goodGenes <- names(which(rowSums(testMat)>0))
+.find_genes_of_interest <- function(testMat, goodGenes=NULL, region, fdr.level=0.05,
+                                    analysis=c("enrichment", "overlap"), ...) {
+  
+  # 1. Validation and Setup
+  analysis <- match.arg(analysis)
+  region <- factor(region)
+  
+  # Identify the two exclusive patterns (excluding the Interaction level)
+  patnames <- levels(region)[which(levels(region) != "Interacting")]
+  if (length(patnames) < 2) {
+    stop("Region factor must have at least 'Interacting' and two distinct pattern levels.")
+  }
+  pattern1 <- patnames[1]
+  pattern2 <- patnames[2]
+  
+  # 2. Gene Filtering (Using Sparse-aware rowSums)
+  if (!is.null(goodGenes)) {
+    subset_goodGenes <- intersect(rownames(testMat), goodGenes)
+  } else {
+    # rowSums2 handles dgCMatrix efficiently
+    subset_goodGenes <- names(which(sparseMatrixStats::rowSums2(testMat) > 0))
+  }
+  testMat <- testMat[subset_goodGenes, ]
+  
+  # 3. Sparse Manual Kruskal-Wallis with Tie Correction
+  # Filter to non-NA spots for the test
+  keep_cells <- !is.na(region)
+  r_sub <- region[keep_cells]
+  
+  # Calculate Ranks across the subset of cells
+  # Note: returns a dense matrix of ranks, but only for active genes/cells
+  ranks <- sparseMatrixStats::rowRanks(testMat[, keep_cells], ties.method = "average")
+  
+  N <- ncol(ranks)
+  global_mean_rank <- (N + 1) / 2
+  
+  # Calculate Tie Correction (C) based on rank variance
+  # This ensures exact match with matrixTests::row_kruskalwallis
+  row_vars <- sparseMatrixStats::rowVars(ranks)
+  tie_correction <- row_vars / ((N * (N + 1)) / 12)
+  
+  # Calculate H-Statistic sum across groups
+  H_sum <- numeric(nrow(testMat))
+  for (lvl in levels(r_sub)) {
+    idx <- which(r_sub == lvl)
+    n_i <- length(idx)
+    m_i <- sparseMatrixStats::rowMeans2(ranks[, idx, drop = FALSE])
+    H_sum <- H_sum + n_i * (m_i - global_mean_rank)^2
+  }
+  
+  # Final H statistic (Adjusted for Ties)
+  h_stat <- ((12 / (N * (N + 1))) * H_sum) / tie_correction
+  h_stat[tie_correction == 0] <- 0 # Handle zero-variance genes
+  
+  p_vals_kw <- pchisq(h_stat, df = length(levels(r_sub)) - 1, lower.tail = FALSE)
+  
+  res_kruskal <- data.frame(
+    statistic = h_stat,
+    pvalue = p_vals_kw,
+    df = length(levels(r_sub)) - 1,
+    row.names = rownames(testMat)
+  )
+  
+  # 4. Correct for FDR (Kruskal)
+  qq <- qvalue::qvalue(res_kruskal$pvalue, fdr.level = fdr.level, pfdr = FALSE, pi0 = 1)
+  res_kruskal$p.adj <- qq$qvalues
+  
+  # Handle zero variance/expression genes explicitly
+  zero_genes <- names(which(sparseMatrixStats::rowSums2(testMat[, keep_cells]) == 0))
+  res_kruskal[zero_genes, c("df", "statistic")] <- 0
+  res_kruskal[zero_genes, c("pvalue", "p.adj")] <- 1
+  
+  # 5. Sparse Post-hoc Dunn's Test
+  res_dunn_test <- .row_dunn_test(in.data = testMat, region = region,
+                                  pattern1 = pattern1, pattern2 = pattern2)
+  rownames(res_dunn_test) <- rownames(res_kruskal)
+  
+  # 6. Adjust Dunn P-values
+  qDunn <- qvalue::qvalue(res_dunn_test[, 4:6], fdr.level = fdr.level, pfdr = FALSE, pi0 = 1)
+  
+  # Only readjust for genes that passed Kruskal threshold
+  ind <- rownames(res_kruskal[which(res_kruskal$p.adj < fdr.level), ])
+  if (length(ind) > 0) {
+    if (length(ind) == 1) {
+      qDunn$qvalues[ind, ] <- res_dunn_test[ind, 4:6]
+    } else {
+      qq_dunn_sub <- qvalue::qvalue(res_dunn_test[ind, 4:6], fdr.level = fdr.level, pfdr = FALSE, pi0 = 1)
+      qDunn$qvalues[ind, ] <- qq_dunn_sub$qvalues
     }
-    testMat <- testMat[subset_goodGenes,]
-
-    res_kruskal<- matrixTests::row_kruskalwallis(x=testMat,g=region)
-    
-    #adjust p-values for kruskal
-    qq <- qvalue::qvalue(res_kruskal$pvalue,fdr.level = fdr.level,
-                            pfdr = FALSE, pi0 = 1)
-    res_kruskal <- cbind(res_kruskal,p.adj = qq$qvalues)
-    
-    #force res_kruskal statistics for zero variance genes to be 0 with p-value 1
-    zero_genes <- names(which(rowSums(testMat[,!is.na(region)])==0))
-    res_kruskal[zero_genes,c("df","statistic")] <- 0
-    res_kruskal[zero_genes,c("pvalue","p.adj")] <- 1
-    
-    res_dunn_test <- .row_dunn_test(in.data=testMat, region=region,
-                                        pattern1=pattern1, pattern2=pattern2)
-    rownames(res_dunn_test) <- rownames(res_kruskal)
-
-    #adjust p-values for Dunn's test
-    qDunn <- qvalue::qvalue(res_dunn_test[,4:6],
-        fdr.level = fdr.level, pfdr = FALSE, pi0 = 1)
-    
-    #check if any gene passed the fdr threshold for kruskal
-    ind <- rownames(res_kruskal[which(res_kruskal$p.adj<fdr.level),])
-    
-    #readjust p-values for Dunn's test for the genes that passed the kruskal test
-    if (length(ind)>0) {
-        if (length(ind)==1) # no need of qvalue computation for one gene
-            qDunn$qvalues[ind,] <- res_dunn_test[ind,4:6]
-        else {
-            qq<-qvalue::qvalue(res_dunn_test[ind,4:6],
-                fdr.level=fdr.level,pfdr=FALSE,pi0 = 1)
-            qDunn$qvalues[ind,] <- qq$qvalue   
-        }
-    }
-    res_dunn_test <- cbind(res_dunn_test,qDunn$qvalues)
-    colnames(res_dunn_test)[7:9] <- paste0(colnames(res_dunn_test)[7:9],".adj")
-    
-    #force res_dunn_test statistics for zero genes to be 0 with p-values of 1.
-    res_dunn_test[zero_genes, c("zP1_Int","zP2_Int","zP2_P1")] <- 0
-    res_dunn_test[zero_genes, c("pval_1_Int","pval_2_Int","pval_2_1")] <- 1
-    res_dunn_test[zero_genes,c("pval_1_Int.adj",
-                                "pval_2_Int.adj",
-                                "pval_2_1.adj")] <- 1
-    interactGenes <- .build_interact_genes_df(res_kruskal,res_dunn_test,ind,
-                                          fdr.level,pattern1,pattern2,
-                                          analysis)
-
-    return(interactGenes)
+  }
+  
+  res_dunn_test <- cbind(res_dunn_test, qDunn$qvalues)
+  colnames(res_dunn_test)[7:9] <- paste0(colnames(res_dunn_test)[7:9], ".adj")
+  
+  # Force zero gene results to 1
+  res_dunn_test[zero_genes, 1:3] <- 0
+  res_dunn_test[zero_genes, 4:9] <- 1
+  
+  # 7. Final Output Construction
+  interactGenes <- .build_interact_genes_df(res_kruskal, res_dunn_test, ind,
+                                            fdr.level, pattern1, pattern2,
+                                            analysis)
+  return(interactGenes)
 }
+
 .build_interact_genes_df <- function(res_kruskal,res_dunn_test,ind,
                                 fdr.level=0.05,pattern1,pattern2,analysis) {
     interact_patt1 <- res_dunn_test[ind,"pval_1_Int.adj"]<fdr.level
