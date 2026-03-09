@@ -28,7 +28,7 @@
 #'   workflow.
 #' @export
 SpaceMarkers <- function(features,
-                         data,...,
+                         data,
                          directed = FALSE,
                          genes = NULL,
                          min.gene.expr = 10,
