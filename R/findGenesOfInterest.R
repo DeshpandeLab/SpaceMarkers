@@ -78,6 +78,13 @@
 .find_genes_of_interest <- function(testMat, goodGenes=NULL, region, fdr.level=0.05,
                                     analysis=c("enrichment", "overlap"), ...) {
   
+  # If it's a dense Matrix class (like dgeMatrix from residuals), 
+  # convert to standard base matrix so sparseMatrixStats can handle it.
+  if (is(testMat, "dgeMatrix")) {
+    testMat <- as.matrix(testMat)
+  }
+  # --------------------------------------
+  
   # 1. Validation and Setup
   analysis <- match.arg(analysis)
   region <- factor(region)

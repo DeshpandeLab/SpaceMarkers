@@ -133,23 +133,33 @@ find_all_hotspots <- function(spPatterns, params = NULL, outlier = "positive",
     return(as.data.frame(hotspots))
 }
 
-.get_test_mat <- function(data,reconstruction,mode){
-    if ("DE" %in% mode)
-        testMat <- data
-    else if ("residual" %in% mode)
-        if (is.null(reconstruction))
-            stop("Reconstruction matrix not provided for residual mode.")
-        else if (all(dim(data)!=dim(reconstruction)))
-            stop("Original and reconstruction have mismatched dimensions.")
-        else if (any(dimnames(data)[[1]]!=dimnames(reconstruction)[[1]]))
-            stop("Original and reconstruction have mismatched row names.")
-        else if (any(dimnames(data)[[2]]!=dimnames(reconstruction)[[2]]))
-            stop("Original and reconstruction have mismatched column names.")
-        else 
-            testMat <- data - reconstruction
-    else
-        stop("Invalid mode. mode must be either DE or residual.")
-    return(testMat)
+.get_test_mat <- function(data, reconstruction, mode) {
+  # 1. Determine the content of testMat
+  if ("DE" %in% mode) {
+    testMat <- data
+  } else if ("residual" %in% mode) {
+    if (is.null(reconstruction)) {
+      stop("Reconstruction matrix not provided for residual mode.")
+    } else if (all(dim(data) != dim(reconstruction))) {
+      stop("Original and reconstruction have mismatched dimensions.")
+    } else if (any(dimnames(data)[[1]] != dimnames(reconstruction)[[1]])) {
+      stop("Original and reconstruction have mismatched row names.")
+    } else if (any(dimnames(data)[[2]] != dimnames(reconstruction)[[2]])) {
+      stop("Original and reconstruction have mismatched column names.")
+    } else {
+      testMat <- data - reconstruction
+    }
+  } else {
+    stop("Invalid mode. mode must be either DE or residual.")
+  }
+  
+  # 2. Safe conversion (only for residual mode's dgeMatrix output)
+  # This is now outside the if/else logic, so it won't break the flow.
+  if (is(testMat, "denseMatrix")) {
+    testMat <- as.matrix(testMat)
+  }
+  
+  return(testMat)
 }
 
 .get_spacemarkers_metric <- function(interacting.genes){
