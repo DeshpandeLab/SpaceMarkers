@@ -1,14 +1,24 @@
 #' @title calc_overlap_scores
 #' @description Calculate the overlap scores between patterns in hotspots
 #' @param hotspots A data frame with columns x, y, barcode and pattern names
-#' @param patternList A character vector of pattern names to calculate overlap 
+#' @param patternList A character vector of pattern names to calculate overlap
 #' scores for
 #' @param method The method to calculate overlap scores. Options are
-#' "Szymkiewicz-Simpson", "Jaccard", "Sorensen-Dice", "Ochiai" and "absolute"
+#' "Szymkiewicz-Simpson", "Jaccard", "Sorensen-Dice", "Ochiai", "absolute",
+#' and "NPMI".
 #' @details The function calculates the overlap scores between patterns hotspots
 #' using the specified method. The default method is "Szymkiewicz-Simpson"
 #' overlap coefficient.
-#' @return A matrix of overlap scores (patterns × patterns)
+#'
+#' The "NPMI" method computes the Normalized Pointwise Mutual Information
+#' (Bouma 2009), defined as:
+#'   NPMI(x,y) = PMI(x,y) / -log(p(x,y))
+#' where PMI(x,y) = log(p(x,y) / (p(x) * p(y))), and probabilities are
+#' estimated from the fraction of spots in each pattern. NPMI ranges from
+#' -1 (patterns never co-occur) through 0 (independent) to +1 (one pattern
+#' is a perfect subset of the other). Pairs with zero intersection are
+#' assigned -1 by convention.
+#' @return A matrix of overlap scores (patterns x patterns)
 #' @export
 #' @examples
 #' hotspots <- data.frame(x = c(1,2,3,4,5),
@@ -16,40 +26,66 @@
 #'                         barcode = c("A","B","C","D","E"),
 #'                         pattern1 = c(1,0,1,0,1),
 #'                         pattern2 = c(1,1,0,0,1))
-#' calc_overlap_scores(hotspots = hotspots)   
+#' calc_overlap_scores(hotspots = hotspots)
+#' calc_overlap_scores(hotspots = hotspots, method = "NPMI")
 #' @importFrom ggplot2 ggplot geom_tile geom_text theme_minimal
 #' @importFrom reshape2 melt
 #' @importFrom stats complete.cases
 calc_overlap_scores <- function(hotspots, patternList = NULL,
                                 method = c("Szymkiewicz-Simpson",
                                            "Jaccard", "Sorensen-Dice",
-                                           "Ochiai", "absolute") ) {
+                                           "Ochiai", "absolute", "NPMI")) {
   # stop if more than one method is supplied, do not warn by default
-  if(length(method) > 1){
+  if (length(method) > 1) {
     method <- method[1]
     message("Only one method can be used at a time. Using ", method)
   }
   
   if (is.null(patternList)) {
-    patternList <- setdiff(colnames(hotspots),c("x","y","barcode"))
+    patternList <- setdiff(colnames(hotspots), c("x", "y", "barcode"))
   } else if (!all(patternList %in% colnames(hotspots))) {
     stop("Pattern names not found in hotspots")
   }
   
-  binarized <- (!is.na(hotspots[,patternList]))*1
+  binarized  <- (!is.na(hotspots[, patternList])) * 1
   intersects <- t(binarized) %*% binarized
-  nHotspots <- colSums(binarized)
-  nHotsP1 <- t(t(nHotspots)) %*% array(1, length(patternList))
-  nHotsP2 <- t(nHotsP1)
+  nHotspots  <- colSums(binarized)
+  nHotsP1    <- t(t(nHotspots)) %*% array(1, length(patternList))
+  nHotsP2    <- t(nHotsP1)
+  
   overlapScore <- switch(
     method,
-    "Szymkiewicz-Simpson" = intersects/pmin(nHotsP1,nHotsP2),
-    "Jaccard"             = intersects/(nHotsP1 + nHotsP2 - intersects),
-    "Sorensen-Dice"       = 2*intersects/(nHotsP1 + nHotsP2),
-    "Ochiai"              = intersects/sqrt(nHotsP1*nHotsP2),
+    "Szymkiewicz-Simpson" = intersects / pmin(nHotsP1, nHotsP2),
+    "Jaccard"             = intersects / (nHotsP1 + nHotsP2 - intersects),
+    "Sorensen-Dice"       = 2 * intersects / (nHotsP1 + nHotsP2),
+    "Ochiai"              = intersects / sqrt(nHotsP1 * nHotsP2),
     "absolute"            = intersects,
+    "NPMI"                = {
+      N <- nrow(binarized)
+      
+      # Work in log space; guard against log(0) by using NA for zero intersects
+      log_intersects        <- matrix(NA_real_, nrow = nrow(intersects),
+                                      ncol = ncol(intersects),
+                                      dimnames = dimnames(intersects))
+      has_overlap           <- intersects > 0
+      log_intersects[has_overlap] <- log(intersects[has_overlap])
+      
+      # PMI  = log(|A∩B|) + log(N) - log(|A|) - log(|B|)
+      pmi_matrix <- log_intersects + log(N) - log(nHotsP1) - log(nHotsP2)
+      
+      # Normalisation denominator: -log( p(x,y) ) = log(N) - log(|A∩B|)
+      norm_denom <- log(N) - log_intersects
+      
+      npmi_matrix <- pmi_matrix / norm_denom
+      
+      # Pairs with zero intersection → NPMI = -1 by convention
+      npmi_matrix[!has_overlap] <- -1
+      
+      npmi_matrix
+    },
     stop("Method not supported")
   )
+  
   return(overlapScore)
 }
 
@@ -68,48 +104,44 @@ calc_overlap_scores <- function(hotspots, patternList = NULL,
 #' to use when computing symmetric overlap scores.
 #' @param method A character vector specifying the overlap metric to use.
 #' Options include "Szymkiewicz-Simpson", "Jaccard", "Sorensen-Dice", "Ochiai",
-#' and "absolute". Only the first value is used.
+#' "absolute", and "NPMI". Only the first value is used.
 #' @return A data frame with columns pattern1, pattern2, and overlapScore,
 #' containing pairwise overlap scores for the selected patterns.
 #' @export
-get_overlap_scores <- function ( pat_hotspots = NULL, in_hotspots = NULL,
-                                 patternList = NULL, method = c("Szymkiewicz-Simpson", "Jaccard", 
-                                                                "Sorensen-Dice", "Ochiai", "absolute")) 
-{
-  if (!is.null(pat_hotspots) & is.null(in_hotspots) ) {
+get_overlap_scores <- function(pat_hotspots = NULL, in_hotspots = NULL,
+                               patternList = NULL,
+                               method = c("Szymkiewicz-Simpson", "Jaccard",
+                                          "Sorensen-Dice", "Ochiai",
+                                          "absolute", "NPMI")) {
+  if (!is.null(pat_hotspots) & is.null(in_hotspots)) {
     message("Assuming symmetric overlap scores. Setting upper triangle and diagonal to NA.")
-    overlapScore <- calc_overlap_scores(hotspots = pat_hotspots, 
+    overlapScore <- calc_overlap_scores(hotspots = pat_hotspots,
                                         patternList = patternList, method = method)
     overlapScore[upper.tri(overlapScore, diag = TRUE)] <- NA
     dfOverlap <- reshape2::melt(overlapScore)
-    dfOverlap <- dfOverlap[stats::complete.cases(dfOverlap), 
-    ]
+    dfOverlap <- dfOverlap[stats::complete.cases(dfOverlap), ]
     colnames(dfOverlap) <- c("pattern2", "pattern1", "overlapScore")
     dfOverlap <- dfOverlap[, c(2, 1, 3)]
-  }
-  else {
-    patternList_in <- setdiff(colnames(in_hotspots), c("x", 
-                                                       "y", "barcode"))
+  } else {
+    patternList_in <- setdiff(colnames(in_hotspots), c("x", "y", "barcode"))
     rownames(in_hotspots) <- in_hotspots$barcode
     in_hotspots <- in_hotspots[, patternList_in, drop = FALSE]
     colnames(in_hotspots) <- paste0("near_", patternList_in)
-    patternList_pat <- setdiff(colnames(pat_hotspots), c("x", 
-                                                         "y", "barcode"))
+    
+    patternList_pat <- setdiff(colnames(pat_hotspots), c("x", "y", "barcode"))
     rownames(pat_hotspots) <- pat_hotspots$barcode
-    hotspots <- cbind(pat_hotspots[, patternList_pat, drop = FALSE], 
+    hotspots <- cbind(pat_hotspots[, patternList_pat, drop = FALSE],
                       in_hotspots[rownames(pat_hotspots), , drop = FALSE])
-    overlapScore <- calc_overlap_scores(hotspots = hotspots, 
-                                        method = method)
+    
+    overlapScore <- calc_overlap_scores(hotspots = hotspots, method = method)
     dfOverlap <- reshape2::melt(overlapScore)
-    dfOverlap <- dfOverlap[stats::complete.cases(dfOverlap), 
-    ]
+    dfOverlap <- dfOverlap[stats::complete.cases(dfOverlap), ]
     colnames(dfOverlap) <- c("pattern2", "pattern1", "overlapScore")
     dfOverlap <- dfOverlap[, c(2, 1, 3)]
-    dfOverlap <- dfOverlap[!grepl("^near_", dfOverlap$pattern1), 
-    ]
-    dfOverlap <- dfOverlap[grepl("^near_", dfOverlap$pattern2), 
-    ]
+    dfOverlap <- dfOverlap[!grepl("^near_", dfOverlap$pattern1), ]
+    dfOverlap <- dfOverlap[grepl("^near_", dfOverlap$pattern2), ]
   }
+  
   return(dfOverlap)
 }
 
@@ -1532,115 +1564,3 @@ plot_multi_way_violin <- function(
     
     rbind(df1, df2)
   }
-  
-  # Exclusive directional interacting only
-  make_directed_df_exclusive <- function() {
-    if (!mode %in% c("directed", "both")) return(NULL)
-    if (!all(c(col_near12, col_near21) %in% names(expr_hotspots))) return(NULL)
-    
-    a <- as.character(expr_hotspots[[col_near12]])
-    b <- as.character(expr_hotspots[[col_near21]])
-    a[is.na(expr_hotspots[[col_near12]])] <- NA_character_
-    b[is.na(expr_hotspots[[col_near21]])] <- NA_character_
-    
-    idx_12_only <- which(!is.na(a) & a == "Interacting" & (is.na(b) | b != "Interacting"))
-    idx_21_only <- which(!is.na(b) & b == "Interacting" & (is.na(a) | a != "Interacting"))
-    
-    df_12 <- data.frame(
-      id     = expr_hotspots[[cell_id]][idx_12_only],
-      expr   = expr_hotspots[[gene]][idx_12_only],
-      region = paste0(col_near12),
-      stringsAsFactors = FALSE
-    )
-    
-    df_21 <- data.frame(
-      id     = expr_hotspots[[cell_id]][idx_21_only],
-      expr   = expr_hotspots[[gene]][idx_21_only],
-      region = paste0(col_near21),
-      stringsAsFactors = FALSE
-    )
-    
-    rbind(df_12, df_21)
-  }
-  
-  # Undirected (and "both" adds undirected interacting-only group)
-  make_undirected_df <- function() {
-    if (!mode %in% c("undirected", "both")) return(NULL)
-    if (!col_undir %in% names(expr_hotspots)) return(NULL)
-    
-    u <- as.character(expr_hotspots[[col_undir]])
-    u[is.na(expr_hotspots[[col_undir]])] <- NA_character_
-    
-    if (mode == "both") {
-      idx <- which(!is.na(u) & u == "Interacting")
-      data.frame(
-        id     = expr_hotspots[[cell_id]][idx],
-        expr   = expr_hotspots[[gene]][idx],
-        region = paste0(col_undir, "_Interacting"),
-        stringsAsFactors = FALSE
-      )
-    } else {
-      data.frame(
-        id     = expr_hotspots[[cell_id]],
-        expr   = expr_hotspots[[gene]],
-        region = u,
-        stringsAsFactors = FALSE
-      )
-    }
-  }
-  
-  # Build plotting dataframe
-  dfs <- list(
-    make_controls_df(),
-    make_directed_df_exclusive(),
-    make_undirected_df()
-  )
-  
-  df <- do.call(rbind, dfs[!vapply(dfs, is.null, logical(1))])
-  
-  if (is.null(df) || nrow(df) == 0) {
-    stop("No applicable rows found for the requested mode/patternpair after applying exclusivity filters.")
-  }
-  
-  if (remove_na) df <- df[!is.na(df$region), , drop = FALSE]
-  if (!nrow(df)) stop("All rows were NA after filtering.")
-  
-  # Ordering + colors
-  desired_order <- c(
-    paste0(cell1),
-    paste0(col_near12),
-    if (mode == "both" && col_undir %in% names(expr_hotspots)) paste0(col_undir, "_Interacting") else NULL,
-    paste0(col_near21),
-    paste0(cell2)
-  )
-  desired_order <- desired_order[!is.null(desired_order)]
-  
-  present_levels <- unique(df$region)
-  lvl <- c(desired_order[desired_order %in% present_levels],
-           setdiff(present_levels, desired_order))
-  
-  df$region <- factor(df$region, levels = lvl)
-  
-  need <- length(levels(df$region))
-  if (length(colors) < need) colors <- rep(colors, length.out = need)
-  col_vec <- setNames(colors[seq_len(need)], levels(df$region))
-  
-  # Plot
-  p <- ggplot2::ggplot(df, ggplot2::aes(x = region, y = expr, fill = region)) +
-    ggplot2::geom_violin(trim = TRUE) +
-    ggplot2::geom_point(
-      position = ggplot2::position_jitter(width = 0.15),
-      size = 0.4,
-      alpha = 0.4
-    ) +
-    ggplot2::scale_fill_manual(values = col_vec, drop = FALSE) +
-    ggplot2::labs(title = gene, x = "Region", y = "Expression") +
-    ggplot2::theme_minimal(base_size = text_size) +
-    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 0.8))
-  
-  if (!is.null(out)) {
-    ggplot2::ggsave(out, p, width = width, height = height, units = "in")
-  }
-  
-  invisible(p)
-}
