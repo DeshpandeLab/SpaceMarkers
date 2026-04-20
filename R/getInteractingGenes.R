@@ -115,23 +115,24 @@ find_pattern_hotspots <- function(
 #' @title Find hotSpots for all spatial patterns
 #' @description Convenience function to find hotspots for all spatial patterns
 #' @inheritParams find_pattern_hotspots
-#' @export
-
-find_all_hotspots <- function(spPatterns, params = NULL, outlier = "positive",
-                        nullSamples = 1000, includeSelf = TRUE,...){
-    pattList <- setdiff(colnames(spPatterns),c("x","y","barcode"))
-    hotspots <- matrix(NA, nrow=nrow(spPatterns), ncol=length(pattList))
-    colnames(hotspots) <- pattList
-    for (patternName in pattList){
-        hotspots[,patternName] <- find_pattern_hotspots(
-            spPatterns = spPatterns, params = params[,patternName],
-            patternName = patternName, outlier = outlier,
-            nullSamples = nullSamples, includeSelf = includeSelf,...)
+#' @rdname find_all_hotspots
+setMethod("find_all_hotspots", "data.frame",
+    function(spPatterns, params = NULL, outlier = "positive",
+             nullSamples = 100, includeSelf = TRUE, ...) {
+        pattList <- setdiff(colnames(spPatterns), c("x", "y", "barcode"))
+        hotspots <- matrix(NA, nrow = nrow(spPatterns), ncol = length(pattList))
+        colnames(hotspots) <- pattList
+        for (patternName in pattList) {
+            hotspots[, patternName] <- find_pattern_hotspots(
+                spPatterns = spPatterns, params = params[, patternName],
+                patternName = patternName, outlier = outlier,
+                nullSamples = nullSamples, includeSelf = includeSelf, ...)
+        }
+        hotspots <- cbind(spPatterns[c("barcode", "y", "x")], hotspots)
+        row.names(hotspots) <- hotspots$barcode
+        return(as.data.frame(hotspots))
     }
-    hotspots <- cbind(spPatterns[c("barcode","y","x")],hotspots)
-    row.names(hotspots) <- hotspots$barcode
-    return(as.data.frame(hotspots))
-}
+)
 
 .get_test_mat <- function(data,reconstruction,mode){
     if ("DE" %in% mode)

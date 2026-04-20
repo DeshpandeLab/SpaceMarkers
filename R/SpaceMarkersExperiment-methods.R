@@ -391,3 +391,20 @@ setMethod("analysis_type<-", "SpaceMarkersExperiment", function(x, value) {
     methods::validObject(x)
     x
 })
+
+#' @rdname find_all_hotspots
+#' @aliases find_all_hotspots,SpaceMarkersExperiment-method
+#' @export
+setMethod("find_all_hotspots", "SpaceMarkersExperiment",
+    function(spPatterns, params = NULL, outlier = "positive",
+             nullSamples = 100, includeSelf = TRUE, ...) {
+        sme <- spPatterns
+        if (is.null(params)) params <- spatial_params(sme)
+        hs <- find_all_hotspots(.sme_spPatterns(sme),
+                                params = params, outlier = outlier,
+                                nullSamples = nullSamples,
+                                includeSelf = includeSelf, ...)
+        hotspots(sme, type = "undirected") <- hs
+        sme
+    }
+)

@@ -129,3 +129,12 @@ setGeneric("overlap_scores<-", function(x, value) {
 setGeneric("analysis_type<-", function(x, value) {
     standardGeneric("analysis_type<-")
 })
+
+#' @rdname find_all_hotspots
+#' @export
+setGeneric("find_all_hotspots", function(spPatterns, params = NULL,
+                                         outlier = "positive",
+                                         nullSamples = 100,
+                                         includeSelf = TRUE, ...) {
+    standardGeneric("find_all_hotspots")
+})

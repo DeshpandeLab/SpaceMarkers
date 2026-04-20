@@ -392,3 +392,34 @@ test_that(".sme_expr and .sme_spPatterns return expected shapes", {
                     colnames(sp)))
     expect_equal(nrow(sp), 60L)
 })
+
+# ---- Task 2: find_all_hotspots as S4 generic with SME method ----
+
+test_that("find_all_hotspots(SME) stores hotspots and returns SME", {
+    sme <- make_fixture_sme()
+    sme2 <- find_all_hotspots(sme)
+    expect_s4_class(sme2, "SpaceMarkersExperiment")
+    hs <- hotspots(sme2, "undirected")
+    expect_s3_class(hs, "data.frame")
+    expect_true(all(c("barcode", "x", "y", "Pattern_1", "Pattern_2") %in%
+                    colnames(hs)))
+    expect_equal(nrow(hs), ncol(sme))
+})
+
+test_that("find_all_hotspots default method still accepts data.frame", {
+    sme <- make_fixture_sme()
+    spDF <- SpaceMarkers:::.sme_spPatterns(sme)
+    hs <- find_all_hotspots(spDF, params = spatial_params(sme))
+    expect_s3_class(hs, "data.frame")
+    expect_equal(nrow(hs), nrow(spDF))
+})
+
+test_that("find_all_hotspots(SME) parity with data.frame path", {
+    sme <- make_fixture_sme()
+    set.seed(42)
+    sme2 <- find_all_hotspots(sme)
+    spDF <- SpaceMarkers:::.sme_spPatterns(sme)
+    set.seed(42)
+    hs_direct <- find_all_hotspots(spDF, params = spatial_params(sme))
+    expect_identical(hotspots(sme2, "undirected"), hs_direct)
+})
