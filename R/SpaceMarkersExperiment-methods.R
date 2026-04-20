@@ -521,3 +521,32 @@ setMethod("find_hotspots_gmm", "SpaceMarkersExperiment",
         sme
     }
 )
+
+#' @rdname calculate_gene_scores_directed
+#' @aliases calculate_gene_scores_directed,SpaceMarkersExperiment-method
+#' @export
+setMethod("calculate_gene_scores_directed", "SpaceMarkersExperiment",
+    function(data, pat_hotspots = NULL, influence_hotspots = NULL,
+             pattern_pairs = NULL, ...) {
+        sme <- data
+        pat <- pat_hotspots %||% hotspots(sme, "pattern")
+        inf <- influence_hotspots %||% hotspots(sme, "influence")
+        if (is.null(pat) || is.null(inf)) {
+            stop("Run find_hotspots_gmm(x, 'pattern') and find_hotspots_gmm(x, 'influence') before calculate_gene_scores_directed().")
+        }
+        if (is.null(pattern_pairs)) {
+            patnames <- setdiff(colnames(.sme_spPatterns(sme)),
+                                c("barcode", "x", "y"))
+            pattern_pairs <- t(utils::combn(patnames, 2))
+        }
+        scores <- calculate_gene_scores_directed(
+            data = .sme_expr(sme),
+            pat_hotspots = pat,
+            influence_hotspots = inf,
+            pattern_pairs = pattern_pairs,
+            ...
+        )
+        directed_scores(sme) <- scores
+        sme
+    }
+)

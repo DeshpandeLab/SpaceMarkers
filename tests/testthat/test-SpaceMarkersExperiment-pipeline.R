@@ -506,3 +506,20 @@ test_that("find_hotspots_gmm(SME, type='influence') works after calculate_influe
         find_hotspots_gmm(type = "influence")
     expect_false(is.null(hotspots(sme, "influence")))
 })
+
+# ---- Task 8: calculate_gene_scores_directed as S4 generic with SME method ----
+
+test_that("calculate_gene_scores_directed(SME) stores directed_scores", {
+    sme <- make_fixture_sme() |>
+        calculate_influence() |>
+        find_hotspots_gmm(type = "pattern") |>
+        find_hotspots_gmm(type = "influence") |>
+        calculate_gene_scores_directed()
+    expect_false(is.null(directed_scores(sme)))
+})
+
+test_that("calculate_gene_scores_directed(SME) errors without pattern hotspots", {
+    sme <- make_fixture_sme()
+    expect_error(calculate_gene_scores_directed(sme),
+                 regexp = "find_hotspots_gmm")
+})

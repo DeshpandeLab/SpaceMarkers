@@ -177,3 +177,12 @@ setGeneric("calculate_influence", function(spPatterns, optParams = NULL, ...) {
 setGeneric("find_hotspots_gmm", function(df, threshold = 0.1, ...) {
     standardGeneric("find_hotspots_gmm")
 })
+
+#' @rdname calculate_gene_scores_directed
+#' @export
+setGeneric("calculate_gene_scores_directed",
+    function(data, pat_hotspots = NULL, influence_hotspots = NULL,
+             pattern_pairs = NULL, ...) {
+        standardGeneric("calculate_gene_scores_directed")
+    }
+)

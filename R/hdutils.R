@@ -259,14 +259,16 @@ return(df)
 #' @param data A numeric matrix with genes as rows and barcodes as columns.
 #' @param pat_hotspots A data frame with pattern hotspots, containing columns for x, y, and barcode.
 #' @param influence_hotspots A data frame with influence hotspots, containing columns for x, y, and barcode.
-#' @param pattern_pairs A data frame with pattern pairs to calculate interaction scores for. If NULL, 
+#' @param pattern_pairs A data frame with pattern pairs to calculate interaction scores for. If NULL,
 #' all combinations of patterns in `pat_hotspots` will be used.
-#' If provided, it should have two columns with pattern names. 
+#' If provided, it should have two columns with pattern names.
 #' Each row should represent a pair of patterns for which interaction scores will be calculated.
 #' @param ... Additional parameters to pass to lower level functions.
 #' @return A data frame with interaction scores for all pattern pairs.
-#' @export
-calculate_gene_scores_directed <- function(data, pat_hotspots, influence_hotspots, pattern_pairs=NULL,...) {
+#' @rdname calculate_gene_scores_directed
+setMethod("calculate_gene_scores_directed", "ANY",
+    function(data, pat_hotspots = NULL, influence_hotspots = NULL,
+             pattern_pairs = NULL, ...) {
     if (is.null(pattern_pairs)) {
         pattern_pairs <- utils::combn(setdiff(colnames(pat_hotspots), c("x", "y", "barcode")), 2, simplify = FALSE)
     }
@@ -299,7 +301,7 @@ calculate_gene_scores_directed <- function(data, pat_hotspots, influence_hotspot
         }
     }
     return(IMscores)
-}
+})
 
 #' @title calculate_overlap_directed
 #' @description Calculate the overlap scores between patterns in hotspots
