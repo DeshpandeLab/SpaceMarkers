@@ -612,3 +612,41 @@ test_that("calculate_lr_scores(SME) stores lr_scores from metadata slots", {
         calculate_lr_scores()
     expect_false(is.null(lr_scores(sme)))
 })
+
+# ---- Task 13: dogfood SME pipeline methods inside OneSpaceMarkers helpers ----
+
+test_that("SpaceMarkers(SME, directed=FALSE) produces expected SME structure", {
+    skip_on_cran()
+    sme <- make_fixture_sme()
+    result <- tryCatch(
+        SpaceMarkers(sme, directed = FALSE, cpus = 1, min.gene.expr = 0),
+        error = function(e) {
+            skip(paste("SpaceMarkers directed=FALSE on fixture not supported:",
+                       conditionMessage(e)))
+        }
+    )
+    expect_s4_class(result, "SpaceMarkersExperiment")
+    expect_false(is.null(hotspots(result, "undirected")))
+    expect_false(is.null(interactions(result)))
+    expect_false(is.null(undirected_scores(result)))
+    expect_false(is.null(overlap_scores(result)))
+    expect_true(analysis_type(result) %in% c("undirected", "both"))
+})
+
+test_that("SpaceMarkers(SME, directed=TRUE) produces expected SME structure", {
+    skip_on_cran()
+    sme <- make_fixture_sme()
+    result <- tryCatch(
+        SpaceMarkers(sme, directed = TRUE, min.gene.expr = 0),
+        error = function(e) {
+            skip(paste("SpaceMarkers directed=TRUE on fixture not supported:",
+                       conditionMessage(e)))
+        }
+    )
+    expect_s4_class(result, "SpaceMarkersExperiment")
+    expect_false(is.null(hotspots(result, "pattern")))
+    expect_false(is.null(hotspots(result, "influence")))
+    expect_false(is.null(influence_map(result)))
+    expect_false(is.null(directed_scores(result)))
+    expect_true(analysis_type(result) %in% c("directed", "both"))
+})

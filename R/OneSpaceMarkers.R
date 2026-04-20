@@ -317,60 +317,47 @@ SpaceMarkers <- function(x = NULL,
 
 # ---- SME-based workflows ----
 
-#' Process input from a SpaceMarkersExperiment
+#' Filter an SME by gene expression / barcode match and (re)compute spatial params
 #' @keywords internal
-.process_sme_input <- function(sme,
-                               genes = NULL,
-                               min.gene.expr = 10,
+.apply_sme_filters <- function(sme, genes = NULL, min.gene.expr = 10,
                                spatialDir = "spatial",
                                pattern = "scalefactors_json.json",
-                               sigma = NULL,
-                               threshold = 4,
+                               sigma = NULL, threshold = 4,
                                resolution = "fullres") {
-  message("Preparing data from SpaceMarkersExperiment...")
-  expr <- .sme_get_expr(sme)
-  spPatterns <- .sme_to_spPatterns(sme)
+    message("Preparing data from SpaceMarkersExperiment...")
 
-  message("Filtering data...")
-  all_expr <- colnames(expr)
-  all_pats <- rownames(spPatterns)
-  keepBarcodes <- intersect(all_expr, all_pats)
-  dropped <- length(all_expr) + length(all_pats) - 2L * length(keepBarcodes)
-  if (dropped > 0L) {
-    warning(sprintf(
-      "Dropped %d spots not present in both features and expression. Keeping %d common spots.",
-      dropped, length(keepBarcodes)
-    ))
-  }
-  expr <- expr[, keepBarcodes, drop = FALSE]
-  spPatterns <- spPatterns[keepBarcodes, , drop = FALSE]
+    # Barcode consistency: intersect expression colnames with pattern rownames
+    expr <- .sme_expr(sme)
+    pat_barcodes <- rownames(spatial_patterns(sme))
+    if (!is.null(pat_barcodes)) {
+        keep <- intersect(colnames(expr), pat_barcodes)
+        if (length(keep) < ncol(sme)) {
+            sme <- sme[, keep]
+        }
+    }
 
-  if (!is.null(genes)) {
-    keepGenes <- intersect(genes, rownames(expr))
-  } else {
-    keepGenes <- rownames(expr)[which(apply(expr, 1, sum) > min.gene.expr)]
-  }
-  expr <- expr[keepGenes, , drop = FALSE]
+    # Gene filtering
+    e <- .sme_expr(sme)
+    keep_genes <- if (!is.null(genes))
+        intersect(genes, rownames(e))
+    else
+        rownames(e)[which(apply(e, 1, sum) > min.gene.expr)]
+    sme <- sme[keep_genes, ]
 
-  message("Computing optimal parameters...")
-  optParams <- spatial_params(sme)
-  if (is.null(optParams)) {
-    # Fall back to visiumDir stored at load time, or sigma if provided
-    stored_visiumDir <- sme@spacemarkers$params$visiumDir
-    stored_resolution <- if (!is.null(sme@spacemarkers$params$resolution))
-        sme@spacemarkers$params$resolution else "fullres"
-    optParams <- get_spatial_parameters(
-      spatialPatterns = spPatterns,
-      visiumDir = if (!is.null(stored_visiumDir)) stored_visiumDir else ".",
-      spatialDir = spatialDir,
-      pattern = pattern,
-      sigma = sigma,
-      threshold = threshold,
-      resolution = stored_resolution
-    )
-  }
+    # Spatial params fallback
+    if (is.null(spatial_params(sme))) {
+        message("Computing optimal parameters...")
+        stored_visiumDir <- sme@spacemarkers$params$visiumDir
+        stored_res <- sme@spacemarkers$params$resolution %||% resolution
+        op <- get_spatial_parameters(
+            spatialPatterns = .sme_spPatterns(sme),
+            visiumDir = stored_visiumDir %||% ".",
+            spatialDir = spatialDir, pattern = pattern,
+            sigma = sigma, threshold = threshold, resolution = stored_res)
+        spatial_params(sme) <- op
+    }
 
-  list(data = expr, spPatterns = spPatterns, optParams = optParams)
+    sme
 }
 
 #' Undirected workflow on a SpaceMarkersExperiment
@@ -382,53 +369,30 @@ SpaceMarkers <- function(x = NULL,
                                          sigma = NULL, threshold = 4,
                                          resolution = "fullres",
                                          returnSME = TRUE, ...) {
-  inputs <- .process_sme_input(sme, genes, min.gene.expr, spatialDir,
-                               pattern, sigma, threshold, resolution)
-  expr <- inputs$data
-  spPatterns <- inputs$spPatterns
-  optParams <- inputs$optParams
-
-  message("Finding hotspots...")
-  hs <- find_all_hotspots(spPatterns)
-
-  message("Finding interacting genes...")
-  spaceMarkersResult <- get_pairwise_interacting_genes(
-    data = expr, optParams = optParams, spPatterns = spPatterns,
-    hotspots = hs, mode = "DE", analysis = "enrichment",
-    minOverlap = 10, workers = cpus, ...
-  )
-
-  message("Calculating Interaction Scores...")
-  IMScores <- get_im_scores(spaceMarkersResult)
-
-  if (!returnSME) return(IMScores)
-
-  message("Calculating overlap scores...")
-  overlap <- calculate_overlap_undirected(hs)
-
-  # Store results in SME
-  sm <- sme@spacemarkers
-  if (is.null(sm$results)) sm$results <- list()
-  sm$results$undirected_scores <- IMScores
-  sm$results$overlap_scores <- overlap
-  sm$analysis <- if (is.null(sm$analysis) || sm$analysis == "directed") {
-    if (!is.null(sm$results$directed_scores)) "both" else "undirected"
-  } else { sm$analysis }
-  sm$params$spatial_params <- optParams
-  sm$params$min_gene_expr <- min.gene.expr
-  sm$params$mode <- "DE"
-  sm$params$analysis_method <- "enrichment"
-  sm$params$min_overlap <- 10
-  sm$params$directed <- FALSE
-  sm$params$genes <- genes
-  sm$params$cpus <- cpus
-  sme@spacemarkers <- sm
-
-  # Store detailed intermediates in metadata
-  S4Vectors::metadata(sme)$hotspots$undirected <- hs
-  S4Vectors::metadata(sme)$interactions <- spaceMarkersResult
-
-  sme
+    sme <- .apply_sme_filters(sme, genes = genes,
+                              min.gene.expr = min.gene.expr,
+                              spatialDir = spatialDir, pattern = pattern,
+                              sigma = sigma, threshold = threshold,
+                              resolution = resolution)
+    message("Finding hotspots...")
+    sme <- find_all_hotspots(sme)
+    message("Finding interacting genes...")
+    sme <- get_pairwise_interacting_genes(
+        sme, mode = "DE", analysis = "enrichment",
+        minOverlap = 10, workers = cpus, ...)
+    message("Calculating Interaction Scores...")
+    sme <- get_im_scores(sme)
+    if (!returnSME) return(undirected_scores(sme))
+    message("Calculating overlap scores...")
+    sme <- calculate_overlap_undirected(sme)
+    sm <- sme@spacemarkers
+    if (is.null(sm$params)) sm$params <- list()
+    sm$params$min_gene_expr <- min.gene.expr
+    sm$params$directed <- FALSE
+    sm$params$genes <- genes
+    sm$params$cpus <- cpus
+    sme@spacemarkers <- sm
+    sme
 }
 
 #' Directed workflow on a SpaceMarkersExperiment
@@ -441,74 +405,37 @@ SpaceMarkers <- function(x = NULL,
                                        resolution = "fullres",
                                        lr_pairs = NULL,
                                        returnSME = TRUE, ...) {
-  inputs <- .process_sme_input(sme, genes, min.gene.expr, spatialDir,
-                               pattern, sigma, threshold, resolution)
-  expr <- inputs$data
-  spPatterns <- inputs$spPatterns
-  optParams <- inputs$optParams
-
-  patnames <- setdiff(colnames(spPatterns), c("x", "y", "barcode"))
-
-  message("Calculating hotspots and influence for each pattern...")
-  patthresholds <- calculate_thresholds(spPatterns, minvals = 0.1, maxvals = 0.8)
-  patHotspots <- find_hotspots_gmm(spPatterns, threshold = patthresholds)
-
-  spInfluence <- calculate_influence(spPatterns, optParams)
-  infthresholds <- calculate_thresholds(spInfluence, minvals = 0.01, maxvals = 0.5)
-  infHotspots <- find_hotspots_gmm(spInfluence, threshold = infthresholds)
-
-  if (length(patnames) < 2) {
-    stop("At least two spatial patterns are required to compute directed pattern pairs.")
-  }
-
-  patternPairs <- t(combn(patnames, 2))
-
-  message("Calculating directed interaction scores...")
-  IMscores <- calculate_gene_scores_directed(
-    data = expr, pat_hotspots = patHotspots,
-    influence_hotspots = infHotspots,
-    pattern_pairs = patternPairs, ...
-  )
-
-  if (!returnSME) return(IMscores)
-
-  message("Calculating overlap scores...")
-  overlap <- calculate_overlap_directed(patHotspots, infHotspots)
-
-  # Store results in SME
-  sm <- sme@spacemarkers
-  if (is.null(sm$results)) sm$results <- list()
-  sm$results$directed_scores <- IMscores
-  sm$results$overlap_scores <- overlap
-  sm$analysis <- if (is.null(sm$analysis) || sm$analysis == "undirected") {
-    if (!is.null(sm$results$undirected_scores)) "both" else "directed"
-  } else { sm$analysis }
-  sm$params$spatial_params <- optParams
-  sm$params$min_gene_expr <- min.gene.expr
-  sm$params$directed <- TRUE
-  sm$params$genes <- genes
-
-  # LR scores (if lr_pairs provided)
-  if (!is.null(lr_pairs)) {
-    message("Calculating LR scores...")
-    ligand_scores <- calculate_gene_set_score(IMscores, lr_pairs$ligand.symbol)
-    receptor_scores <- calculate_gene_set_specificity(
-      IMscores, lr_pairs$receptor.symbol)
-    lr <- calculate_lr_scores(ligand_scores, receptor_scores, lr_pairs)
-    sm$results$lr_scores <- lr
-    sm$params$lr_pairs <- lr_pairs
-    S4Vectors::metadata(sme)$ligand_scores <- ligand_scores
-    S4Vectors::metadata(sme)$receptor_scores <- receptor_scores
-  }
-
-  sme@spacemarkers <- sm
-
-  # Store detailed intermediates in metadata
-  S4Vectors::metadata(sme)$hotspots$pattern <- patHotspots
-  S4Vectors::metadata(sme)$hotspots$influence <- infHotspots
-  S4Vectors::metadata(sme)$influence <- spInfluence
-
-  sme
+    sme <- .apply_sme_filters(sme, genes = genes,
+                              min.gene.expr = min.gene.expr,
+                              spatialDir = spatialDir, pattern = pattern,
+                              sigma = sigma, threshold = threshold,
+                              resolution = resolution)
+    message("Calculating influence and pattern hotspots...")
+    sme <- calculate_influence(sme)
+    sme <- find_hotspots_gmm(sme, type = "pattern")
+    sme <- find_hotspots_gmm(sme, type = "influence")
+    message("Calculating directed interaction scores...")
+    sme <- calculate_gene_scores_directed(sme, ...)
+    if (!returnSME) return(directed_scores(sme))
+    message("Calculating overlap scores...")
+    sme <- calculate_overlap_directed(sme)
+    if (!is.null(lr_pairs)) {
+        message("Calculating LR scores...")
+        sm <- sme@spacemarkers
+        if (is.null(sm$params)) sm$params <- list()
+        sm$params$lr_pairs <- lr_pairs
+        sme@spacemarkers <- sm
+        sme <- calculate_gene_set_score(sme)
+        sme <- calculate_gene_set_specificity(sme)
+        sme <- calculate_lr_scores(sme)
+    }
+    sm <- sme@spacemarkers
+    if (is.null(sm$params)) sm$params <- list()
+    sm$params$min_gene_expr <- min.gene.expr
+    sm$params$directed <- TRUE
+    sm$params$genes <- genes
+    sme@spacemarkers <- sm
+    sme
 }
 
 # ---- Legacy result wrapping helpers ----
