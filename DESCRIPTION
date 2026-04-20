@@ -65,7 +65,7 @@ VignetteBuilder:
 Collate:
     'AllClasses.R'
     'AllGenerics.R'
-    'OneSpaceMarkers.R'
+    'SpaceMarkers.R'
     'SpaceMarkersExperiment-methods.R'
     'data.R'
     'findGenesOfInterest.R'

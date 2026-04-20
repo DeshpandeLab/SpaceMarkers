@@ -595,7 +595,7 @@ test_that("calculate_lr_scores(SME) stores lr_scores from metadata slots", {
     expect_false(is.null(lr_scores(sme)))
 })
 
-# ---- Task 13: dogfood SME pipeline methods inside OneSpaceMarkers helpers ----
+# ---- Task 13: dogfood SME pipeline methods inside SpaceMarkers helpers ----
 
 test_that("SpaceMarkers(SME, directed=FALSE) produces expected SME structure", {
     skip_on_cran()
