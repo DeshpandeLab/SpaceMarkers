@@ -4,8 +4,9 @@
 #' @param optParams A data frame with optimal parameters for the pattern
 #' @param ... Additional parameters for the Smooth function
 #' @return A data frame with the spatial influence of the specified pattern
-#' @export
-calculate_influence <- function(spPatterns, optParams,...) {
+#' @rdname calculate_influence
+setMethod("calculate_influence", "data.frame",
+    function(spPatterns, optParams = NULL, ...) {
     patnames <- setdiff(colnames(spPatterns),
                        c("x", "y", "barcode"))
 
@@ -21,11 +22,11 @@ calculate_influence <- function(spPatterns, optParams,...) {
     X <- spatstat.geom::ppp(x = spPatterns$x, y = spPatterns$y,
                             window = allwin,
                             marks = spPatterns[,pat])
-    
+
     # Calculate the kernel for the specified pattern
     Kact1 <- spatstat.explore::Smooth(
       X, at = "points", sigma = optParams[1,pat],...)
-    
+
     # Plot the K-function
     return(Kact1)
     })
@@ -34,7 +35,7 @@ calculate_influence <- function(spPatterns, optParams,...) {
     spInfluence <- cbind(spPatterns[,c("barcode","x", "y")], spInfluence)
 
     return(spInfluence)
-}
+})
 
 #' @title Compute the threshold for identifying outlier values or hotspots
 #' @description This function computes the threshold for identifying outlier 

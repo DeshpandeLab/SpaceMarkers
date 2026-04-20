@@ -479,3 +479,11 @@ test_that("calculate_overlap_undirected(SME) preserves 'both' when directed alre
     sme <- calculate_overlap_undirected(sme)
     expect_equal(analysis_type(sme), "both")
 })
+
+# ---- Task 6: calculate_influence as S4 generic with SME method ----
+
+test_that("calculate_influence(SME) stores influence_map", {
+    sme <- make_fixture_sme() |> calculate_influence()
+    expect_false(is.null(influence_map(sme)))
+    expect_equal(nrow(influence_map(sme)), ncol(sme))
+})

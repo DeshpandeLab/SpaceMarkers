@@ -482,3 +482,16 @@ setMethod("calculate_overlap_undirected", "SpaceMarkersExperiment",
         sme
     }
 )
+
+#' @rdname calculate_influence
+#' @aliases calculate_influence,SpaceMarkersExperiment-method
+#' @export
+setMethod("calculate_influence", "SpaceMarkersExperiment",
+    function(spPatterns, optParams = NULL, ...) {
+        sme <- spPatterns
+        op <- optParams %||% spatial_params(sme)
+        inf <- calculate_influence(.sme_spPatterns(sme), optParams = op, ...)
+        influence_map(sme) <- inf
+        sme
+    }
+)

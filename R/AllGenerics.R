@@ -165,3 +165,9 @@ setGeneric("calculate_overlap_undirected",
         standardGeneric("calculate_overlap_undirected")
     }
 )
+
+#' @rdname calculate_influence
+#' @export
+setGeneric("calculate_influence", function(spPatterns, optParams = NULL, ...) {
+    standardGeneric("calculate_influence")
+})
