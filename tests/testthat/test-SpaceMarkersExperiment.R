@@ -388,37 +388,6 @@ test_that("influence_map accessor works", {
     expect_equal(influence_map(sme), inf_df)
 })
 
-test_that(".sme_to_spPatterns reconstructs legacy format", {
-    mat <- matrix(rnorm(20), nrow = 2, ncol = 10)
-    rownames(mat) <- c("g1", "g2")
-    colnames(mat) <- paste0("s", seq_len(10))
-    coords <- matrix(runif(20), ncol = 2)
-    colnames(coords) <- c("y", "x")
-    rownames(coords) <- colnames(mat)
-
-    cd <- S4Vectors::DataFrame(
-        Pattern_1 = runif(10),
-        Pattern_5 = runif(10),
-        row.names = colnames(mat)
-    )
-
-    sme <- SpaceMarkersExperiment(
-        assays = list(logcounts = mat),
-        colData = cd,
-        spatialCoords = coords,
-        spaceMarkers = list(
-            params = list(pattern_names = c("Pattern_1", "Pattern_5"))
-        )
-    )
-
-    sp <- SpaceMarkers:::.sme_to_spPatterns(sme)
-    expect_true(is.data.frame(sp))
-    expect_true(all(c("barcode", "y", "x", "Pattern_1", "Pattern_5") %in%
-                    colnames(sp)))
-    expect_equal(nrow(sp), 10L)
-    expect_equal(rownames(sp), colnames(mat))
-})
-
 test_that("show method runs without error", {
     mat <- matrix(0, nrow = 2, ncol = 3)
     rownames(mat) <- c("g1", "g2")

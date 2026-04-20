@@ -142,10 +142,11 @@ setGeneric("find_all_hotspots", function(spPatterns, params = NULL,
 #' @rdname get_pairwise_interacting_genes
 #' @export
 setGeneric("get_pairwise_interacting_genes",
-    function(data, spPatterns = NULL, mode = "residual", optParams = NULL,
-             reconstruction = NULL, hotspots = NULL, minOverlap = 50,
-             analysis = c("overlap", "enrichment"),
-             pattern_pairs = NULL, ..., workers = 1) {
+    function(data, spPatterns = NULL, mode = c("DE", "residual"),
+             optParams = NULL, reconstruction = NULL, hotspots = NULL,
+             minOverlap = 50,
+             analysis = c("enrichment", "overlap"),
+             pattern_pairs = NULL, ..., workers = NULL) {
         standardGeneric("get_pairwise_interacting_genes")
     }
 )

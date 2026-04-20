@@ -41,24 +41,6 @@ test_that("SME constructed from test helper is valid", {
     expect_null(analysis_type(sme))
 })
 
-test_that(".sme_to_spPatterns produces correct legacy format", {
-    sme <- .create_test_sme()
-    sp <- SpaceMarkers:::.sme_to_spPatterns(sme)
-
-    expect_true(is.data.frame(sp))
-    expect_true(all(c("barcode", "y", "x", "Pattern_1", "Pattern_2") %in%
-                    colnames(sp)))
-    expect_equal(nrow(sp), 20L)
-    expect_equal(sp$barcode, colnames(sme))
-})
-
-test_that(".sme_get_expr extracts expression matrix", {
-    sme <- .create_test_sme()
-    expr <- SpaceMarkers:::.sme_get_expr(sme)
-    expect_equal(dim(expr), c(10L, 20L))
-    expect_equal(rownames(expr), paste0("gene_", seq_len(10)))
-})
-
 test_that("storing and retrieving results round-trips correctly", {
     sme <- .create_test_sme()
 

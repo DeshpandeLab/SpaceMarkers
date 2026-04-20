@@ -10,29 +10,29 @@
 get_pairwise_interacting_genes(
   data,
   spPatterns = NULL,
-  mode = "residual",
+  mode = c("DE", "residual"),
   optParams = NULL,
   reconstruction = NULL,
   hotspots = NULL,
   minOverlap = 50,
-  analysis = c("overlap", "enrichment"),
+  analysis = c("enrichment", "overlap"),
   pattern_pairs = NULL,
   ...,
-  workers = 1
+  workers = NULL
 )
 
 \S4method{get_pairwise_interacting_genes}{SpaceMarkersExperiment}(
   data,
   spPatterns = NULL,
-  mode = "residual",
+  mode = c("DE", "residual"),
   optParams = NULL,
   reconstruction = NULL,
   hotspots = NULL,
   minOverlap = 50,
-  analysis = c("overlap", "enrichment"),
+  analysis = c("enrichment", "overlap"),
   pattern_pairs = NULL,
   ...,
-  workers = 1
+  workers = NULL
 )
 
 \S4method{get_pairwise_interacting_genes}{ANY}(

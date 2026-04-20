@@ -347,52 +347,6 @@ setMethod("analysis_type", "SpaceMarkersExperiment", function(x) {
     x@spacemarkers$analysis
 })
 
-# ---- Internal bridge helper ----
-
-#' Reconstruct legacy spPatterns data.frame from a SpaceMarkersExperiment
-#'
-#' @param sme A \code{SpaceMarkersExperiment} object.
-#' @return A data.frame with columns barcode, y, x, and pattern columns.
-#' @keywords internal
-.sme_to_spPatterns <- function(sme) {
-    coords <- as.data.frame(SpatialExperiment::spatialCoords(sme))
-    # spatialCoords returns a matrix with columns matching the original names
-    # Ensure we have x and y columns
-    if (!all(c("x", "y") %in% colnames(coords))) {
-        # Try standard column renaming
-        if (ncol(coords) >= 2) {
-            colnames(coords) <- c("y", "x")
-        }
-    }
-    coords$barcode <- colnames(sme)
-
-    pn <- sme@spacemarkers$params$pattern_names
-    if (!is.null(pn)) {
-        pats <- as.data.frame(
-            SummarizedExperiment::colData(sme)[, pn, drop = FALSE]
-        )
-        result <- cbind(coords[, c("barcode", "y", "x"), drop = FALSE], pats)
-    } else {
-        result <- coords[, c("barcode", "y", "x"), drop = FALSE]
-    }
-    rownames(result) <- result$barcode
-    result
-}
-
-#' Extract expression matrix from a SpaceMarkersExperiment
-#'
-#' @param sme A \code{SpaceMarkersExperiment} object.
-#' @param assay_name Character name of the assay to extract. Default "logcounts".
-#' @return A matrix or sparse matrix of expression values.
-#' @keywords internal
-.sme_get_expr <- function(sme, assay_name = "logcounts") {
-    if (assay_name %in% SummarizedExperiment::assayNames(sme)) {
-        SummarizedExperiment::assay(sme, assay_name)
-    } else {
-        SummarizedExperiment::assay(sme, 1L)
-    }
-}
-
 # ---- add_features ----
 
 #' @title Add spatial features to a SpaceMarkersExperiment
@@ -598,15 +552,17 @@ setMethod("find_all_hotspots", "SpaceMarkersExperiment",
 #' @aliases get_pairwise_interacting_genes,SpaceMarkersExperiment-method
 #' @export
 setMethod("get_pairwise_interacting_genes", "SpaceMarkersExperiment",
-    function(data, spPatterns = NULL, mode = "residual", optParams = NULL,
-             reconstruction = NULL, hotspots = NULL, minOverlap = 50,
-             analysis = c("overlap", "enrichment"),
-             pattern_pairs = NULL, ..., workers = 1) {
+    function(data, spPatterns = NULL, mode = c("DE", "residual"),
+             optParams = NULL, reconstruction = NULL, hotspots = NULL,
+             minOverlap = 50,
+             analysis = c("enrichment", "overlap"),
+             pattern_pairs = NULL, ..., workers = NULL) {
         sme <- data
         hs <- hotspots %||% hotspots(sme, "undirected")
         if (is.null(hs)) {
             stop("Run find_all_hotspots(x) before get_pairwise_interacting_genes().")
         }
+        mode <- match.arg(mode)
         analysis <- match.arg(analysis)
         res <- get_pairwise_interacting_genes(
             data = .sme_expr(sme),
