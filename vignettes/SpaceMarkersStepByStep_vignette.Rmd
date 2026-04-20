@@ -166,20 +166,24 @@ pat_cols <- setdiff(colnames(hs), c("barcode", "y", "x"))
 vapply(pat_cols, function(p) mean(!is.na(hs[[p]])), numeric(1))
 ```
 
-Plot the hotspot labels for each pattern — pass `hotspot_type = "undirected"`
-so `plot_spatial()` pulls values from the hotspots metadata instead of the
-continuous pattern column in `colData`.
+Plot the hotspot labels for each pattern — pass `source = "hotspots"` so
+`plot_spatial()` reads from the hotspots metadata rather than the continuous
+pattern column in `colData`. The `colors` argument controls fill: for
+categorical hotspot labels (`"hot"` / `NA`) `plot_spatial()` passes it into
+`ggplot2::scale_fill_manual()`, so a single color string maps the `"hot"`
+level to that color. Other aesthetic knobs: `point_size`, `stroke`, `alpha`,
+`bg_color`, `text_size`, and `crop`.
 
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 plot_spatial(sme_ud, feature_col = "Pattern_1",
              source = "hotspots", hotspot_type = "undirected",
-             title = "Pattern_1 hotspots")
+             colors = "steelblue", title = "Pattern_1 hotspots")
 ```
 
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 plot_spatial(sme_ud, feature_col = "Pattern_2",
              source = "hotspots", hotspot_type = "undirected",
-             title = "Pattern_2 hotspots")
+             colors = "firebrick", title = "Pattern_2 hotspots")
 ```
 
 ## Step 2: Find pairwise interacting genes
@@ -315,13 +319,13 @@ sme_dir <- find_hotspots_gmm(sme_dir, type = "pattern")
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 plot_spatial(sme_dir, feature_col = "Pattern_1",
              source = "hotspots", hotspot_type = "pattern",
-             title = "Pattern_1 GMM hotspots")
+             colors = "steelblue", title = "Pattern_1 GMM hotspots")
 ```
 
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 plot_spatial(sme_dir, feature_col = "Pattern_5",
              source = "hotspots", hotspot_type = "pattern",
-             title = "Pattern_5 GMM hotspots")
+             colors = "firebrick", title = "Pattern_5 GMM hotspots")
 ```
 
 ## Step 3: Find influence hotspots
@@ -338,13 +342,13 @@ sme_dir <- find_hotspots_gmm(sme_dir, type = "influence")
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 plot_spatial(sme_dir, feature_col = "Pattern_1",
              source = "hotspots", hotspot_type = "influence",
-             title = "Pattern_1 influence hotspots")
+             colors = "steelblue", title = "Pattern_1 influence hotspots")
 ```
 
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 plot_spatial(sme_dir, feature_col = "Pattern_5",
              source = "hotspots", hotspot_type = "influence",
-             title = "Pattern_5 influence hotspots")
+             colors = "firebrick", title = "Pattern_5 influence hotspots")
 ```
 
 ## Step 4: Directed gene scores
