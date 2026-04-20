@@ -134,7 +134,7 @@ setGeneric("analysis_type<-", function(x, value) {
 #' @export
 setGeneric("find_all_hotspots", function(spPatterns, params = NULL,
                                          outlier = "positive",
-                                         nullSamples = 100,
+                                         nullSamples = 1000,
                                          includeSelf = TRUE, ...) {
     standardGeneric("find_all_hotspots")
 })

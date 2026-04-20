@@ -118,7 +118,7 @@ find_pattern_hotspots <- function(
 #' @rdname find_all_hotspots
 setMethod("find_all_hotspots", "data.frame",
     function(spPatterns, params = NULL, outlier = "positive",
-             nullSamples = 100, includeSelf = TRUE, ...) {
+             nullSamples = 1000, includeSelf = TRUE, ...) {
         pattList <- setdiff(colnames(spPatterns), c("x", "y", "barcode"))
         hotspots <- matrix(NA, nrow = nrow(spPatterns), ncol = length(pattList))
         colnames(hotspots) <- pattList

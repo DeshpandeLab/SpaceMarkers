@@ -397,7 +397,7 @@ setMethod("analysis_type<-", "SpaceMarkersExperiment", function(x, value) {
 #' @export
 setMethod("find_all_hotspots", "SpaceMarkersExperiment",
     function(spPatterns, params = NULL, outlier = "positive",
-             nullSamples = 100, includeSelf = TRUE, ...) {
+             nullSamples = 1000, includeSelf = TRUE, ...) {
         sme <- spPatterns
         if (is.null(params)) params <- spatial_params(sme)
         hs <- find_all_hotspots(.sme_spPatterns(sme),
