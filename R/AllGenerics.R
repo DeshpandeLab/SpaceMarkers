@@ -171,3 +171,9 @@ setGeneric("calculate_overlap_undirected",
 setGeneric("calculate_influence", function(spPatterns, optParams = NULL, ...) {
     standardGeneric("calculate_influence")
 })
+
+#' @rdname find_hotspots_gmm
+#' @export
+setGeneric("find_hotspots_gmm", function(df, threshold = 0.1, ...) {
+    standardGeneric("find_hotspots_gmm")
+})

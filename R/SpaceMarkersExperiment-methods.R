@@ -495,3 +495,29 @@ setMethod("calculate_influence", "SpaceMarkersExperiment",
         sme
     }
 )
+
+#' @rdname find_hotspots_gmm
+#' @aliases find_hotspots_gmm,SpaceMarkersExperiment-method
+#' @export
+setMethod("find_hotspots_gmm", "SpaceMarkersExperiment",
+    function(df, threshold = 0.1, ..., type = c("pattern", "influence"),
+             minvals = NULL, maxvals = NULL) {
+        sme <- df
+        type <- match.arg(type)
+        src <- if (type == "pattern") .sme_spPatterns(sme) else influence_map(sme)
+        if (is.null(src)) {
+            stop("Run calculate_influence(x) before find_hotspots_gmm(x, 'influence').")
+        }
+        # Choose sensible default thresholds per type when user didn't pass one
+        thr <- if (missing(threshold) || identical(threshold, 0.1)) {
+            default_min <- if (type == "pattern") 0.1 else 0.01
+            default_max <- if (type == "pattern") 0.8 else 0.5
+            calculate_thresholds(src,
+                minvals = minvals %||% default_min,
+                maxvals = maxvals %||% default_max)
+        } else threshold
+        hs <- find_hotspots_gmm(src, threshold = thr, ...)
+        hotspots(sme, type = type) <- hs
+        sme
+    }
+)

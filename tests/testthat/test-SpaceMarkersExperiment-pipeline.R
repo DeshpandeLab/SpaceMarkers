@@ -487,3 +487,22 @@ test_that("calculate_influence(SME) stores influence_map", {
     expect_false(is.null(influence_map(sme)))
     expect_equal(nrow(influence_map(sme)), ncol(sme))
 })
+
+# ---- Task 7: find_hotspots_gmm as S4 generic with SME method ----
+
+test_that("find_hotspots_gmm(SME, type='pattern') stores pattern hotspots", {
+    sme <- make_fixture_sme() |> find_hotspots_gmm(type = "pattern")
+    expect_false(is.null(hotspots(sme, "pattern")))
+})
+
+test_that("find_hotspots_gmm(SME, type='influence') requires influence_map", {
+    sme <- make_fixture_sme()
+    expect_error(find_hotspots_gmm(sme, type = "influence"),
+                 regexp = "calculate_influence")
+})
+
+test_that("find_hotspots_gmm(SME, type='influence') works after calculate_influence", {
+    sme <- make_fixture_sme() |> calculate_influence() |>
+        find_hotspots_gmm(type = "influence")
+    expect_false(is.null(hotspots(sme, "influence")))
+})

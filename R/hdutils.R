@@ -104,14 +104,15 @@ calculate_thresholds <- function(df, minvals = 0.01, maxvals = 0.99,...) {
 
 
 #' @title Find hotspots for all patterns or influences based on values
-#' @description Convenience function to find hotspots for all spatial patterns 
+#' @description Convenience function to find hotspots for all spatial patterns
 #' or influence dataframes based on provided thresholds
 #' @inheritParams calculate_thresholds
 #' @param threshold a scalar or vector of thresholds for each column in the data frame.
 #'  Either user provided or the output of @calculate_thresholds
 #' @return a data frame with the same dimensions as the input data frame.
-#' @export 
-find_hotspots_gmm <- function(df, threshold = 0.1,...){
+#' @rdname find_hotspots_gmm
+setMethod("find_hotspots_gmm", "data.frame",
+    function(df, threshold = 0.1, ...) {
     patnames <- setdiff(colnames(df),c("x","y","barcode"))
     if (length(threshold)==1){
         threshold <- rep(threshold,length(patnames))
@@ -120,7 +121,7 @@ find_hotspots_gmm <- function(df, threshold = 0.1,...){
         stop("Length of threshold must be 1 or equal to number of patterns.")
     }
     names(threshold) <- patnames
-    
+
     hotspots <- matrix(NA, nrow=nrow(df), ncol=length(patnames))
     colnames(hotspots) <- patnames
     for (pat in patnames){
@@ -131,7 +132,7 @@ find_hotspots_gmm <- function(df, threshold = 0.1,...){
     row.names(hotspots) <- hotspots$barcode
     hotspots <- as.data.frame(hotspots)
     return(hotspots)
-}
+})
 
 .classify_spots <- function(pat_hotspots, influence_hotspots, patternpair = NULL) {
     patnames <- setdiff(colnames(pat_hotspots), c("x", "y", "barcode"))
