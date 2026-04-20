@@ -6,9 +6,10 @@
 \usage{
 plot_spatial(
   sme,
-  feature_col,
+  feature_col = NULL,
   hotspot_type = c("undirected", "pattern", "influence"),
-  source = c("auto", "colData", "assay", "hotspots", "influence_map"),
+  source = c("auto", "colData", "assay", "hotspots", "influence_map", "interaction"),
+  interaction_patterns = NULL,
   image = NULL,
   resolution = c("lowres", "hires", "fullres"),
   colors = NULL,

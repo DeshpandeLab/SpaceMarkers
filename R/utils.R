@@ -409,9 +409,11 @@ plot_spatial_data_over_image <- function(
 #' @export
 #' @importFrom SummarizedExperiment assay
 #' @importFrom SpatialExperiment spatialCoords imgRaster
-plot_spatial <- function(sme, feature_col,
+plot_spatial <- function(sme, feature_col = NULL,
                          hotspot_type = c("undirected", "pattern", "influence"),
-                         source = c("auto", "colData", "assay", "hotspots", "influence_map"),
+                         source = c("auto", "colData", "assay", "hotspots",
+                                    "influence_map", "interaction"),
+                         interaction_patterns = NULL,
                          image = NULL,
                          resolution = c("lowres", "hires", "fullres"),
                          colors = NULL, point_size = 2.5, stroke = 0.05,
@@ -423,6 +425,21 @@ plot_spatial <- function(sme, feature_col,
     hotspot_type <- match.arg(hotspot_type)
     source <- match.arg(source)
     resolution <- match.arg(resolution)
+
+    # When plotting a three-level interaction overlay, feature_col is synthetic
+    if (source == "interaction") {
+        if (is.null(interaction_patterns) || length(interaction_patterns) != 2L) {
+            stop("source='interaction' requires interaction_patterns = c('<pattern1>','<pattern2>').")
+        }
+        if (is.null(feature_col)) {
+            feature_col <- paste(interaction_patterns, collapse = "_vs_")
+        }
+        if (identical(title, NULL) || identical(title, feature_col)) {
+            title <- sprintf("%s interaction", paste(interaction_patterns, collapse = " x "))
+        }
+    } else if (is.null(feature_col)) {
+        stop("feature_col is required for source='", source, "'.")
+    }
 
     # --- Extract feature values keyed by barcode ----------------------------
     # When `source` is "auto" we fall through colData -> assay -> hotspots.
@@ -454,13 +471,38 @@ plot_spatial <- function(sme, feature_col,
             v <- im[[feature_col]]; names(v) <- im$barcode; v
         }
     }
+    lookup_interaction <- function() {
+        hs <- S4Vectors::metadata(sme)$hotspots[[hotspot_type]]
+        if (is.null(hs)) {
+            stop(sprintf("No %s hotspots found; run find_all_hotspots() (or find_hotspots_gmm()) first.",
+                         hotspot_type))
+        }
+        missing_pats <- setdiff(interaction_patterns, colnames(hs))
+        if (length(missing_pats) > 0L) {
+            stop(sprintf("Pattern(s) %s not found in %s hotspots.",
+                         paste(missing_pats, collapse = ", "), hotspot_type))
+        }
+        col1 <- hs[[interaction_patterns[1]]]
+        col2 <- hs[[interaction_patterns[2]]]
+        labs <- rep(NA_character_, length(col1))
+        in1 <- !is.na(col1); in2 <- !is.na(col2)
+        labs[in1 & !in2] <- interaction_patterns[1]
+        labs[!in1 & in2] <- interaction_patterns[2]
+        labs[in1 &  in2] <- "interacting"
+        labs <- factor(labs,
+                       levels = c(interaction_patterns[1], "interacting",
+                                  interaction_patterns[2]))
+        names(labs) <- hs$barcode
+        labs
+    }
 
     feature_vals <- switch(source,
         auto          = lookup_colData() %||% lookup_assay() %||% lookup_hotspots(),
         colData       = lookup_colData(),
         assay         = lookup_assay(),
         hotspots      = lookup_hotspots(),
-        influence_map = lookup_influence()
+        influence_map = lookup_influence(),
+        interaction   = lookup_interaction()
     )
     if (is.null(feature_vals)) {
         stop(sprintf(

@@ -186,6 +186,20 @@ plot_spatial(sme_ud, feature_col = "Pattern_2",
              colors = "firebrick", title = "Pattern_2 hotspots")
 ```
 
+A combined interaction overlay classifies each hotspot spot as Pattern\_1
+only, interacting (hot in both), or Pattern\_2 only. Pass
+`source = "interaction"` with `interaction_patterns = c("Pattern_1",
+"Pattern_2")` and a three-color vector to distinguish the three classes.
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plot_spatial(sme_ud,
+             source = "interaction", hotspot_type = "undirected",
+             interaction_patterns = c("Pattern_1", "Pattern_2"),
+             colors = c(Pattern_1 = "steelblue",
+                        interacting = "purple",
+                        Pattern_2 = "firebrick"))
+```
+
 ## Step 2: Find pairwise interacting genes
 
 `get_pairwise_interacting_genes()` tests each gene for differential
@@ -326,6 +340,15 @@ plot_spatial(sme_dir, feature_col = "Pattern_1",
 plot_spatial(sme_dir, feature_col = "Pattern_5",
              source = "hotspots", hotspot_type = "pattern",
              colors = "firebrick", title = "Pattern_5 GMM hotspots")
+```
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plot_spatial(sme_dir,
+             source = "interaction", hotspot_type = "pattern",
+             interaction_patterns = c("Pattern_1", "Pattern_5"),
+             colors = c(Pattern_1 = "steelblue",
+                        interacting = "purple",
+                        Pattern_5 = "firebrick"))
 ```
 
 ## Step 3: Find influence hotspots
