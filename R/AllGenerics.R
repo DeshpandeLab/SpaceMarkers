@@ -214,3 +214,12 @@ setGeneric("calculate_gene_set_specificity",
         standardGeneric("calculate_gene_set_specificity")
     }
 )
+
+#' @rdname calculate_lr_scores
+#' @export
+setGeneric("calculate_lr_scores",
+    function(ligand_scores, receptor_scores = NULL, lr_pairs = NULL,
+             ligand_test = NULL, method = "geometric_mean", weighted = TRUE) {
+        standardGeneric("calculate_lr_scores")
+    }
+)

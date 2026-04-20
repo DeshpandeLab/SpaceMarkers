@@ -626,3 +626,24 @@ setMethod("calculate_gene_set_specificity", "SpaceMarkersExperiment",
         sme
     }
 )
+
+#' @rdname calculate_lr_scores
+#' @aliases calculate_lr_scores,SpaceMarkersExperiment-method
+#' @export
+setMethod("calculate_lr_scores", "SpaceMarkersExperiment",
+    function(ligand_scores, receptor_scores = NULL, lr_pairs = NULL,
+             ligand_test = NULL, method = "geometric_mean", weighted = TRUE) {
+        sme <- ligand_scores
+        md <- S4Vectors::metadata(sme)
+        ls <- md$ligand_scores
+        rs <- receptor_scores %||% md$receptor_scores
+        lr <- lr_pairs %||% params(sme)$lr_pairs
+        if (is.null(ls) || is.null(rs) || is.null(lr)) {
+            stop("Run calculate_gene_set_score(x) and calculate_gene_set_specificity(x), and ensure params(x)$lr_pairs is set, before calculate_lr_scores().")
+        }
+        out <- calculate_lr_scores(ls, rs, lr, ligand_test = ligand_test,
+                                   method = method, weighted = weighted)
+        lr_scores(sme) <- out
+        sme
+    }
+)

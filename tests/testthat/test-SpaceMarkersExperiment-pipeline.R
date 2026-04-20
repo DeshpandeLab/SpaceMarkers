@@ -566,3 +566,49 @@ test_that("calculate_gene_set_specificity(SME) stores receptor_scores in metadat
     sme <- calculate_gene_set_specificity(sme, gene_sets = list(pair1 = c("G3", "G4")))
     expect_false(is.null(S4Vectors::metadata(sme)$receptor_scores))
 })
+
+# ---- Task 12: calculate_lr_scores as S4 generic with SME method ----
+
+test_that("calculate_lr_scores(SME) stores lr_scores from metadata slots", {
+    # Custom fixture with single-token pattern names: the underlying
+    # calculate_lr_scores() has a pre-existing parsing quirk that trips on
+    # underscores in pattern names (gsub("^.*_", ...)). Using "P1"/"P2"
+    # keeps the test focused on the SME wrapper behavior.
+    set.seed(1)
+    n_spots <- 60L
+    n_genes <- 25L
+    counts <- matrix(rpois(n_spots * n_genes, lambda = 2),
+                     nrow = n_genes, ncol = n_spots,
+                     dimnames = list(
+                         paste0("G", seq_len(n_genes)),
+                         paste0("spot", seq_len(n_spots))))
+    coords <- matrix(runif(n_spots * 2, 0, 10), ncol = 2,
+                     dimnames = list(NULL, c("y", "x")))
+    patterns <- S4Vectors::DataFrame(
+        P1 = runif(n_spots), P2 = runif(n_spots),
+        row.names = paste0("spot", seq_len(n_spots)))
+    sme <- SpaceMarkersExperiment(
+        assays = list(logcounts = counts),
+        spatialCoords = coords)
+    colnames(sme) <- paste0("spot", seq_len(n_spots))
+    spatial_patterns(sme) <- patterns
+    spatial_params(sme) <- matrix(
+        c(1.0, 2.0, 1.0, 2.0), nrow = 2, ncol = 2,
+        dimnames = list(c("sigmaOpt", "threshOpt"), c("P1", "P2")))
+    sme <- sme |>
+        calculate_influence() |>
+        find_hotspots_gmm(type = "pattern") |>
+        find_hotspots_gmm(type = "influence") |>
+        calculate_gene_scores_directed()
+    # Fake lr_pairs for the test
+    lr_pairs <- data.frame(
+        ligand.symbol = c("G1", "G2"),
+        receptor.symbol = c("G3", "G4"),
+        pair = c("G1_G3", "G2_G4"),
+        stringsAsFactors = FALSE)
+    sm <- sme@spacemarkers; sm$params$lr_pairs <- lr_pairs; sme@spacemarkers <- sm
+    sme <- calculate_gene_set_score(sme) |>
+        calculate_gene_set_specificity() |>
+        calculate_lr_scores()
+    expect_false(is.null(lr_scores(sme)))
+})

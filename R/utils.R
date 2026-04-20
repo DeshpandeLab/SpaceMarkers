@@ -559,10 +559,11 @@ plot_spatial <- function(sme, feature_col,
 #' weight L-R pairs based on their presence in multiple pairs to reduce bias from
 #' promiscuous ligands or receptors.
 #' @return Data frame with L-R scores and p-values
-#' @export
-calculate_lr_scores <- function(ligand_scores, receptor_scores, lr_pairs,
-                              ligand_test = c("greater", "two.sided"), method = c("geometric_mean", "arithmetic_mean"),
-                              weighted = TRUE) {
+#' @rdname calculate_lr_scores
+setMethod("calculate_lr_scores", "ANY",
+    function(ligand_scores, receptor_scores = NULL, lr_pairs = NULL,
+             ligand_test = NULL, method = "geometric_mean",
+             weighted = TRUE) {
 
     method <- match.arg(method[1], choices = c("geometric_mean", "arithmetic_mean"))
        # parameter checks
@@ -622,7 +623,8 @@ calculate_lr_scores <- function(ligand_scores, receptor_scores, lr_pairs,
         stop("Receptor scores have been calculated using calculate_gene_set_score (overexpression) of receptors near source cell; use calculate_gene_set_specificity for receptors instead.")
     }
 
-}
+    }
+)
 
 #' Calculate Gene Set Specificity Scores
 #' @title calculate_gene_set_specificity
