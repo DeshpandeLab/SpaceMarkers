@@ -554,3 +554,15 @@ test_that("calculate_gene_set_score(SME) errors without directed_scores", {
     expect_error(calculate_gene_set_score(sme, gene_sets = list(a = "G1")),
                  regexp = "calculate_gene_scores_directed")
 })
+
+# ---- Task 11: calculate_gene_set_specificity as S4 generic with SME method ----
+
+test_that("calculate_gene_set_specificity(SME) stores receptor_scores in metadata", {
+    sme <- make_fixture_sme() |>
+        calculate_influence() |>
+        find_hotspots_gmm(type = "pattern") |>
+        find_hotspots_gmm(type = "influence") |>
+        calculate_gene_scores_directed()
+    sme <- calculate_gene_set_specificity(sme, gene_sets = list(pair1 = c("G3", "G4")))
+    expect_false(is.null(S4Vectors::metadata(sme)$receptor_scores))
+})

@@ -205,3 +205,12 @@ setGeneric("calculate_gene_set_score",
         standardGeneric("calculate_gene_set_score")
     }
 )
+
+#' @rdname calculate_gene_set_specificity
+#' @export
+setGeneric("calculate_gene_set_specificity",
+    function(data, spPatterns = NULL, gene_sets = NULL, weighted = TRUE,
+             method = c("geometric_mean", "arithmetic_mean")) {
+        standardGeneric("calculate_gene_set_specificity")
+    }
+)

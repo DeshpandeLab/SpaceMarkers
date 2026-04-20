@@ -649,8 +649,10 @@ calculate_lr_scores <- function(ligand_scores, receptor_scores, lr_pairs,
 #' # Example usage:
 #' # gene_set_scores <- calculate_gene_set_specificity(expr_matrix, spPatterns, gene_sets)
 #'
-#' @export
-calculate_gene_set_specificity <- function(data, spPatterns, gene_sets, weighted = TRUE, method = c("geometric_mean", "arithmetic_mean")) {
+#' @rdname calculate_gene_set_specificity
+setMethod("calculate_gene_set_specificity", "ANY",
+    function(data, spPatterns = NULL, gene_sets = NULL, weighted = TRUE,
+             method = c("geometric_mean", "arithmetic_mean")) {
     method <- match.arg(method[1], choices = c("geometric_mean", "arithmetic_mean"))
     genes <- unique(unlist(gene_sets))
     genes <- intersect(genes, rownames(data))
@@ -712,7 +714,8 @@ calculate_gene_set_specificity <- function(data, spPatterns, gene_sets, weighted
     }
 
     return(gene_set_scores)
-}
+    }
+)
 
 .calculate_fc_score <- function(expr, spPatterns, gene, ct,
                               low_thr = 0.2, high_thr = 0.8) {

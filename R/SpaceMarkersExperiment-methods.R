@@ -600,3 +600,29 @@ setMethod("calculate_gene_set_score", "SpaceMarkersExperiment",
         sme
     }
 )
+
+#' @rdname calculate_gene_set_specificity
+#' @aliases calculate_gene_set_specificity,SpaceMarkersExperiment-method
+#' @export
+setMethod("calculate_gene_set_specificity", "SpaceMarkersExperiment",
+    function(data, spPatterns = NULL, gene_sets = NULL, weighted = TRUE,
+             method = c("geometric_mean", "arithmetic_mean")) {
+        sme <- data
+        method <- match.arg(method)
+        gs <- gene_sets %||% params(sme)$lr_pairs$receptor.symbol
+        if (is.null(gs)) {
+            stop("No gene_sets supplied and no params(x)$lr_pairs$receptor.symbol available.")
+        }
+        rs <- calculate_gene_set_specificity(
+            data = .sme_expr(sme),
+            spPatterns = spPatterns %||% .sme_spPatterns(sme),
+            gene_sets = gs,
+            weighted = weighted,
+            method = method
+        )
+        md <- S4Vectors::metadata(sme)
+        md$receptor_scores <- rs
+        S4Vectors::metadata(sme) <- md
+        sme
+    }
+)
