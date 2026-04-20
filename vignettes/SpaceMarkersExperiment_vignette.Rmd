@@ -228,28 +228,18 @@ head(influence_map(sme_directed))
 
 # Visualization
 
-Since the SME holds all data, visualization functions can accept the object
-directly or you can extract data with accessors.
+Since the SME holds all results, every visualization function accepts the
+object directly and reads from the stored slots.
 
-## IM Scores Bar Plot
+## Patterns on the tissue
 
-```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
-plot_im_scores(sme_undirected, interaction = "Pattern_1_Pattern_2", nGenes = 10)
-```
-
-## Overlap Scores
-
-```{r}
-calculate_overlap_undirected(hotspots(sme_undirected, type = "undirected"))
-```
-
-## Spatial Plots
-
-`plot_spatial()` is the SME-native plotting bridge. It automatically extracts
-coordinates from the object, finds the tissue image stored in the object's
-`visiumDir`, and falls back to a blank background if no image is available.
-Features are looked up in order: `colData` (patterns, influence values),
-`rownames` (gene expression), or hotspot metadata.
+`plot_spatial()` automatically extracts coordinates from the object, finds
+the tissue image stored in the object's `visiumDir`, and falls back to a
+blank background if none is available. The `source` argument selects where
+`feature_col` is resolved: `colData` (patterns, continuous features),
+`assay` (gene expression), `hotspots` (hotspot labels), `influence_map`
+(per-pattern influence values), or `interaction` (a three-way categorical
+overlay).
 
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 plot_spatial(sme, feature_col = "Pattern_1", title = "Pattern_1 (immune)")
@@ -259,19 +249,104 @@ plot_spatial(sme, feature_col = "Pattern_1", title = "Pattern_1 (immune)")
 plot_spatial(sme, feature_col = "Pattern_5", title = "Pattern_5 (cancer)")
 ```
 
-## Top Interacting Genes
+## Undirected hotspots and interaction overlay
 
-`plot_spatial()` accepts gene names directly — it looks them up in the
-expression matrix automatically, so no manual data extraction is needed:
+Pass `source = "hotspots"` so `plot_spatial()` reads hotspot labels from
+`metadata(sme)$hotspots$undirected` rather than the continuous pattern
+column in `colData` (which shares the same name). `colors` maps the "hot"
+level to a single fill.
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plot_spatial(sme_undirected, feature_col = "Pattern_1",
+             source = "hotspots", hotspot_type = "undirected",
+             colors = "steelblue", title = "Pattern_1 hotspots")
+```
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plot_spatial(sme_undirected, feature_col = "Pattern_2",
+             source = "hotspots", hotspot_type = "undirected",
+             colors = "firebrick", title = "Pattern_2 hotspots")
+```
+
+A three-way overlay classifies each hotspot spot as Pattern\_1 only,
+interacting (hot in both), or Pattern\_2 only:
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plot_spatial(sme_undirected,
+             source = "interaction", hotspot_type = "undirected",
+             interaction_patterns = c("Pattern_1", "Pattern_2"),
+             colors = c(Pattern_1   = "steelblue",
+                        interacting = "purple",
+                        Pattern_2   = "firebrick"))
+```
+
+## IM scores bar plot and top genes
+
+The column names of `undirected_scores(sme)` are the pattern-pair keys —
+use the first pair key robustly instead of hard-coding:
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+pair_col <- setdiff(colnames(undirected_scores(sme_undirected)), "Gene")[1]
+plot_im_scores(sme_undirected, interaction = pair_col, nGenes = 10)
+```
+
+`plot_spatial()` accepts gene names directly — it falls through to the
+expression assay via `source = "auto"` (the default):
 
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 ims <- undirected_scores(sme_undirected)
-top_genes <- ims[order(ims$Pattern_1_Pattern_2, decreasing = TRUE), "Gene"]
-top_genes <- head(top_genes, 5)
+top_genes <- head(ims[order(ims[[pair_col]], decreasing = TRUE), "Gene"], 5)
 
 for (g in top_genes) {
     print(plot_spatial(sme_undirected, feature_col = g, title = g))
 }
+```
+
+## Undirected overlap scores
+
+`plot_overlap_scores()` reads `overlap_scores(sme)` directly and
+auto-detects the undirected shape (symmetric `pattern1 × pattern2`
+heatmap):
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plot_overlap_scores(sme_undirected, title = "Undirected overlap")
+```
+
+## Directed hotspots and interaction overlay
+
+The directed workflow splits hotspots into two flavors — pattern-value
+GMM hotspots (`hotspot_type = "pattern"`) and influence-map GMM hotspots
+(`hotspot_type = "influence"`) — and the interaction overlay's middle
+label auto-switches to `"<source> near <target>"`.
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plot_spatial(sme_directed, feature_col = "Pattern_1",
+             source = "hotspots", hotspot_type = "pattern",
+             colors = "steelblue", title = "Pattern_1 GMM hotspots")
+```
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plot_spatial(sme_directed, feature_col = "Pattern_5",
+             source = "hotspots", hotspot_type = "pattern",
+             colors = "firebrick", title = "Pattern_5 GMM hotspots")
+```
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plot_spatial(sme_directed,
+             source = "interaction", hotspot_type = "pattern",
+             interaction_patterns = c("Pattern_1", "Pattern_5"),
+             colors = c(Pattern_1                  = "steelblue",
+                        "Pattern_1 near Pattern_5" = "purple",
+                        Pattern_5                  = "firebrick"))
+```
+
+## Directed overlap scores
+
+`plot_overlap_scores()` detects the directed shape (`pattern × influence`
+with a relative-abundance fill) automatically:
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plot_overlap_scores(sme_directed, title = "Directed overlap (relative abundance)")
 ```
 
 # Constructing a SpaceMarkersExperiment Manually
