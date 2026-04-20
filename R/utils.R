@@ -207,10 +207,12 @@ plot_im_scores <- function(df, interaction, cutOff = 0, nGenes = 20,
 #' @param method Character; specifies the aggregation method for gene set scores. Options are "geometric_mean" or "arithmetic_mean"
 #' @details This function computes mean interaction scores for given gene sets across cell interactions.
 #' It supports both geometric and arithmetic means, and can weight gene contributions based on their presence in multiple gene sets.
-#' @return A matrix of mean interaction scores for genes in each gene set, with 
+#' @return A matrix of mean interaction scores for genes in each gene set, with
 #' attributes for log p-value sums and number of genes for later fisher combination
-#' @export
-calculate_gene_set_score <- function(IMscores, gene_sets, weighted = TRUE, method = c("geometric_mean", "arithmetic_mean")) {
+#' @rdname calculate_gene_set_score
+setMethod("calculate_gene_set_score", "ANY",
+    function(IMscores, gene_sets = NULL, weighted = TRUE,
+             method = c("geometric_mean", "arithmetic_mean")) {
     method <- match.arg(method[1], choices = c("geometric_mean", "arithmetic_mean"))
 
     IMS <- split(IMscores, IMscores$cell_interaction)
@@ -234,7 +236,7 @@ calculate_gene_set_score <- function(IMscores, gene_sets, weighted = TRUE, metho
             if (length(geneSet) == 0) return(NA)
 
             subset_data <- ims[ims$gene %in% geneSet,]
-            
+
                         # Calculate uniqueness weight for each gene
             # Weight = 1 / (number of complexes containing this gene)
             if (!weighted) {
@@ -258,15 +260,16 @@ calculate_gene_set_score <- function(IMscores, gene_sets, weighted = TRUE, metho
         })
         scores[,i] <- unlist(temp)
     }
-    
+
     scores <- .call(scores, 2, as.numeric)
     colnames(scores) <- names(IMS)
     rownames(scores) <- names(gene_sets)
         # Add gene overlap information as an attribute
     attr(scores, "gene_complex_count") <- gene_complex_count
-    
+
     return(scores)
-}
+    }
+)
 
 
 #' @title .pick_image

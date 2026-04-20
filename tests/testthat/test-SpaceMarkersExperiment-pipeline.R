@@ -535,3 +535,22 @@ test_that("calculate_overlap_directed(SME) stores overlap_scores and analysis_ty
     expect_false(is.null(overlap_scores(sme)))
     expect_equal(analysis_type(sme), "directed")
 })
+
+# ---- Task 10: calculate_gene_set_score as S4 generic with SME method ----
+
+test_that("calculate_gene_set_score(SME) stores ligand_scores in metadata", {
+    sme <- make_fixture_sme() |>
+        calculate_influence() |>
+        find_hotspots_gmm(type = "pattern") |>
+        find_hotspots_gmm(type = "influence") |>
+        calculate_gene_scores_directed()
+    gene_set <- list(pair1 = c("G1", "G2"))
+    sme <- calculate_gene_set_score(sme, gene_sets = gene_set)
+    expect_false(is.null(S4Vectors::metadata(sme)$ligand_scores))
+})
+
+test_that("calculate_gene_set_score(SME) errors without directed_scores", {
+    sme <- make_fixture_sme()
+    expect_error(calculate_gene_set_score(sme, gene_sets = list(a = "G1")),
+                 regexp = "calculate_gene_scores_directed")
+})

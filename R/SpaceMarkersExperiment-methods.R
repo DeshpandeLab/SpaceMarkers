@@ -575,3 +575,28 @@ setMethod("calculate_overlap_directed", "SpaceMarkersExperiment",
         sme
     }
 )
+
+#' @rdname calculate_gene_set_score
+#' @aliases calculate_gene_set_score,SpaceMarkersExperiment-method
+#' @export
+setMethod("calculate_gene_set_score", "SpaceMarkersExperiment",
+    function(IMscores, gene_sets = NULL, weighted = TRUE,
+             method = c("geometric_mean", "arithmetic_mean")) {
+        sme <- IMscores
+        method <- match.arg(method)
+        scores <- directed_scores(sme)
+        if (is.null(scores)) {
+            stop("Run calculate_gene_scores_directed(x) before calculate_gene_set_score().")
+        }
+        gs <- gene_sets %||% params(sme)$lr_pairs$ligand.symbol
+        if (is.null(gs)) {
+            stop("No gene_sets supplied and no params(x)$lr_pairs$ligand.symbol available.")
+        }
+        ls <- calculate_gene_set_score(scores, gene_sets = gs,
+                                       weighted = weighted, method = method)
+        md <- S4Vectors::metadata(sme)
+        md$ligand_scores <- ls
+        S4Vectors::metadata(sme) <- md
+        sme
+    }
+)

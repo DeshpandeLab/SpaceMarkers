@@ -196,3 +196,12 @@ setGeneric("calculate_overlap_directed",
         standardGeneric("calculate_overlap_directed")
     }
 )
+
+#' @rdname calculate_gene_set_score
+#' @export
+setGeneric("calculate_gene_set_score",
+    function(IMscores, gene_sets = NULL, weighted = TRUE,
+             method = c("geometric_mean", "arithmetic_mean")) {
+        standardGeneric("calculate_gene_set_score")
+    }
+)
