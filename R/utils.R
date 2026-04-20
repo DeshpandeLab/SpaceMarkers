@@ -2,7 +2,7 @@
 #' @title calculate_overlap_undirected
 #' @description Calculate the overlap scores between patterns in hotspots
 #' @param hotspots A data frame with columns x, y, barcode and pattern names
-#' @param patternList A character vector of pattern names to calculate overlap 
+#' @param patternList A character vector of pattern names to calculate overlap
 #' scores for
 #' @param method The method to calculate overlap scores. Options are
 #' "Szymkiewicz-Simpson", "Jaccard", "Sorensen-Dice", "Ochiai" and "absolute"
@@ -10,64 +10,66 @@
 #' using the specified method. The default method is "Szymkiewicz-Simpson"
 #' overlap coefficient.
 #' @return A data frame with columns pattern1, pattern2 and overlapScore
-#' @export
 #' @examples
 #' hotspots <- data.frame(x = c(1,2,3,4,5),
 #'                         y = c(1,2,3,4,5),
 #'                         barcode = c("A","B","C","D","E"),
 #'                         pattern1 = c("pattern1",NA,"pattern1",NA,"pattern1"),
 #'                         pattern2 = c("pattern2","pattern2",NA,NA,"pattern2"))
-#' calculate_overlap_undirected(hotspots)   
+#' calculate_overlap_undirected(hotspots)
 #' calculate_overlap_undirected(hotspots, c("pattern1","pattern2"))
 #' @importFrom ggplot2 ggplot geom_tile geom_text theme_minimal
 #' @importFrom reshape2 melt
 #' @importFrom stats complete.cases
-calculate_overlap_undirected <- function(hotspots,
-                             patternList = NULL, method = c("Szymkiewicz-Simpson",
-                                                            "Jaccard", "Sorensen-Dice",
-                                                            "Ochiai", "absolute") ) {
-    # SME dispatch: extract undirected hotspots
-    if (is(hotspots, "SpaceMarkersExperiment")) {
-        hs <- hotspots(hotspots, type = "undirected")
-        if (is.null(hs)) stop("No undirected hotspots found in SpaceMarkersExperiment.")
-        hotspots <- hs
+#' @rdname calculate_overlap_undirected
+setMethod("calculate_overlap_undirected", "data.frame",
+    function(hotspots, patternList = NULL,
+             method = c("Szymkiewicz-Simpson", "Jaccard", "Sorensen-Dice",
+                        "Ochiai", "absolute")) {
+        # SME dispatch: extract undirected hotspots
+        if (is(hotspots, "SpaceMarkersExperiment")) {
+            hs <- hotspots(hotspots, type = "undirected")
+            if (is.null(hs)) stop("No undirected hotspots found in SpaceMarkersExperiment.")
+            hotspots <- hs
+        }
+
+        #stop if more than one method is supplied, do not warn by default
+        if (length(method) > 1) {
+            method <- method[1]
+            message("Only one method can be used at a time. Using ", method)
+        }
+
+        if (is.null(patternList)) {
+            patternList <- setdiff(colnames(hotspots), c("x", "y", "barcode"))
+        } else if (!all(patternList %in% colnames(hotspots))) {
+            stop("Pattern names not found in hotspots")
+        }
+
+        binarized <- (!is.na(hotspots[, patternList])) * 1
+        intersects <- t(binarized) %*% binarized
+        nHotspots <- colSums(binarized)
+        nHotsP1 <- t(t(nHotspots)) %*% array(1, length(patternList))
+        nHotsP2 <- t(nHotsP1)
+        overlapScore <- switch(method,
+            "Szymkiewicz-Simpson" = intersects / pmin(nHotsP1, nHotsP2),
+            "Jaccard" = intersects / (nHotsP1 + nHotsP2 - intersects),
+            "Sorensen-Dice" = 2 * intersects / (nHotsP1 + nHotsP2),
+            "Ochiai" = intersects / sqrt(nHotsP1 * nHotsP2),
+            "absolute" = intersects,
+            stop("Method not supported")
+        )
+
+        overlapScore[upper.tri(overlapScore, diag = TRUE)] <- NA
+
+        # Melt normalized Jaccard for output
+        dfOverlap <- reshape2::melt(overlapScore)
+        dfOverlap <- dfOverlap[stats::complete.cases(dfOverlap), ]
+        # Due to melting in lower triangular orientation, the column names are flipped
+        colnames(dfOverlap) <- c("pattern2", "pattern1", "overlapScore")
+        dfOverlap <- dfOverlap[, c(2, 1, 3)]
+        return(dfOverlap)
     }
-
-    #stop if more than one method is supplied, do not warn by default
-    if(length(method) > 1){
-        method <- method[1]
-        message("Only one method can be used at a time. Using ", method)}
-
-    if (is.null(patternList)) {
-        patternList <- setdiff(colnames(hotspots),c("x","y","barcode"))
-    } else if (!all(patternList %in% colnames(hotspots))) {
-        stop("Pattern names not found in hotspots")
-    }
-
-    binarized <- (!is.na(hotspots[,patternList]))*1
-    intersects <- t(binarized) %*% binarized
-    nHotspots <- colSums(binarized)
-    nHotsP1 <- t(t(nHotspots)) %*% array(1, length(patternList))
-    nHotsP2 <- t(nHotsP1)
-    overlapScore <- switch(method,
-        "Szymkiewicz-Simpson" = intersects/pmin(nHotsP1,nHotsP2),
-        "Jaccard" = intersects/(nHotsP1 + nHotsP2 - intersects),
-        "Sorensen-Dice" = 2*intersects/(nHotsP1 + nHotsP2),
-        "Ochiai" = intersects/sqrt(nHotsP1*nHotsP2),
-        "absolute" = intersects,
-        stop("Method not supported")
-    )
-
-    overlapScore[upper.tri(overlapScore,diag = TRUE)] <- NA
-  
-    # Melt normalized Jaccard for output
-    dfOverlap <- reshape2::melt(overlapScore)
-    dfOverlap <- dfOverlap[stats::complete.cases(dfOverlap),]
-    # Due to melting in lower triangular orientation, the column names are flipped
-    colnames(dfOverlap) <- c("pattern2", "pattern1", "overlapScore")
-    dfOverlap <- dfOverlap[,c(2,1,3)]
-    return(dfOverlap)
-}
+)
 
 #' @title plot_overlap_scores
 #' @description Plot the overlap scores between patterns in hotspots

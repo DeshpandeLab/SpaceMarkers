@@ -459,3 +459,26 @@ setMethod("get_im_scores", "SpaceMarkersExperiment", function(SpaceMarkers) {
     undirected_scores(sme) <- get_im_scores(ints)
     sme
 })
+
+#' @rdname calculate_overlap_undirected
+#' @aliases calculate_overlap_undirected,SpaceMarkersExperiment-method
+#' @export
+setMethod("calculate_overlap_undirected", "SpaceMarkersExperiment",
+    function(hotspots, patternList = NULL,
+             method = c("Szymkiewicz-Simpson", "Jaccard", "Sorensen-Dice",
+                        "Ochiai", "absolute")) {
+        sme <- hotspots
+        hs <- hotspots(sme, "undirected")
+        if (is.null(hs)) {
+            stop("Run find_all_hotspots(x) before calculate_overlap_undirected().")
+        }
+        ov <- calculate_overlap_undirected(hs, patternList = patternList,
+                                           method = method)
+        overlap_scores(sme) <- ov
+        cur <- analysis_type(sme)
+        new_type <- if (identical(cur, "directed") || identical(cur, "both"))
+            "both" else "undirected"
+        analysis_type(sme) <- new_type
+        sme
+    }
+)

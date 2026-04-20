@@ -462,3 +462,20 @@ test_that("get_im_scores(SME) errors without interactions", {
     expect_error(get_im_scores(sme),
                  regexp = "get_pairwise_interacting_genes")
 })
+
+# ---- Task 5: calculate_overlap_undirected as S4 generic with SME method ----
+
+test_that("calculate_overlap_undirected(SME) stores overlap_scores and analysis_type", {
+    sme <- make_fixture_sme() |>
+        find_all_hotspots() |>
+        calculate_overlap_undirected()
+    expect_false(is.null(overlap_scores(sme)))
+    expect_equal(analysis_type(sme), "undirected")
+})
+
+test_that("calculate_overlap_undirected(SME) preserves 'both' when directed already set", {
+    sme <- make_fixture_sme() |> find_all_hotspots()
+    analysis_type(sme) <- "directed"
+    sme <- calculate_overlap_undirected(sme)
+    expect_equal(analysis_type(sme), "both")
+})

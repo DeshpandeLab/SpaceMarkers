@@ -155,3 +155,13 @@ setGeneric("get_pairwise_interacting_genes",
 setGeneric("get_im_scores", function(SpaceMarkers) {
     standardGeneric("get_im_scores")
 })
+
+#' @rdname calculate_overlap_undirected
+#' @export
+setGeneric("calculate_overlap_undirected",
+    function(hotspots, patternList = NULL,
+             method = c("Szymkiewicz-Simpson", "Jaccard", "Sorensen-Dice",
+                        "Ochiai", "absolute")) {
+        standardGeneric("calculate_overlap_undirected")
+    }
+)
