@@ -26,7 +26,13 @@ calculate_overlap_undirected <- function(hotspots,
                              patternList = NULL, method = c("Szymkiewicz-Simpson",
                                                             "Jaccard", "Sorensen-Dice",
                                                             "Ochiai", "absolute") ) {
-    
+    # SME dispatch: extract undirected hotspots
+    if (is(hotspots, "SpaceMarkersExperiment")) {
+        hs <- hotspots(hotspots, type = "undirected")
+        if (is.null(hs)) stop("No undirected hotspots found in SpaceMarkersExperiment.")
+        hotspots <- hs
+    }
+
     #stop if more than one method is supplied, do not warn by default
     if(length(method) > 1){
         method <- method[1]
@@ -80,6 +86,12 @@ calculate_overlap_undirected <- function(hotspots,
 #' @import ggplot2
 #'
 plot_overlap_scores <- function(df, title = "Spatial Overlap Scores", out = NULL,fontsize = 15) {
+    # SME dispatch: compute overlap scores from stored hotspots
+    if (is(df, "SpaceMarkersExperiment")) {
+        hs <- hotspots(df, type = "undirected")
+        if (is.null(hs)) stop("No undirected hotspots found in SpaceMarkersExperiment.")
+        df <- calculate_overlap_undirected(hs)
+    }
     p <- ggplot2::ggplot(data = df, aes(pattern1, pattern2, fill = overlapScore)) +
         geom_tile(color = "black", size = 0.8) +
         geom_text(aes(label = round(overlapScore, 2)), size = 6) +  # Display values on the plot
@@ -114,6 +126,10 @@ plot_overlap_scores <- function(df, title = "Spatial Overlap Scores", out = NULL
 #' @importFrom stats setNames
 #' 
 get_im_scores <- function(SpaceMarkers){
+    # SME dispatch: extract stored scores if available
+    if (is(SpaceMarkers, "SpaceMarkersExperiment")) {
+        return(undirected_scores(SpaceMarkers))
+    }
     smi <- SpaceMarkers[which(sapply(SpaceMarkers, function(x) length(x[['interacting_genes']]))>0)]
     fields <- c('Gene', 'SpaceMarkersMetric')
 
@@ -153,6 +169,11 @@ get_im_scores <- function(SpaceMarkers){
 #' @importFrom utils head
 plot_im_scores <- function(df, interaction, cutOff = 0, nGenes = 20,
     geneText = 12, metricText = 12, increments = 1, out = NULL) {
+    # SME dispatch: extract undirected scores from object
+    if (is(df, "SpaceMarkersExperiment")) {
+        df <- undirected_scores(df)
+        if (is.null(df)) stop("No undirected scores found in SpaceMarkersExperiment.")
+    }
     df$genes <- df$Gene
     df <- df[order(df[[interaction]], decreasing = TRUE),]
     df <- utils::head(df,nGenes)
@@ -358,6 +379,163 @@ plot_spatial_data_over_image <- function(
         [seq_along(vals)], vals)) else ggplot2::scale_fill_manual(values="red")
   }
   return(p)
+}
+
+#' @title plot_spatial
+#' @description SME-native spatial plot. Extracts coordinates from the
+#'   \code{SpaceMarkersExperiment}, looks up \code{feature_col} in colData,
+#'   rownames (gene expression), or hotspot metadata, and overlays on the
+#'   tissue image if available. If no image is found, plots on a blank
+#'   background.
+#' @param sme A \code{SpaceMarkersExperiment} object.
+#' @param feature_col Character. Name of the feature to plot. Searched in
+#'   order: \code{colData(sme)}, \code{rownames(sme)} (gene expression),
+#'   hotspots metadata for the specified \code{hotspot_type}.
+#' @param hotspot_type One of "undirected", "pattern", "influence". Only
+#'   consulted if \code{feature_col} is not found in colData or rownames.
+#' @param image Optional: a raster or matrix image to overlay. If NULL,
+#'   tries \code{imgRaster(sme)}, then the stored \code{visiumDir} from
+#'   \code{load10X()}, then falls back to no image.
+#' @param resolution Image resolution used when loading from
+#'   \code{visiumDir}. Default "lowres".
+#' @param point_size,stroke,alpha,title,bg_color,text_size,colors ggplot
+#'   aesthetics (see \code{plot_spatial_data_over_image}).
+#' @param crop Logical; crop the view to the spot bounding box. Default TRUE.
+#' @return A ggplot object.
+#' @export
+#' @importFrom SummarizedExperiment assay
+#' @importFrom SpatialExperiment spatialCoords imgRaster
+plot_spatial <- function(sme, feature_col,
+                         hotspot_type = c("undirected", "pattern", "influence"),
+                         image = NULL,
+                         resolution = c("lowres", "hires", "fullres"),
+                         colors = NULL, point_size = 2.5, stroke = 0.05,
+                         alpha = 0.5, title = feature_col, bg_color = NULL,
+                         crop = TRUE, text_size = 15) {
+    if (!is(sme, "SpaceMarkersExperiment")) {
+        stop("sme must be a SpaceMarkersExperiment.")
+    }
+    hotspot_type <- match.arg(hotspot_type)
+    resolution <- match.arg(resolution)
+
+    # --- Extract feature values keyed by barcode ----------------------------
+    barcodes <- colnames(sme)
+    feature_vals <- NULL
+    if (feature_col %in% colnames(SummarizedExperiment::colData(sme))) {
+        feature_vals <- SummarizedExperiment::colData(sme)[[feature_col]]
+        names(feature_vals) <- barcodes
+    } else if (feature_col %in% rownames(sme)) {
+        feature_vals <- as.numeric(
+            SummarizedExperiment::assay(sme, "logcounts")[feature_col, ])
+        names(feature_vals) <- barcodes
+    } else {
+        hs <- S4Vectors::metadata(sme)$hotspots[[hotspot_type]]
+        if (!is.null(hs) && feature_col %in% colnames(hs)) {
+            feature_vals <- hs[[feature_col]]
+            names(feature_vals) <- hs$barcode
+        }
+    }
+    if (is.null(feature_vals)) {
+        stop(sprintf("feature_col '%s' not found in colData, rownames, or %s hotspots.",
+                     feature_col, hotspot_type))
+    }
+
+    # --- Coordinates --------------------------------------------------------
+    # If we have a visiumDir, load coords at the plot-time resolution so that
+    # coord scaling matches the image. Otherwise use spatialCoords(sme) as-is.
+    vdir <- sme@spacemarkers$params$visiumDir
+    if (!is.null(vdir) && dir.exists(file.path(vdir, "spatial"))) {
+        coords <- load10XCoords(vdir, resolution)
+        names(coords) <- c("barcode", "y", "x")
+    } else {
+        coords <- as.data.frame(SpatialExperiment::spatialCoords(sme))
+        if (ncol(coords) < 2) stop("spatialCoords has fewer than 2 columns.")
+        names(coords)[seq_len(2)] <- c("y", "x")
+        coords$barcode <- rownames(coords)
+        if (is.null(coords$barcode)) coords$barcode <- barcodes
+    }
+
+    df <- data.frame(barcode = names(feature_vals),
+                     feature = unname(feature_vals),
+                     stringsAsFactors = FALSE)
+    names(df)[2] <- feature_col
+    df <- merge(df, coords, by = "barcode")
+
+    # --- Resolve image ------------------------------------------------------
+    img <- NULL
+    if (!is.null(image)) {
+        img <- image
+    } else {
+        # Try imgRaster from SpatialExperiment
+        img <- tryCatch(SpatialExperiment::imgRaster(sme),
+                        error = function(e) NULL)
+        if (is.null(img) || length(img) == 0) {
+            vdir <- sme@spacemarkers$params$visiumDir
+            if (!is.null(vdir) && dir.exists(file.path(vdir, "spatial"))) {
+                img <- tryCatch(
+                    readbitmap::read.bitmap(.pick_image(
+                        file.path(vdir, "spatial"), resolution)),
+                    error = function(e) NULL)
+            }
+        }
+    }
+
+    # --- Crop and build plot ------------------------------------------------
+    if (!is.null(img)) {
+        img_mat <- if (is.matrix(img) || length(dim(img)) == 3) img else as.matrix(img)
+        nc <- if (length(dim(img_mat)) >= 2) ncol(img_mat) else length(img_mat)
+        nr <- if (length(dim(img_mat)) >= 2) nrow(img_mat) else 1L
+        if (crop) {
+            xr <- range(df$x, na.rm = TRUE); yr <- range(df$y, na.rm = TRUE)
+            xmin <- max(1L, floor(xr[1])); xmax <- min(nc, ceiling(xr[2]))
+            ymin <- max(1L, floor(yr[1])); ymax <- min(nr, ceiling(yr[2]))
+            img_mat <- img_mat[ymin:ymax, xmin:xmax, , drop = FALSE]
+            df <- dplyr::mutate(df, x_c = x - xmin + 1L, y_c = y - ymin + 1L)
+            xl <- c(0, xmax - xmin + 1L); yl <- c(0, ymax - ymin + 1L)
+        } else {
+            df <- dplyr::mutate(df, x_c = x, y_c = y)
+            xl <- c(0, nc); yl <- c(0, nr)
+        }
+        p <- ggplot2::ggplot() +
+            ggplot2::annotation_raster(as.raster(img_mat), 0, diff(xl), 0, diff(yl))
+    } else {
+        # No image: use data extents
+        df <- dplyr::mutate(df, x_c = x, y_c = y)
+        xl <- range(df$x_c, na.rm = TRUE)
+        yl <- range(df$y_c, na.rm = TRUE)
+        p <- ggplot2::ggplot()
+    }
+
+    p <- p +
+        ggplot2::geom_point(
+            data = df,
+            ggplot2::aes(x_c, yl[2] - y_c, fill = .data[[feature_col]]),
+            shape = 21, color = "black", size = point_size,
+            stroke = stroke, alpha = alpha) +
+        ggplot2::coord_fixed(xlim = xl, ylim = yl, expand = FALSE) +
+        ggplot2::labs(fill = feature_col, x = NULL, y = NULL, title = title) +
+        ggplot2::theme_bw(text_size) +
+        ggplot2::theme(
+            plot.background = if (!is.null(bg_color))
+                ggplot2::element_rect(fill = bg_color, color = NA)
+            else ggplot2::element_blank()
+        )
+
+    if (is.numeric(df[[feature_col]])) {
+        p <- p + (if (!is.null(colors))
+                    ggplot2::scale_fill_gradientn(colours = colors)
+                  else viridis::scale_fill_viridis())
+    } else {
+        vals <- unique(stats::na.omit(df[[feature_col]]))
+        p <- p + if (!is.null(colors))
+                    ggplot2::scale_fill_manual(values = colors)
+                 else if (length(vals) > 1)
+                    ggplot2::scale_fill_manual(values = stats::setNames(
+                        RColorBrewer::brewer.pal(max(3, min(length(vals), 9)),
+                                                 "Set1")[seq_along(vals)], vals))
+                 else ggplot2::scale_fill_manual(values = "red")
+    }
+    return(p)
 }
 
 

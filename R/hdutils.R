@@ -326,11 +326,20 @@ calculate_gene_scores_directed <- function(data, pat_hotspots, influence_hotspot
 #' @importFrom ggplot2 ggplot geom_tile geom_text theme_minimal
 #' @importFrom reshape2 melt
 #' @importFrom stats complete.cases
-calculate_overlap_directed <- function(pat_hotspots, influence_hotspots,
+calculate_overlap_directed <- function(pat_hotspots, influence_hotspots = NULL,
                              patternList = NULL, method = c("relative-abundance",
                                                             "differential-abundance",
                                                              "absolute") ) {
-    
+    # SME dispatch: extract pattern and influence hotspots
+    if (is(pat_hotspots, "SpaceMarkersExperiment")) {
+        sme <- pat_hotspots
+        pat_hotspots <- hotspots(sme, type = "pattern")
+        influence_hotspots <- hotspots(sme, type = "influence")
+        if (is.null(pat_hotspots) || is.null(influence_hotspots)) {
+            stop("No directed hotspots found in SpaceMarkersExperiment.")
+        }
+    }
+
     #warn if more than one method is supplied, do not warn by default
     if(length(method) > 1){
         method <- method[1]

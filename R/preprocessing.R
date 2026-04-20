@@ -175,8 +175,13 @@ load10XCoords <- function(visiumDir, resolution = c("fullres","lowres","hires"),
 
 get_spatial_features <- function(filePath, method = NULL, featureNames = "."){
 
-    #read the features object based on the format
-    spObject <- .read_format(filePath)
+    # If already an R object (e.g., SpatialExperiment), use directly
+    if (is.object(filePath) && !is.character(filePath)) {
+        spObject <- filePath
+    } else {
+        #read the features object based on the format
+        spObject <- .read_format(filePath)
+    }
 
     #determine the method to use for feature extractioin
     method <- .infer_method(spObject, method)
@@ -184,7 +189,8 @@ get_spatial_features <- function(filePath, method = NULL, featureNames = "."){
     spFun <- c("CoGAPS"=.get_cogaps_features,
                 "BayesTME"=.get_BTME_features,
                 "Seurat"=.get_seurat_features,
-                "CSV"=.get_csv_features)
+                "CSV"=.get_csv_features,
+                "SpatialExperiment"=.get_spe_features)
 
     spFeatures <- spFun[[method]](spObject)
 
@@ -233,7 +239,9 @@ get_spatial_features <- function(filePath, method = NULL, featureNames = "."){
 #' @keywords internal
 .infer_method <- function(spObject, method){
     if(is.null(method)){
-        if(inherits(spObject, "H5File")){
+        if(inherits(spObject, "SpatialExperiment")){
+            method <- "SpatialExperiment"
+        } else if(inherits(spObject, "H5File")){
             method <- "BayesTME"
         } else if(inherits(spObject, "CogapsResult")){
             method <- "CoGAPS"
@@ -292,7 +300,7 @@ get_spatial_features <- function(filePath, method = NULL, featureNames = "."){
 #' .get_csv_features
 #' Load features from dataframe
 #' @keywords internal
-#' 
+#'
 .get_csv_features <- function(obj){
     spFeatures <- obj
     if ("barcode" %in% colnames(spFeatures)){
@@ -308,4 +316,128 @@ get_spatial_features <- function(filePath, method = NULL, featureNames = "."){
     removeCols <- c("NA","barcode","in_tissue","array_row","array_col","pxl_col_in_fullres","pxl_row_in_fullres")
     spFeatures <- spFeatures[,-which(startsWith(colnames(spFeatures),"X") | colnames(spFeatures) %in% removeCols)]
     return(spFeatures)
+}
+
+#' .get_spe_features
+#' Extract spatial features from a SpatialExperiment object's colData
+#' @keywords internal
+.get_spe_features <- function(obj) {
+    cd <- as.data.frame(SummarizedExperiment::colData(obj))
+    # Remove standard SE/SPE columns
+    remove_cols <- c("sample_id", "in_tissue", "array_row", "array_col",
+                     "pxl_col_in_fullres", "pxl_row_in_fullres",
+                     "sizeFactor")
+    keep_cols <- setdiff(colnames(cd), remove_cols)
+    # Keep only numeric columns as features
+    is_numeric <- vapply(cd[, keep_cols, drop = FALSE], is.numeric,
+                         logical(1))
+    spFeatures <- cd[, keep_cols[is_numeric], drop = FALSE]
+    if (ncol(spFeatures) == 0) {
+        stop("No numeric feature columns found in SpatialExperiment colData.")
+    }
+    return(as.data.frame(spFeatures))
+}
+
+#===================
+#' @title Load 10X Visium data as a SpaceMarkersExperiment
+#' @description Convenience function that loads expression, coordinates, and
+#'   optionally spatial features from a 10X Visium directory and assembles them
+#'   into a \code{\link{SpaceMarkersExperiment}} object.
+#' @param visiumDir A string path to the 10X Visium directory.
+#' @param features Optional: a file path or object for spatial features, passed
+#'   to \code{\link{get_spatial_features}}.
+#' @param h5filename Name of the H5 expression file. Default
+#'   "filtered_feature_bc_matrix.h5".
+#' @param resolution Resolution for coordinates. One of "fullres", "lowres",
+#'   "hires".
+#' @param version Optional Spaceranger version.
+#' @param ... Additional arguments passed to \code{get_spatial_features}.
+#' @return A \code{\link{SpaceMarkersExperiment}} object.
+#' @export
+load10X <- function(visiumDir,
+                         features = NULL,
+                         h5filename = "filtered_feature_bc_matrix.h5",
+                         resolution = c("fullres", "lowres", "hires"),
+                         version = NULL,
+                         ...) {
+    resolution <- match.arg(resolution)
+    expr <- load10XExpr(visiumDir = visiumDir, h5filename = h5filename)
+    coords <- load10XCoords(visiumDir = visiumDir,
+                            resolution = resolution, version = version)
+    rownames(coords) <- coords$barcode
+
+    all_expr <- colnames(expr)
+    all_coords <- coords$barcode
+    common <- intersect(all_expr, all_coords)
+    dropped <- length(all_expr) + length(all_coords) - 2L * length(common)
+    if (dropped > 0L) {
+        warning(sprintf(
+            "Dropped %d spots not present in both expression and coordinates. Keeping %d common spots.",
+            dropped, length(common)
+        ))
+    }
+    expr <- expr[, common, drop = FALSE]
+    coords <- coords[common, , drop = FALSE]
+
+    coord_mat <- as.matrix(coords[, c("y", "x")])
+    rownames(coord_mat) <- common
+
+    cd <- S4Vectors::DataFrame(row.names = common)
+    pattern_names <- NULL
+
+    if (!is.null(features)) {
+        spFeatures <- get_spatial_features(features, ...)
+        shared <- intersect(common, rownames(spFeatures))
+        dropped_feat <- length(rownames(spFeatures)) - length(shared)
+        dropped_sme <- length(common) - length(shared)
+        if (dropped_feat > 0L || dropped_sme > 0L) {
+            warning(sprintf(
+                paste0("Spot mismatch: %d spots in expression/coords and ",
+                       "%d spots in features not shared. ",
+                       "Keeping %d common spots for features (NA-padded)."),
+                dropped_sme, dropped_feat, length(shared)
+            ))
+        }
+        feat_df <- S4Vectors::DataFrame(
+            spFeatures[shared, , drop = FALSE],
+            row.names = shared
+        )
+        # Pad unmatched spots with NA
+        for (col in colnames(feat_df)) {
+            cd[[col]] <- NA_real_
+            cd[shared, col] <- feat_df[shared, col]
+        }
+        pattern_names <- colnames(spFeatures)
+    }
+
+    # Pre-compute spatial parameters from the scalefactors JSON if available
+    spatial_par <- NULL
+    if (!is.null(pattern_names)) {
+        spCoords <- coords[common, c("barcode", "y", "x"), drop = FALSE]
+        spPats <- as.data.frame(spFeatures[common, , drop = FALSE])
+        spPatterns_combined <- cbind(spCoords, spPats)
+        tryCatch({
+            spatial_par <- get_spatial_parameters(
+                spatialPatterns = spPatterns_combined,
+                visiumDir = visiumDir,
+                resolution = resolution
+            )
+        }, error = function(e) NULL)
+    }
+
+    sm <- as(list(
+        params = list(
+            pattern_names = pattern_names,
+            spatial_params = spatial_par,
+            visiumDir = visiumDir,
+            resolution = resolution
+        )
+    ), "SimpleList")
+
+    SpaceMarkersExperiment(
+        assays = list(logcounts = expr),
+        colData = cd,
+        spatialCoords = coord_mat,
+        spaceMarkers = sm
+    )
 }

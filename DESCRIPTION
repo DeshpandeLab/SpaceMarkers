@@ -15,10 +15,14 @@ Description: Spatial transcriptomic technologies have helped to resolve the conn
             important molecular interactions in these tissues. SpaceMarkers, R/Bioconductor software,
             can help to find molecular interactions, by identifying genes associated with latent space 
             interactions in spatial transcriptomics.
-Depends: 
-    R (>= 4.4.0)
+Depends:
+    R (>= 4.4.0),
+    SpatialExperiment
 biocViews: SingleCell, GeneExpression, Software, Spatial, Transcriptomics
 Imports:
+    SingleCellExperiment,
+    SummarizedExperiment,
+    S4Vectors,
     matrixStats,
     matrixTests,
     rstatix,
@@ -58,6 +62,20 @@ Enhances:
     BiocParallel
 VignetteBuilder: 
     knitr
+Collate:
+    'AllClasses.R'
+    'AllGenerics.R'
+    'SpaceMarkersExperiment-methods.R'
+    'data.R'
+    'findGenesOfInterest.R'
+    'getInteractingGenes.R'
+    'getSpatialParameters.R'
+    'hdutils.R'
+    'preprocessing.R'
+    'OneSpaceMarkers.R'
+    'plotLRCircos.R'
+    'test-helper.R'
+    'utils.R'
 Config/testthat/edition: 3
 Encoding: UTF-8
 LazyData: false

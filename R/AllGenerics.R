@@ -1,0 +1,83 @@
+#' @include AllClasses.R
+
+#' @title Accessor generics for SpaceMarkersExperiment
+#' @name SpaceMarkersExperiment-accessors
+#' @description Generics for accessing SpaceMarkersExperiment results.
+
+#' @rdname spatial_patterns
+#' @export
+setGeneric("spatial_patterns", function(x, ...) {
+    standardGeneric("spatial_patterns")
+})
+
+#' @rdname spatial_patterns
+#' @export
+setGeneric("spatial_patterns<-", function(x, value) {
+    standardGeneric("spatial_patterns<-")
+})
+
+#' @rdname spatial_params
+#' @export
+setGeneric("spatial_params", function(x, ...) {
+    standardGeneric("spatial_params")
+})
+
+#' @rdname spatial_params
+#' @export
+setGeneric("spatial_params<-", function(x, value) {
+    standardGeneric("spatial_params<-")
+})
+
+#' @rdname params
+#' @export
+setGeneric("params", function(x, ...) {
+    standardGeneric("params")
+})
+
+#' @rdname hotspots
+#' @export
+setGeneric("hotspots", function(x, ...) {
+    standardGeneric("hotspots")
+})
+
+#' @rdname influence_map
+#' @export
+setGeneric("influence_map", function(x, ...) {
+    standardGeneric("influence_map")
+})
+
+#' @rdname interactions
+#' @export
+setGeneric("interactions", function(x, ...) {
+    standardGeneric("interactions")
+})
+
+#' @rdname undirected_scores
+#' @export
+setGeneric("undirected_scores", function(x, ...) {
+    standardGeneric("undirected_scores")
+})
+
+#' @rdname directed_scores
+#' @export
+setGeneric("directed_scores", function(x, ...) {
+    standardGeneric("directed_scores")
+})
+
+#' @rdname lr_scores
+#' @export
+setGeneric("lr_scores", function(x, ...) {
+    standardGeneric("lr_scores")
+})
+
+#' @rdname overlap_scores
+#' @export
+setGeneric("overlap_scores", function(x, ...) {
+    standardGeneric("overlap_scores")
+})
+
+#' @rdname analysis_type
+#' @export
+setGeneric("analysis_type", function(x, ...) {
+    standardGeneric("analysis_type")
+})
