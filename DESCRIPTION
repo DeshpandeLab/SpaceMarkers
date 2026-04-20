@@ -65,15 +65,15 @@ VignetteBuilder:
 Collate:
     'AllClasses.R'
     'AllGenerics.R'
+    'OneSpaceMarkers.R'
     'SpaceMarkersExperiment-methods.R'
     'data.R'
     'findGenesOfInterest.R'
     'getInteractingGenes.R'
     'getSpatialParameters.R'
     'hdutils.R'
-    'preprocessing.R'
-    'OneSpaceMarkers.R'
     'plotLRCircos.R'
+    'preprocessing.R'
     'test-helper.R'
     'utils.R'
 Config/testthat/edition: 3

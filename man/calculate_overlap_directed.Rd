@@ -6,7 +6,7 @@
 \usage{
 calculate_overlap_directed(
   pat_hotspots,
-  influence_hotspots,
+  influence_hotspots = NULL,
   patternList = NULL,
   method = c("relative-abundance", "differential-abundance", "absolute")
 )
