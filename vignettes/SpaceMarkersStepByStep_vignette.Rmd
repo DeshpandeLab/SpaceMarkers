@@ -120,42 +120,43 @@ spatial_params(sme)
 # Undirected Analysis
 
 The undirected analysis identifies genes that are differentially expressed in
-the overlap zone between two patterns. We use Pattern\_1 (immune) and
+the overlap zone between two patterns. We focus on Pattern\_1 (immune) and
 Pattern\_2, which show substantial spatial co-occurrence in this dataset.
 
-Each step of the pipeline is an SME-in / SME-out method: the SME is passed
+Every step of the pipeline is an SME-in / SME-out method: the SME is passed
 through a chain of step functions that each read their inputs from the object
 and write their outputs back to the appropriate slot. Writes happen via the
 setter generics (`hotspots<-`, `interactions<-`, `undirected_scores<-`,
 `overlap_scores<-`, `analysis_type<-`); no manual `@spacemarkers` or
 `metadata()` assignment is needed.
 
-`find_all_hotspots()` labels each spot relative to each pattern's kernel
-smoothing null distribution. `get_pairwise_interacting_genes()` tests each
-gene for differential expression between the overlap zone of every pattern
-pair and the two exclusive zones — we restrict it to the Pattern\_1 ×
-Pattern\_2 pair via the `pattern_pairs` argument so the narrative below
-matches the main vignette. `get_im_scores()` aggregates the per-gene test
-results into a score matrix. `calculate_overlap_undirected()` quantifies
-hotspot-region overlap across all pattern pairs and sets
-`analysis_type(sme) <- "undirected"`.
+We'll walk through the five pipeline steps one at a time, visualizing what
+each step produces.
 
-```{r message=FALSE, warning=FALSE}
-sme_ud <- sme |>
-    find_all_hotspots() |>
-    get_pairwise_interacting_genes(
-        mode = "DE", analysis = "enrichment", minOverlap = 10, workers = 1,
-        pattern_pairs = rbind(c("Pattern_1", "Pattern_2"))
-    ) |>
-    get_im_scores() |>
-    calculate_overlap_undirected()
+## Step 0: Visualize the starting patterns
+
+Before running any pipeline step, inspect the CoGAPS patterns on the tissue.
+`plot_spatial()` resolves a feature name against `colData` (for patterns),
+`rownames(sme)` (for gene expression), or the hotspot metadata (via the
+`hotspot_type` argument).
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plot_spatial(sme, feature_col = "Pattern_1", title = "Pattern_1 (immune)")
 ```
 
-## Inspect the result
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plot_spatial(sme, feature_col = "Pattern_2", title = "Pattern_2")
+```
 
-```{r}
-# Hotspot labels per spot / per pattern
-head(hotspots(sme_ud, "undirected"))
+## Step 1: Find hotspots
+
+`find_all_hotspots()` labels each spot as a hotspot (or `NA`) for every
+pattern, using a Gaussian-kernel null distribution with the pre-computed
+`spatial_params(sme)`. The result is stored in
+`metadata(sme)$hotspots$undirected` via the `hotspots<-` setter.
+
+```{r message=FALSE, warning=FALSE}
+sme_ud <- find_all_hotspots(sme)
 ```
 
 ```{r}
@@ -165,39 +166,228 @@ pat_cols <- setdiff(colnames(hs), c("barcode", "y", "x"))
 vapply(pat_cols, function(p) mean(!is.na(hs[[p]])), numeric(1))
 ```
 
+Plot the hotspot labels for each pattern — pass `hotspot_type = "undirected"`
+so `plot_spatial()` pulls values from the hotspots metadata instead of the
+continuous pattern column in `colData`.
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plot_spatial(sme_ud, feature_col = "Pattern_1",
+             hotspot_type = "undirected",
+             title = "Pattern_1 hotspots")
+```
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plot_spatial(sme_ud, feature_col = "Pattern_2",
+             hotspot_type = "undirected",
+             title = "Pattern_2 hotspots")
+```
+
+## Step 2: Find pairwise interacting genes
+
+`get_pairwise_interacting_genes()` tests each gene for differential
+expression between the Pattern\_1 × Pattern\_2 overlap zone and each
+pattern's exclusive zone. The `pattern_pairs` argument scopes the test to a
+single pair so the narrative stays focused; omit it to compute all pairs.
+The full per-gene result list is written to `metadata(sme)$interactions`.
+
+```{r message=FALSE, warning=FALSE}
+sme_ud <- get_pairwise_interacting_genes(
+    sme_ud,
+    mode = "DE", analysis = "enrichment",
+    minOverlap = 10, workers = 1,
+    pattern_pairs = rbind(c("Pattern_1", "Pattern_2"))
+)
+```
+
 ```{r}
-# Detailed per-gene statistics for the first pattern pair
+# Detailed per-gene statistics for the Pattern_1 x Pattern_2 pair
+names(interactions(sme_ud))
 pair1 <- interactions(sme_ud)[[1]]
 if (length(pair1$interacting_genes) > 0) {
     head(pair1$interacting_genes[[1]])
 }
 ```
 
+## Step 3: Calculate IM scores
+
+`get_im_scores()` aggregates the per-gene Kruskal–Wallis + Dunn's-test
+statistics from the previous step into a single score matrix (genes × pattern
+pairs), stored via `undirected_scores<-`.
+
 ```{r}
+sme_ud <- get_im_scores(sme_ud)
 head(undirected_scores(sme_ud))
+```
+
+The top-ranked genes for the Pattern\_1 × Pattern\_2 interaction:
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+pair_col <- setdiff(colnames(undirected_scores(sme_ud)), "Gene")[1]
+plot_im_scores(sme_ud, interaction = pair_col, nGenes = 10)
+```
+
+Plot the top gene's spatial expression — the IM score is a summary of where
+a gene is differentially expressed in the overlap zone.
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+ims <- undirected_scores(sme_ud)
+top_gene <- ims[order(ims[[pair_col]], decreasing = TRUE), "Gene"][1]
+plot_spatial(sme_ud, feature_col = top_gene,
+             title = sprintf("%s (top %s gene)", top_gene, pair_col))
+```
+
+## Step 4: Calculate overlap scores
+
+`calculate_overlap_undirected()` measures how much each pair's hotspots
+actually overlap in space (Szymkiewicz–Simpson by default). The resulting
+table is stored via `overlap_scores<-` and `analysis_type(sme)` is set to
+`"undirected"`.
+
+```{r}
+sme_ud <- calculate_overlap_undirected(sme_ud)
 overlap_scores(sme_ud)
 analysis_type(sme_ud)
+```
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plot_overlap_scores(sme_ud)
 ```
 
 # Directed Analysis
 
 The directed analysis quantifies how much each pattern's *spatial influence*
-drives gene expression in the hotspot of the opposing pattern. We use
-Pattern\_1 (immune) and Pattern\_5 (cancer), following the main vignette.
+drives gene expression in the hotspot of the opposing pattern. We focus on
+Pattern\_1 (immune) → Pattern\_5 (cancer), matching the main vignette.
 
 The directed workflow uses Gaussian mixture model thresholds rather than the
-kernel null distribution used in the undirected workflow. `calculate_influence()`
-applies kernel smoothing to each pattern independently, producing an
-*influence* map — for each spot, how strongly does the pattern radiate into
-the neighborhood. `find_hotspots_gmm()` dispatches on an SME and accepts a
-`type` argument to choose between operating on the pattern columns
-(`type = "pattern"`) or on the computed influence map (`type = "influence"`).
-`calculate_gene_scores_directed()` scores each gene per source→target pair;
-we restrict it to the Pattern\_1 × Pattern\_5 pair via `pattern_pairs`.
-`calculate_overlap_directed()` finishes by quantifying hotspot vs.
-influence-zone overlap and setting `analysis_type(sme) <- "directed"`.
+kernel null distribution used in the undirected workflow, so the hotspot
+step differs — you supply `type = "pattern"` (on the pattern values) or
+`type = "influence"` (on the smoothed influence map).
+
+## Step 0: Visualize the starting patterns
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plot_spatial(sme, feature_col = "Pattern_1", title = "Pattern_1 (immune)")
+```
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plot_spatial(sme, feature_col = "Pattern_5", title = "Pattern_5 (cancer)")
+```
+
+## Step 1: Calculate influence
+
+`calculate_influence()` applies kernel smoothing to each pattern column
+independently, producing per-spot values that describe how far each pattern
+"radiates" into the surrounding tissue. The result is a data.frame stored in
+`metadata(sme)$influence` via `influence_map<-`.
 
 ```{r message=FALSE, warning=FALSE}
+sme_dir <- calculate_influence(sme)
+head(influence_map(sme_dir))
+```
+
+## Step 2: Find pattern hotspots
+
+`find_hotspots_gmm(type = "pattern")` fits a two-component Gaussian mixture
+model to each pattern's value distribution and labels spots above the
+boundary as hotspots. Stored under `metadata(sme)$hotspots$pattern`.
+
+```{r message=FALSE, warning=FALSE}
+sme_dir <- find_hotspots_gmm(sme_dir, type = "pattern")
+```
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plot_spatial(sme_dir, feature_col = "Pattern_1",
+             hotspot_type = "pattern",
+             title = "Pattern_1 GMM hotspots")
+```
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plot_spatial(sme_dir, feature_col = "Pattern_5",
+             hotspot_type = "pattern",
+             title = "Pattern_5 GMM hotspots")
+```
+
+## Step 3: Find influence hotspots
+
+Running `find_hotspots_gmm(type = "influence")` applies the same GMM
+thresholding but to the smoothed influence map from Step 1 — spots under
+strong influence of each pattern. Stored under
+`metadata(sme)$hotspots$influence`.
+
+```{r message=FALSE, warning=FALSE}
+sme_dir <- find_hotspots_gmm(sme_dir, type = "influence")
+```
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plot_spatial(sme_dir, feature_col = "Pattern_1",
+             hotspot_type = "influence",
+             title = "Pattern_1 influence hotspots")
+```
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plot_spatial(sme_dir, feature_col = "Pattern_5",
+             hotspot_type = "influence",
+             title = "Pattern_5 influence hotspots")
+```
+
+## Step 4: Directed gene scores
+
+`calculate_gene_scores_directed()` scores each gene for each source → target
+pair, using the intersection of the target's GMM hotspot and the source's
+influence hotspot as the interaction zone. `pattern_pairs` restricts to the
+Pattern\_1 × Pattern\_5 pair. Results written via `directed_scores<-`.
+
+```{r message=FALSE, warning=FALSE}
+sme_dir <- calculate_gene_scores_directed(
+    sme_dir,
+    pattern_pairs = rbind(c("Pattern_1", "Pattern_5"))
+)
+```
+
+```{r}
+head(directed_scores(sme_dir))
+```
+
+The top gene for the strongest directed interaction, plotted on the tissue:
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+ds <- directed_scores(sme_dir)
+ci <- sort(unique(ds$cell_interaction))[1]
+top_gene <- ds[ds$cell_interaction == ci, ]
+top_gene <- top_gene[order(-top_gene$effect_size), "gene"][1]
+plot_spatial(sme_dir, feature_col = top_gene,
+             title = sprintf("%s (top directed gene, %s)", top_gene, ci))
+```
+
+## Step 5: Directed overlap scores
+
+`calculate_overlap_directed()` quantifies how much each pattern's hotspot
+overlaps with the opposing pattern's influence zone, and sets
+`analysis_type(sme)` to `"directed"`.
+
+```{r}
+sme_dir <- calculate_overlap_directed(sme_dir)
+overlap_scores(sme_dir)
+analysis_type(sme_dir)
+```
+
+# Putting it together
+
+Once the individual steps make sense, the whole analysis is a single pipe
+chain:
+
+```{r eval=FALSE}
+sme_ud <- sme |>
+    find_all_hotspots() |>
+    get_pairwise_interacting_genes(
+        mode = "DE", analysis = "enrichment",
+        minOverlap = 10, workers = 1,
+        pattern_pairs = rbind(c("Pattern_1", "Pattern_2"))
+    ) |>
+    get_im_scores() |>
+    calculate_overlap_undirected()
+
 sme_dir <- sme |>
     calculate_influence() |>
     find_hotspots_gmm(type = "pattern") |>
@@ -206,62 +396,6 @@ sme_dir <- sme |>
         pattern_pairs = rbind(c("Pattern_1", "Pattern_5"))
     ) |>
     calculate_overlap_directed()
-```
-
-## Inspect the result
-
-```{r}
-head(hotspots(sme_dir, "pattern"))
-```
-
-```{r}
-head(hotspots(sme_dir, "influence"))
-```
-
-```{r}
-head(influence_map(sme_dir))
-```
-
-```{r}
-head(directed_scores(sme_dir))
-overlap_scores(sme_dir)
-analysis_type(sme_dir)
-```
-
-# Visualization
-
-Since results are stored in the SME, all visualization functions work
-identically to the high-level workflow.
-
-## IM Scores Bar Plot
-
-```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
-plot_im_scores(sme_ud, interaction = "Pattern_1_Pattern_2", nGenes = 10)
-```
-
-## Spatial Pattern Plots
-
-`plot_spatial()` resolves the feature name from `colData`, gene expression, or
-hotspot metadata automatically, and loads the tissue image at the requested
-resolution.
-
-```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
-plot_spatial(sme_dir, feature_col = "Pattern_1", title = "Pattern_1 (immune)")
-```
-
-```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
-plot_spatial(sme_dir, feature_col = "Pattern_5", title = "Pattern_5 (cancer)")
-```
-
-## Top Interacting Genes
-
-```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
-ims <- undirected_scores(sme_ud)
-top_genes <- head(ims[order(ims$Pattern_1_Pattern_2, decreasing = TRUE), "Gene"], 5)
-
-for (g in top_genes) {
-    print(plot_spatial(sme_ud, feature_col = g, title = g))
-}
 ```
 
 # Cleanup
