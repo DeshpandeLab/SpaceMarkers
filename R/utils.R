@@ -411,6 +411,7 @@ plot_spatial_data_over_image <- function(
 #' @importFrom SpatialExperiment spatialCoords imgRaster
 plot_spatial <- function(sme, feature_col,
                          hotspot_type = c("undirected", "pattern", "influence"),
+                         source = c("auto", "colData", "assay", "hotspots", "influence_map"),
                          image = NULL,
                          resolution = c("lowres", "hires", "fullres"),
                          colors = NULL, point_size = 2.5, stroke = 0.05,
@@ -420,28 +421,53 @@ plot_spatial <- function(sme, feature_col,
         stop("sme must be a SpaceMarkersExperiment.")
     }
     hotspot_type <- match.arg(hotspot_type)
+    source <- match.arg(source)
     resolution <- match.arg(resolution)
 
     # --- Extract feature values keyed by barcode ----------------------------
+    # When `source` is "auto" we fall through colData -> assay -> hotspots.
+    # Otherwise we look in exactly one place so the caller can force, e.g.,
+    # hotspot labels for a feature name that also exists as a colData column.
     barcodes <- colnames(sme)
     feature_vals <- NULL
-    if (feature_col %in% colnames(SummarizedExperiment::colData(sme))) {
-        feature_vals <- SummarizedExperiment::colData(sme)[[feature_col]]
-        names(feature_vals) <- barcodes
-    } else if (feature_col %in% rownames(sme)) {
-        feature_vals <- as.numeric(
-            SummarizedExperiment::assay(sme, "logcounts")[feature_col, ])
-        names(feature_vals) <- barcodes
-    } else {
-        hs <- S4Vectors::metadata(sme)$hotspots[[hotspot_type]]
-        if (!is.null(hs) && feature_col %in% colnames(hs)) {
-            feature_vals <- hs[[feature_col]]
-            names(feature_vals) <- hs$barcode
+    lookup_colData <- function() {
+        cd <- SummarizedExperiment::colData(sme)
+        if (feature_col %in% colnames(cd)) {
+            v <- cd[[feature_col]]; names(v) <- barcodes; v
         }
     }
+    lookup_assay <- function() {
+        if (feature_col %in% rownames(sme)) {
+            v <- as.numeric(SummarizedExperiment::assay(sme, "logcounts")[feature_col, ])
+            names(v) <- barcodes; v
+        }
+    }
+    lookup_hotspots <- function() {
+        hs <- S4Vectors::metadata(sme)$hotspots[[hotspot_type]]
+        if (!is.null(hs) && feature_col %in% colnames(hs)) {
+            v <- hs[[feature_col]]; names(v) <- hs$barcode; v
+        }
+    }
+    lookup_influence <- function() {
+        im <- S4Vectors::metadata(sme)$influence
+        if (!is.null(im) && feature_col %in% colnames(im)) {
+            v <- im[[feature_col]]; names(v) <- im$barcode; v
+        }
+    }
+
+    feature_vals <- switch(source,
+        auto          = lookup_colData() %||% lookup_assay() %||% lookup_hotspots(),
+        colData       = lookup_colData(),
+        assay         = lookup_assay(),
+        hotspots      = lookup_hotspots(),
+        influence_map = lookup_influence()
+    )
     if (is.null(feature_vals)) {
-        stop(sprintf("feature_col '%s' not found in colData, rownames, or %s hotspots.",
-                     feature_col, hotspot_type))
+        stop(sprintf(
+            "feature_col '%s' not found in source='%s'%s.",
+            feature_col, source,
+            if (source == "hotspots") sprintf(" (hotspot_type='%s')", hotspot_type) else ""
+        ))
     }
 
     # --- Coordinates --------------------------------------------------------

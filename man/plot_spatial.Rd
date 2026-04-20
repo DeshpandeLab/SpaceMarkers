@@ -8,6 +8,7 @@ plot_spatial(
   sme,
   feature_col,
   hotspot_type = c("undirected", "pattern", "influence"),
+  source = c("auto", "colData", "assay", "hotspots", "influence_map"),
   image = NULL,
   resolution = c("lowres", "hires", "fullres"),
   colors = NULL,

@@ -172,13 +172,13 @@ continuous pattern column in `colData`.
 
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 plot_spatial(sme_ud, feature_col = "Pattern_1",
-             hotspot_type = "undirected",
+             source = "hotspots", hotspot_type = "undirected",
              title = "Pattern_1 hotspots")
 ```
 
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 plot_spatial(sme_ud, feature_col = "Pattern_2",
-             hotspot_type = "undirected",
+             source = "hotspots", hotspot_type = "undirected",
              title = "Pattern_2 hotspots")
 ```
 
@@ -286,6 +286,22 @@ sme_dir <- calculate_influence(sme)
 head(influence_map(sme_dir))
 ```
 
+Plot the smoothed influence map for each pattern (`source = "influence_map"`
+makes `plot_spatial` read from `metadata(sme)$influence` instead of the
+continuous pattern column in `colData`):
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plot_spatial(sme_dir, feature_col = "Pattern_1",
+             source = "influence_map",
+             title = "Pattern_1 influence")
+```
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plot_spatial(sme_dir, feature_col = "Pattern_5",
+             source = "influence_map",
+             title = "Pattern_5 influence")
+```
+
 ## Step 2: Find pattern hotspots
 
 `find_hotspots_gmm(type = "pattern")` fits a two-component Gaussian mixture
@@ -298,13 +314,13 @@ sme_dir <- find_hotspots_gmm(sme_dir, type = "pattern")
 
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 plot_spatial(sme_dir, feature_col = "Pattern_1",
-             hotspot_type = "pattern",
+             source = "hotspots", hotspot_type = "pattern",
              title = "Pattern_1 GMM hotspots")
 ```
 
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 plot_spatial(sme_dir, feature_col = "Pattern_5",
-             hotspot_type = "pattern",
+             source = "hotspots", hotspot_type = "pattern",
              title = "Pattern_5 GMM hotspots")
 ```
 
@@ -321,13 +337,13 @@ sme_dir <- find_hotspots_gmm(sme_dir, type = "influence")
 
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 plot_spatial(sme_dir, feature_col = "Pattern_1",
-             hotspot_type = "influence",
+             source = "hotspots", hotspot_type = "influence",
              title = "Pattern_1 influence hotspots")
 ```
 
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 plot_spatial(sme_dir, feature_col = "Pattern_5",
-             hotspot_type = "influence",
+             source = "hotspots", hotspot_type = "influence",
              title = "Pattern_5 influence hotspots")
 ```
 
