@@ -26,9 +26,9 @@ knitr::opts_chunk$set(out.extra = 'style="display:block; margin:auto;"')
 
 This vignette mirrors the *SpaceMarkers with SpatialExperiment Objects* vignette
 but replaces the single `SpaceMarkers()` call with each constituent function
-called explicitly. The goal is to show what the pipeline is doing at every step
-and how the `SpaceMarkersExperiment` (SME) object serves as both the data source
-(via accessors) and the result container (via slot assignment).
+called explicitly. Every step dispatches on the `SpaceMarkersExperiment` (SME)
+and returns an updated SME, so the analysis is a chain of SME-in / SME-out
+calls — no manual slot assignment or pre-extracted matrices required.
 
 The same breast cancer Visium dataset is used throughout.
 
@@ -98,40 +98,23 @@ sme <- sme[keep_genes, ]
 sme
 ```
 
-# Extracting Inputs from the SME
+# Accessors
 
-The individual SpaceMarkers functions expect three objects that are each
-directly derived from the SME:
+The SME holds everything the pipeline needs. A few accessors are
+worth knowing before walking through the steps:
 
-| Object | Role | SME accessor |
-|--------|------|--------------|
-| `expr` | Genes × spots expression matrix | `assay(sme, "logcounts")` |
-| `spPatterns` | barcode + coords + pattern columns | `spatialCoords()` + `spatial_patterns()` |
-| `optParams` | 2 × n kernel parameter matrix | `spatial_params(sme)` |
+| Accessor | Returns |
+|----------|---------|
+| `assay(sme, "logcounts")` | Genes × spots expression matrix |
+| `spatialCoords(sme)` | Spot coordinates |
+| `spatial_patterns(sme)` | Pattern values per spot |
+| `spatial_params(sme)` | Pre-computed kernel parameters (2 × n) |
 
-```{r}
-# Expression matrix (genes x spots)
-expr <- assay(sme, "logcounts")
-dim(expr)
-```
+The SME pipeline methods read these internally — you do not need to extract
+them by hand before each step.
 
 ```{r}
-# spPatterns: barcode, y, x, then one column per pattern
-coords <- as.data.frame(spatialCoords(sme))   # columns: y, x
-spPatterns_full <- data.frame(
-    barcode = colnames(sme),
-    coords,
-    as.data.frame(spatial_patterns(sme))
-)
-rownames(spPatterns_full) <- spPatterns_full$barcode
-head(spPatterns_full[, 1:5])
-```
-
-```{r}
-# Pre-computed kernel parameters (stored by load10X)
-# Rows: sigmaOpt, threshOpt  |  Columns: one per pattern
-optParams <- spatial_params(sme)
-optParams
+spatial_params(sme)
 ```
 
 # Undirected Analysis
@@ -140,112 +123,65 @@ The undirected analysis identifies genes that are differentially expressed in
 the overlap zone between two patterns. We use Pattern\_1 (immune) and
 Pattern\_2, which show substantial spatial co-occurrence in this dataset.
 
+Each step of the pipeline is an SME-in / SME-out method: the SME is passed
+through a chain of step functions that each read their inputs from the object
+and write their outputs back to the appropriate slot. Writes happen via the
+setter generics (`hotspots<-`, `interactions<-`, `undirected_scores<-`,
+`overlap_scores<-`, `analysis_type<-`); no manual `@spacemarkers` or
+`metadata()` assignment is needed.
+
 ```{r}
 sme_ud <- sme
 spatial_patterns(sme_ud) <- spatial_patterns(sme_ud)[, c("Pattern_1", "Pattern_2")]
-
-# Refresh spPatterns and optParams to match the two-pattern subset
-spPatterns_ud <- data.frame(
-    barcode = colnames(sme_ud),
-    as.data.frame(spatialCoords(sme_ud)),
-    as.data.frame(spatial_patterns(sme_ud))
-)
-rownames(spPatterns_ud) <- spPatterns_ud$barcode
-
-optParams_ud <- spatial_params(sme_ud)
+spatial_params(sme_ud)   <- spatial_params(sme_ud)[, c("Pattern_1", "Pattern_2"),
+                                                   drop = FALSE]
 ```
 
-## Step 1: Find Per-Pattern Hotspots
+## The chain
 
-`find_all_hotspots()` loops over every pattern column in `spPatterns`, applies
-a kernel smoothing null distribution, and labels each spot as a hotspot or NA.
-The result is a data.frame with the same barcode/coord columns plus one logical
-column per pattern.
+`find_all_hotspots()` labels each spot relative to each pattern's kernel
+smoothing null distribution. `get_pairwise_interacting_genes()` tests each
+gene for differential expression between the overlap zone of every pattern
+pair and the two exclusive zones. `get_im_scores()` aggregates the per-gene
+test results into a single score matrix. `calculate_overlap_undirected()`
+quantifies how much each pair's hotspot regions spatially overlap, and sets
+`analysis_type(sme) <- "undirected"`.
 
 ```{r message=FALSE, warning=FALSE}
-hs <- find_all_hotspots(spPatterns_ud, params = optParams_ud)
-head(hs)
+sme_ud <- sme_ud |>
+    find_all_hotspots() |>
+    get_pairwise_interacting_genes(mode = "DE", analysis = "enrichment",
+                                   minOverlap = 10, workers = 1) |>
+    get_im_scores() |>
+    calculate_overlap_undirected()
 ```
 
-The fraction of spots classified as hotspots per pattern:
+## Inspect the result
 
 ```{r}
+# Hotspot labels per spot / per pattern
+head(hotspots(sme_ud, "undirected"))
+```
+
+```{r}
+# Fraction of spots classified as hotspots per pattern
+hs <- hotspots(sme_ud, "undirected")
 pat_cols <- setdiff(colnames(hs), c("barcode", "y", "x"))
 vapply(pat_cols, function(p) mean(!is.na(hs[[p]])), numeric(1))
 ```
 
-## Step 2: Find Pairwise Interacting Genes
-
-`get_pairwise_interacting_genes()` tests each gene for differential expression
-between the overlap zone (spots where both patterns are hot) and each pattern's
-exclusive zone. It returns a named list — one element per pattern pair — each
-containing the per-gene test statistics.
-
-```{r message=FALSE, warning=FALSE}
-spaceMarkersResult <- get_pairwise_interacting_genes(
-    data      = expr,
-    optParams = optParams_ud,
-    spPatterns = spPatterns_ud,
-    hotspots   = hs,
-    mode       = "DE",
-    analysis   = "enrichment",
-    minOverlap = 10,
-    workers    = 1
-)
-# One list entry per pattern pair
-names(spaceMarkersResult)
-```
-
 ```{r}
-# Detailed per-gene statistics for the first pair
-pair1 <- spaceMarkersResult[[1]]
+# Detailed per-gene statistics for the first pattern pair
+pair1 <- interactions(sme_ud)[[1]]
 if (length(pair1$interacting_genes) > 0) {
     head(pair1$interacting_genes[[1]])
-} else {
-    message("No interacting genes found for this pair.")
 }
 ```
 
-## Step 3: Calculate Interaction (IM) Scores
-
-`get_im_scores()` aggregates the per-gene test results into a single score
-matrix: one row per gene, one column per pattern pair.
-
 ```{r}
-IMScores <- get_im_scores(spaceMarkersResult)
-head(IMScores)
-```
-
-## Step 4: Calculate Overlap Scores
-
-`calculate_overlap_undirected()` quantifies how much the hotspot regions of
-the two patterns spatially overlap.
-
-```{r}
-overlap_ud <- calculate_overlap_undirected(hs)
-overlap_ud
-```
-
-## Storing Results in the SME
-
-Assign each result to the appropriate slot so that the standard SME accessors
-work downstream.
-
-```{r}
-# Results go in the spacemarkers$results sub-list
-sme_ud@spacemarkers$results <- list(
-    undirected_scores = IMScores,
-    overlap_scores    = overlap_ud
-)
-sme_ud@spacemarkers$analysis <- "undirected"
-
-# Detailed intermediates go in metadata()
-S4Vectors::metadata(sme_ud)$hotspots$undirected <- hs
-S4Vectors::metadata(sme_ud)$interactions        <- spaceMarkersResult
-
-# Verify accessors now work
-analysis_type(sme_ud)
 head(undirected_scores(sme_ud))
+overlap_scores(sme_ud)
+analysis_type(sme_ud)
 ```
 
 # Directed Analysis
@@ -257,128 +193,51 @@ Pattern\_1 (immune) and Pattern\_5 (cancer), following the main vignette.
 ```{r}
 sme_dir <- sme
 spatial_patterns(sme_dir) <- spatial_patterns(sme_dir)[, c("Pattern_1", "Pattern_5")]
-
-spPatterns_dir <- data.frame(
-    barcode = colnames(sme_dir),
-    as.data.frame(spatialCoords(sme_dir)),
-    as.data.frame(spatial_patterns(sme_dir))
-)
-rownames(spPatterns_dir) <- spPatterns_dir$barcode
-
-optParams_dir <- spatial_params(sme_dir)
+spatial_params(sme_dir)   <- spatial_params(sme_dir)[, c("Pattern_1", "Pattern_5"),
+                                                     drop = FALSE]
 ```
 
-## Step 1: Find Pattern Hotspots (GMM)
+## The chain
 
 The directed workflow uses Gaussian mixture model thresholds rather than the
-kernel null distribution used in the undirected workflow. `calculate_thresholds()`
-fits a two-component GMM to each pattern's value distribution and returns the
-boundary between the low and high components. `find_hotspots_gmm()` then labels
-each spot above that boundary as a hotspot.
+kernel null distribution used in the undirected workflow. `calculate_influence()`
+applies kernel smoothing to each pattern independently, producing an
+*influence* map — for each spot, how strongly does the pattern radiate into
+the neighborhood. `find_hotspots_gmm()` dispatches on an SME and accepts a
+`type` argument to choose between operating on the pattern columns
+(`type = "pattern"`) or on the computed influence map (`type = "influence"`).
+`calculate_gene_scores_directed()` scores each gene per source→target pair
+using the intersection of the target's hotspot and the source's influence
+zone. `calculate_overlap_directed()` finishes by quantifying hotspot vs.
+influence-zone overlap and setting `analysis_type(sme) <- "directed"`.
 
 ```{r message=FALSE, warning=FALSE}
-patthresholds <- calculate_thresholds(
-    spPatterns_dir, minvals = 0.1, maxvals = 0.8
-)
-patthresholds
+sme_dir <- sme_dir |>
+    calculate_influence() |>
+    find_hotspots_gmm(type = "pattern") |>
+    find_hotspots_gmm(type = "influence") |>
+    calculate_gene_scores_directed() |>
+    calculate_overlap_directed()
 ```
 
-```{r message=FALSE, warning=FALSE}
-patHotspots <- find_hotspots_gmm(spPatterns_dir, threshold = patthresholds)
-head(patHotspots)
-```
-
-Fraction of spots classified as hotspots per pattern:
+## Inspect the result
 
 ```{r}
-pat_cols_dir <- setdiff(colnames(patHotspots), c("barcode", "y", "x"))
-vapply(pat_cols_dir, function(p) mean(!is.na(patHotspots[[p]])), numeric(1))
-```
-
-## Step 2: Calculate Spatial Influence
-
-`calculate_influence()` applies kernel smoothing to each pattern independently,
-producing an *influence* map: for each spot, how strongly does the pattern
-radiate into the neighborhood? The returned data.frame has the same
-barcode/coord columns as `spPatterns` plus one influence column per pattern.
-
-```{r message=FALSE, warning=FALSE}
-spInfluence <- calculate_influence(spPatterns_dir, optParams_dir)
-head(spInfluence)
-```
-
-## Step 3: Find Influence Hotspots (GMM)
-
-The same GMM approach is applied to the influence values to identify spots
-that fall under strong influence of each pattern.
-
-```{r message=FALSE, warning=FALSE}
-infthresholds <- calculate_thresholds(
-    spInfluence, minvals = 0.01, maxvals = 0.5
-)
-infthresholds
-```
-
-```{r message=FALSE, warning=FALSE}
-infHotspots <- find_hotspots_gmm(spInfluence, threshold = infthresholds)
-head(infHotspots)
-```
-
-## Step 4: Calculate Directed Gene Scores
-
-`calculate_gene_scores_directed()` scores each gene for each directed pattern
-pair (source → target). Spots in the *target* pattern's hotspot that also fall
-under the *source* pattern's influence define the interaction zone.
-
-```{r}
-patnames <- setdiff(colnames(spPatterns_dir), c("barcode", "x", "y"))
-patternPairs <- t(combn(patnames, 2))
-patternPairs
-```
-
-```{r message=FALSE, warning=FALSE}
-IMscores_dir <- calculate_gene_scores_directed(
-    data               = expr,
-    pat_hotspots       = patHotspots,
-    influence_hotspots = infHotspots,
-    pattern_pairs      = patternPairs
-)
-head(IMscores_dir)
-```
-
-## Step 5: Calculate Directed Overlap Scores
-
-`calculate_overlap_directed()` quantifies how much each pattern's hotspot
-overlaps with the opposing pattern's *influence* zone.
-
-```{r}
-overlap_dir <- calculate_overlap_directed(patHotspots, infHotspots)
-overlap_dir
-```
-
-## Storing Results in the SME
-
-```{r}
-sme_dir@spacemarkers$results <- list(
-    directed_scores = IMscores_dir,
-    overlap_scores  = overlap_dir
-)
-sme_dir@spacemarkers$analysis <- "directed"
-
-S4Vectors::metadata(sme_dir)$hotspots$pattern   <- patHotspots
-S4Vectors::metadata(sme_dir)$hotspots$influence  <- infHotspots
-S4Vectors::metadata(sme_dir)$influence            <- spInfluence
-
-# Verify accessors now work
-analysis_type(sme_dir)
-head(directed_scores(sme_dir))
+head(hotspots(sme_dir, "pattern"))
 ```
 
 ```{r}
-# Intermediate intermediates are accessible via convenience functions
-head(hotspots(sme_dir, type = "pattern"))
-head(hotspots(sme_dir, type = "influence"))
+head(hotspots(sme_dir, "influence"))
+```
+
+```{r}
 head(influence_map(sme_dir))
+```
+
+```{r}
+head(directed_scores(sme_dir))
+overlap_scores(sme_dir)
+analysis_type(sme_dir)
 ```
 
 # Visualization
