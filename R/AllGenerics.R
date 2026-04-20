@@ -81,3 +81,51 @@ setGeneric("overlap_scores", function(x, ...) {
 setGeneric("analysis_type", function(x, ...) {
     standardGeneric("analysis_type")
 })
+
+#' @rdname hotspots
+#' @export
+setGeneric("hotspots<-", function(x, type = "undirected", value) {
+    standardGeneric("hotspots<-")
+})
+
+#' @rdname interactions
+#' @export
+setGeneric("interactions<-", function(x, value) {
+    standardGeneric("interactions<-")
+})
+
+#' @rdname influence_map
+#' @export
+setGeneric("influence_map<-", function(x, value) {
+    standardGeneric("influence_map<-")
+})
+
+#' @rdname undirected_scores
+#' @export
+setGeneric("undirected_scores<-", function(x, value) {
+    standardGeneric("undirected_scores<-")
+})
+
+#' @rdname directed_scores
+#' @export
+setGeneric("directed_scores<-", function(x, value) {
+    standardGeneric("directed_scores<-")
+})
+
+#' @rdname lr_scores
+#' @export
+setGeneric("lr_scores<-", function(x, value) {
+    standardGeneric("lr_scores<-")
+})
+
+#' @rdname overlap_scores
+#' @export
+setGeneric("overlap_scores<-", function(x, value) {
+    standardGeneric("overlap_scores<-")
+})
+
+#' @rdname analysis_type
+#' @export
+setGeneric("analysis_type<-", function(x, value) {
+    standardGeneric("analysis_type<-")
+})

@@ -279,3 +279,116 @@ test_that("add_features accepts matrix input", {
     expect_equal(sme2@spacemarkers$params$pattern_names,
                  c("Pattern_A", "Pattern_B"))
 })
+
+# ============================================================================
+# SME pipeline-methods tests (added 2026-04-20)
+# ============================================================================
+
+make_fixture_sme <- function() {
+    set.seed(1)
+    n_spots <- 60L
+    n_genes <- 25L
+    counts <- matrix(rpois(n_spots * n_genes, lambda = 2),
+                     nrow = n_genes, ncol = n_spots,
+                     dimnames = list(
+                         paste0("G", seq_len(n_genes)),
+                         paste0("spot", seq_len(n_spots))))
+    coords <- matrix(runif(n_spots * 2, 0, 10), ncol = 2,
+                     dimnames = list(NULL, c("y", "x")))
+    patterns <- S4Vectors::DataFrame(
+        Pattern_1 = runif(n_spots), Pattern_2 = runif(n_spots),
+        row.names = paste0("spot", seq_len(n_spots)))
+    sme <- SpaceMarkersExperiment(
+        assays = list(logcounts = counts),
+        spatialCoords = coords)
+    colnames(sme) <- paste0("spot", seq_len(n_spots))
+    spatial_patterns(sme) <- patterns
+    spatial_params(sme) <- matrix(
+        c(1.0, 2.0, 1.0, 2.0), nrow = 2, ncol = 2,
+        dimnames = list(c("sigmaOpt", "threshOpt"),
+                        c("Pattern_1", "Pattern_2")))
+    sme
+}
+
+test_that("hotspots<- round-trips for each type", {
+    sme <- make_fixture_sme()
+    hs <- data.frame(barcode = colnames(sme), x = 1:60, y = 1:60,
+                     Pattern_1 = c(rep("hot", 30), rep(NA, 30)))
+    hotspots(sme, type = "undirected") <- hs
+    expect_identical(hotspots(sme, "undirected"), hs)
+
+    hs_pat <- hs; hs_pat$Pattern_1 <- rev(hs$Pattern_1)
+    hotspots(sme, type = "pattern") <- hs_pat
+    expect_identical(hotspots(sme, "pattern"), hs_pat)
+
+    hs_inf <- hs; hs_inf$Pattern_1 <- NA
+    hotspots(sme, type = "influence") <- hs_inf
+    expect_identical(hotspots(sme, "influence"), hs_inf)
+})
+
+test_that("interactions<- round-trips", {
+    sme <- make_fixture_sme()
+    val <- list(Pattern_1_Pattern_2 = list(interacting_genes = list(), hotspots = data.frame()))
+    interactions(sme) <- val
+    expect_identical(interactions(sme), val)
+})
+
+test_that("influence_map<- round-trips", {
+    sme <- make_fixture_sme()
+    val <- data.frame(barcode = colnames(sme), x = 1:60, y = 1:60,
+                      Pattern_1 = runif(60), Pattern_2 = runif(60))
+    influence_map(sme) <- val
+    expect_identical(influence_map(sme), val)
+})
+
+test_that("undirected_scores<- round-trips", {
+    sme <- make_fixture_sme()
+    val <- data.frame(Gene = paste0("G", 1:5), Pattern_1_Pattern_2 = runif(5))
+    undirected_scores(sme) <- val
+    expect_identical(undirected_scores(sme), val)
+})
+
+test_that("directed_scores<- round-trips", {
+    sme <- make_fixture_sme()
+    val <- data.frame(Gene = paste0("G", 1:5), cell_interaction = "P1->P2",
+                      score = runif(5))
+    directed_scores(sme) <- val
+    expect_identical(directed_scores(sme), val)
+})
+
+test_that("overlap_scores<- round-trips", {
+    sme <- make_fixture_sme()
+    val <- data.frame(pair = "Pattern_1_Pattern_2", score = 0.5)
+    overlap_scores(sme) <- val
+    expect_identical(overlap_scores(sme), val)
+})
+
+test_that("lr_scores<- round-trips", {
+    sme <- make_fixture_sme()
+    val <- matrix(runif(4), 2, 2,
+                  dimnames = list(c("LR1","LR2"), c("P1_P2","P2_P1")))
+    lr_scores(sme) <- val
+    expect_identical(lr_scores(sme), val)
+})
+
+test_that("analysis_type<- accepts valid values and rejects invalid", {
+    sme <- make_fixture_sme()
+    for (v in c("undirected", "directed", "both")) {
+        analysis_type(sme) <- v
+        expect_identical(analysis_type(sme), v)
+    }
+    expect_error(analysis_type(sme) <- "bogus",
+                 regexp = "undirected|directed|both")
+})
+
+test_that(".sme_expr and .sme_spPatterns return expected shapes", {
+    sme <- make_fixture_sme()
+    e <- SpaceMarkers:::.sme_expr(sme)
+    expect_equal(dim(e), c(25L, 60L))
+    expect_equal(rownames(e)[1], "G1")
+
+    sp <- SpaceMarkers:::.sme_spPatterns(sme)
+    expect_true(all(c("barcode", "x", "y", "Pattern_1", "Pattern_2") %in%
+                    colnames(sp)))
+    expect_equal(nrow(sp), 60L)
+})

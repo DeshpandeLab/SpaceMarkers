@@ -263,3 +263,124 @@ add_features <- function(sme, features, ...) {
 
     sme
 }
+
+# NULL-coalescing helper (used by SME pipeline methods for optional-arg fallbacks)
+`%||%` <- function(a, b) if (!is.null(a)) a else b
+
+# Unexported helpers used by SME pipeline methods
+.sme_expr <- function(sme) {
+    if ("logcounts" %in% SummarizedExperiment::assayNames(sme))
+        SummarizedExperiment::assay(sme, "logcounts")
+    else
+        SummarizedExperiment::assay(sme, 1L)
+}
+
+.sme_spPatterns <- function(sme) {
+    coords <- as.data.frame(SpatialExperiment::spatialCoords(sme))
+    pats <- as.data.frame(spatial_patterns(sme))
+    df <- data.frame(barcode = colnames(sme),
+                     coords, pats,
+                     check.names = FALSE,
+                     stringsAsFactors = FALSE)
+    rownames(df) <- colnames(sme)
+    df
+}
+
+#' @rdname hotspots
+#' @aliases hotspots<-,SpaceMarkersExperiment-method
+#' @param value A data.frame of hotspot assignments.
+#' @export
+setMethod("hotspots<-", "SpaceMarkersExperiment",
+    function(x, type = c("undirected", "pattern", "influence"), value) {
+        type <- match.arg(type)
+        md <- S4Vectors::metadata(x)
+        if (is.null(md$hotspots)) md$hotspots <- list()
+        md$hotspots[[type]] <- value
+        S4Vectors::metadata(x) <- md
+        x
+    }
+)
+
+#' @rdname interactions
+#' @aliases interactions<-,SpaceMarkersExperiment-method
+#' @param value A named list of per-pair interaction results.
+#' @export
+setMethod("interactions<-", "SpaceMarkersExperiment", function(x, value) {
+    md <- S4Vectors::metadata(x)
+    md$interactions <- value
+    S4Vectors::metadata(x) <- md
+    x
+})
+
+#' @rdname influence_map
+#' @aliases influence_map<-,SpaceMarkersExperiment-method
+#' @param value A data.frame of per-spot influence values.
+#' @export
+setMethod("influence_map<-", "SpaceMarkersExperiment", function(x, value) {
+    md <- S4Vectors::metadata(x)
+    md$influence <- value
+    S4Vectors::metadata(x) <- md
+    x
+})
+
+#' @rdname undirected_scores
+#' @aliases undirected_scores<-,SpaceMarkersExperiment-method
+#' @param value A data.frame of undirected interaction scores.
+#' @export
+setMethod("undirected_scores<-", "SpaceMarkersExperiment", function(x, value) {
+    sm <- x@spacemarkers
+    if (is.null(sm$results)) sm$results <- list()
+    sm$results$undirected_scores <- value
+    x@spacemarkers <- sm
+    x
+})
+
+#' @rdname directed_scores
+#' @aliases directed_scores<-,SpaceMarkersExperiment-method
+#' @param value A data.frame of directed interaction scores.
+#' @export
+setMethod("directed_scores<-", "SpaceMarkersExperiment", function(x, value) {
+    sm <- x@spacemarkers
+    if (is.null(sm$results)) sm$results <- list()
+    sm$results$directed_scores <- value
+    x@spacemarkers <- sm
+    x
+})
+
+#' @rdname lr_scores
+#' @aliases lr_scores<-,SpaceMarkersExperiment-method
+#' @param value A matrix of ligand-receptor pair scores.
+#' @export
+setMethod("lr_scores<-", "SpaceMarkersExperiment", function(x, value) {
+    sm <- x@spacemarkers
+    if (is.null(sm$results)) sm$results <- list()
+    sm$results$lr_scores <- value
+    x@spacemarkers <- sm
+    x
+})
+
+#' @rdname overlap_scores
+#' @aliases overlap_scores<-,SpaceMarkersExperiment-method
+#' @param value A data.frame of pattern overlap scores.
+#' @export
+setMethod("overlap_scores<-", "SpaceMarkersExperiment", function(x, value) {
+    sm <- x@spacemarkers
+    if (is.null(sm$results)) sm$results <- list()
+    sm$results$overlap_scores <- value
+    x@spacemarkers <- sm
+    x
+})
+
+#' @rdname analysis_type
+#' @aliases analysis_type<-,SpaceMarkersExperiment-method
+#' @param value Character: "undirected", "directed", or "both".
+#' @export
+setMethod("analysis_type<-", "SpaceMarkersExperiment", function(x, value) {
+    if (!is.null(value) && !value %in% c("undirected", "directed", "both")) {
+        stop("analysis_type must be one of: undirected, directed, both")
+    }
+    sm <- x@spacemarkers
+    sm$analysis <- value
+    x@spacemarkers <- sm
+    x
+})
