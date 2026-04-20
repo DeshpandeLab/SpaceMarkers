@@ -186,3 +186,13 @@ setGeneric("calculate_gene_scores_directed",
         standardGeneric("calculate_gene_scores_directed")
     }
 )
+
+#' @rdname calculate_overlap_directed
+#' @export
+setGeneric("calculate_overlap_directed",
+    function(pat_hotspots, influence_hotspots = NULL,
+             patternList = NULL,
+             method = c("relative-abundance", "differential-abundance", "absolute")) {
+        standardGeneric("calculate_overlap_directed")
+    }
+)

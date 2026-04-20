@@ -523,3 +523,15 @@ test_that("calculate_gene_scores_directed(SME) errors without pattern hotspots",
     expect_error(calculate_gene_scores_directed(sme),
                  regexp = "find_hotspots_gmm")
 })
+
+# ---- Task 9: calculate_overlap_directed as S4 generic with SME method ----
+
+test_that("calculate_overlap_directed(SME) stores overlap_scores and analysis_type", {
+    sme <- make_fixture_sme() |>
+        calculate_influence() |>
+        find_hotspots_gmm(type = "pattern") |>
+        find_hotspots_gmm(type = "influence") |>
+        calculate_overlap_directed()
+    expect_false(is.null(overlap_scores(sme)))
+    expect_equal(analysis_type(sme), "directed")
+})

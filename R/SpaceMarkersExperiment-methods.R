@@ -550,3 +550,28 @@ setMethod("calculate_gene_scores_directed", "SpaceMarkersExperiment",
         sme
     }
 )
+
+#' @rdname calculate_overlap_directed
+#' @aliases calculate_overlap_directed,SpaceMarkersExperiment-method
+#' @export
+setMethod("calculate_overlap_directed", "SpaceMarkersExperiment",
+    function(pat_hotspots, influence_hotspots = NULL,
+             patternList = NULL,
+             method = c("relative-abundance", "differential-abundance", "absolute")) {
+        sme <- pat_hotspots
+        pat <- hotspots(sme, "pattern")
+        inf <- influence_hotspots %||% hotspots(sme, "influence")
+        if (is.null(pat) || is.null(inf)) {
+            stop("Run find_hotspots_gmm(x, 'pattern') and find_hotspots_gmm(x, 'influence') before calculate_overlap_directed().")
+        }
+        ov <- calculate_overlap_directed(pat, inf,
+                                         patternList = patternList,
+                                         method = method)
+        overlap_scores(sme) <- ov
+        cur <- analysis_type(sme)
+        new_type <- if (identical(cur, "undirected") || identical(cur, "both"))
+            "both" else "directed"
+        analysis_type(sme) <- new_type
+        sme
+    }
+)

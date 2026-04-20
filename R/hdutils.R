@@ -309,12 +309,11 @@ setMethod("calculate_gene_scores_directed", "ANY",
 #' @param influence_hotspots A data frame with columns x, y, barcode and pattern names
 #' @param method The method to calculate overlapping abundance scores. Options are
 #' "relative-abundance", "differential-abundance" and "absolute"
-#' @param patternList A character vector of pattern names to calculate overlap 
+#' @param patternList A character vector of pattern names to calculate overlap
 #' scores for. If NULL, all patterns in pat_hotspots and influence_hotspots will be used.
 #' @details The function calculates the overlap scores between patterns hotspots
 #' using the specified method. The default method is "relative-abundance"
 #' @return A data frame with columns pattern, influence and overlapping abundance
-#' @export
 #' @examples
 #' hotspots <- data.frame(x = c(1,2,3,4,5),
 #'                         y = c(1,2,3,4,5),
@@ -330,20 +329,12 @@ setMethod("calculate_gene_scores_directed", "ANY",
 #' @importFrom ggplot2 ggplot geom_tile geom_text theme_minimal
 #' @importFrom reshape2 melt
 #' @importFrom stats complete.cases
-calculate_overlap_directed <- function(pat_hotspots, influence_hotspots = NULL,
-                             patternList = NULL, method = c("relative-abundance",
-                                                            "differential-abundance",
-                                                             "absolute") ) {
-    # SME dispatch: extract pattern and influence hotspots
-    if (is(pat_hotspots, "SpaceMarkersExperiment")) {
-        sme <- pat_hotspots
-        pat_hotspots <- hotspots(sme, type = "pattern")
-        influence_hotspots <- hotspots(sme, type = "influence")
-        if (is.null(pat_hotspots) || is.null(influence_hotspots)) {
-            stop("No directed hotspots found in SpaceMarkersExperiment.")
-        }
-    }
-
+#' @rdname calculate_overlap_directed
+setMethod("calculate_overlap_directed", "data.frame",
+    function(pat_hotspots, influence_hotspots = NULL,
+             patternList = NULL,
+             method = c("relative-abundance", "differential-abundance",
+                        "absolute")) {
     #warn if more than one method is supplied, do not warn by default
     if(length(method) > 1){
         method <- method[1]
@@ -375,11 +366,11 @@ calculate_overlap_directed <- function(pat_hotspots, influence_hotspots = NULL,
     diag(overlapScore) <- NA
     colnames(overlapScore) <- paste0("near.",colnames(overlapScore))
     #overlapScore[upper.tri(overlapScore,diag = TRUE)] <- NA
-  
+
     # Melt normalized Jaccard for output
     dfOverlap <- reshape2::melt(overlapScore)
     dfOverlap <- dfOverlap[stats::complete.cases(dfOverlap),]
     # Due to melting in lower triangular orientation, the column names are flipped
     colnames(dfOverlap) <- c("pattern", "influence", "relAbundance")
     return(dfOverlap)
-}
+})
