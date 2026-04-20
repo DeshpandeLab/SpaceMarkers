@@ -130,28 +130,23 @@ setter generics (`hotspots<-`, `interactions<-`, `undirected_scores<-`,
 `overlap_scores<-`, `analysis_type<-`); no manual `@spacemarkers` or
 `metadata()` assignment is needed.
 
-```{r}
-sme_ud <- sme
-spatial_patterns(sme_ud) <- spatial_patterns(sme_ud)[, c("Pattern_1", "Pattern_2")]
-spatial_params(sme_ud)   <- spatial_params(sme_ud)[, c("Pattern_1", "Pattern_2"),
-                                                   drop = FALSE]
-```
-
-## The chain
-
 `find_all_hotspots()` labels each spot relative to each pattern's kernel
 smoothing null distribution. `get_pairwise_interacting_genes()` tests each
 gene for differential expression between the overlap zone of every pattern
-pair and the two exclusive zones. `get_im_scores()` aggregates the per-gene
-test results into a single score matrix. `calculate_overlap_undirected()`
-quantifies how much each pair's hotspot regions spatially overlap, and sets
+pair and the two exclusive zones — we restrict it to the Pattern\_1 ×
+Pattern\_2 pair via the `pattern_pairs` argument so the narrative below
+matches the main vignette. `get_im_scores()` aggregates the per-gene test
+results into a score matrix. `calculate_overlap_undirected()` quantifies
+hotspot-region overlap across all pattern pairs and sets
 `analysis_type(sme) <- "undirected"`.
 
 ```{r message=FALSE, warning=FALSE}
-sme_ud <- sme_ud |>
+sme_ud <- sme |>
     find_all_hotspots() |>
-    get_pairwise_interacting_genes(mode = "DE", analysis = "enrichment",
-                                   minOverlap = 10, workers = 1) |>
+    get_pairwise_interacting_genes(
+        mode = "DE", analysis = "enrichment", minOverlap = 10, workers = 1,
+        pattern_pairs = rbind(c("Pattern_1", "Pattern_2"))
+    ) |>
     get_im_scores() |>
     calculate_overlap_undirected()
 ```
@@ -190,15 +185,6 @@ The directed analysis quantifies how much each pattern's *spatial influence*
 drives gene expression in the hotspot of the opposing pattern. We use
 Pattern\_1 (immune) and Pattern\_5 (cancer), following the main vignette.
 
-```{r}
-sme_dir <- sme
-spatial_patterns(sme_dir) <- spatial_patterns(sme_dir)[, c("Pattern_1", "Pattern_5")]
-spatial_params(sme_dir)   <- spatial_params(sme_dir)[, c("Pattern_1", "Pattern_5"),
-                                                     drop = FALSE]
-```
-
-## The chain
-
 The directed workflow uses Gaussian mixture model thresholds rather than the
 kernel null distribution used in the undirected workflow. `calculate_influence()`
 applies kernel smoothing to each pattern independently, producing an
@@ -206,17 +192,19 @@ applies kernel smoothing to each pattern independently, producing an
 the neighborhood. `find_hotspots_gmm()` dispatches on an SME and accepts a
 `type` argument to choose between operating on the pattern columns
 (`type = "pattern"`) or on the computed influence map (`type = "influence"`).
-`calculate_gene_scores_directed()` scores each gene per source→target pair
-using the intersection of the target's hotspot and the source's influence
-zone. `calculate_overlap_directed()` finishes by quantifying hotspot vs.
+`calculate_gene_scores_directed()` scores each gene per source→target pair;
+we restrict it to the Pattern\_1 × Pattern\_5 pair via `pattern_pairs`.
+`calculate_overlap_directed()` finishes by quantifying hotspot vs.
 influence-zone overlap and setting `analysis_type(sme) <- "directed"`.
 
 ```{r message=FALSE, warning=FALSE}
-sme_dir <- sme_dir |>
+sme_dir <- sme |>
     calculate_influence() |>
     find_hotspots_gmm(type = "pattern") |>
     find_hotspots_gmm(type = "influence") |>
-    calculate_gene_scores_directed() |>
+    calculate_gene_scores_directed(
+        pattern_pairs = rbind(c("Pattern_1", "Pattern_5"))
+    ) |>
     calculate_overlap_directed()
 ```
 
