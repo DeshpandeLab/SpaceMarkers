@@ -1,3 +1,12 @@
+#' Internal imports for SpaceMarkersExperiment methods
+#'
+#' @importFrom S4Vectors metadata metadata<-
+#' @importFrom SummarizedExperiment assayNames colData<-
+#' @importFrom methods setGeneric validObject
+#' @name SpaceMarkersExperiment-imports
+#' @keywords internal
+NULL
+
 #' @include AllClasses.R AllGenerics.R
 
 #' @rdname spatial_patterns
@@ -376,11 +385,9 @@ setMethod("overlap_scores<-", "SpaceMarkersExperiment", function(x, value) {
 #' @param value Character: "undirected", "directed", or "both".
 #' @export
 setMethod("analysis_type<-", "SpaceMarkersExperiment", function(x, value) {
-    if (!is.null(value) && !value %in% c("undirected", "directed", "both")) {
-        stop("analysis_type must be one of: undirected, directed, both")
-    }
     sm <- x@spacemarkers
     sm$analysis <- value
     x@spacemarkers <- sm
+    methods::validObject(x)
     x
 })
