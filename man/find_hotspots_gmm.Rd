@@ -29,9 +29,12 @@ Either user provided or the output of @calculate_thresholds}
 
 \item{...}{Additional parameters to pass to lower level functions}
 
-\item{minvals}{Minimum value for quantile threshold}
+\item{type}{Character; one of \code{"pattern"} or \code{"influence"}.
+Selects which SME slot to operate on.}
 
-\item{maxvals}{Maximum value for quantile threshold}
+\item{minvals, maxvals}{Numeric thresholds passed to
+\code{calculate_thresholds} when the default \code{threshold = 0.1} is
+used.}
 }
 \value{
 a data frame with the same dimensions as the input data frame.

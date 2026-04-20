@@ -28,6 +28,8 @@
 #' @param threshold Numeric threshold passed to [get_spatial_parameters()].
 #' @param cpus Number of workers used in the undirected workflow passed to
 #'   [get_pairwise_interacting_genes()].
+#' @param lr_pairs A data.frame with \code{ligand.symbol}, \code{receptor.symbol},
+#'   and \code{pair} columns, or \code{NULL}. Used by the directed SME workflow.
 #' @param returnSME Logical; if `TRUE` (default), return a
 #'   \code{SpaceMarkersExperiment} with results stored in the object. If
 #'   `FALSE`, return the legacy data frame of scores.

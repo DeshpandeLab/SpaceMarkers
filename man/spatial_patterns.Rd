@@ -4,6 +4,7 @@
 \name{SpaceMarkersExperiment-accessors}
 \alias{SpaceMarkersExperiment-accessors}
 \alias{spatial_patterns<-}
+\alias{spatial_patterns}
 \alias{spatial_patterns,SpaceMarkersExperiment-method}
 \alias{spatial_patterns<-,SpaceMarkersExperiment-method}
 \title{Accessor generics for SpaceMarkersExperiment}
@@ -19,13 +20,24 @@ spatial_patterns(x) <- value
 \arguments{
 \item{x}{A \code{SpaceMarkersExperiment} object.}
 
+\item{...}{Not used.}
+
 \item{value}{A data.frame or DataFrame of spatial pattern values. Row names
 must match \code{colnames(x)}.}
 }
 \value{
+For the getter, a \code{DataFrame} of spatial patterns or
+\code{NULL}. For the setter, the modified \code{SpaceMarkersExperiment}.
+
 A \code{DataFrame} of spatial pattern values per spot, or NULL if
 pattern names have not been set.
 }
 \description{
 Generics for accessing SpaceMarkersExperiment results.
+
+Read (\code{spatial_patterns(x)}) or write
+(\code{spatial_patterns(x) <- value}) the per-spot spatial-pattern values
+stored in the columns of \code{colData(x)} named by
+\code{x@spacemarkers$params$pattern_names}. The setter also updates
+\code{pattern_names} to the column names of \code{value}.
 }

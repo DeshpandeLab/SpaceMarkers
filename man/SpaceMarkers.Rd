@@ -64,6 +64,9 @@ when \code{genes} is \code{NULL}.}
 \item{cpus}{Number of workers used in the undirected workflow passed to
 \code{\link[=get_pairwise_interacting_genes]{get_pairwise_interacting_genes()}}.}
 
+\item{lr_pairs}{A data.frame with \code{ligand.symbol}, \code{receptor.symbol},
+and \code{pair} columns, or \code{NULL}. Used by the directed SME workflow.}
+
 \item{returnSME}{Logical; if \code{TRUE} (default), return a
 \code{SpaceMarkersExperiment} with results stored in the object. If
 \code{FALSE}, return the legacy data frame of scores.}

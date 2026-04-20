@@ -8,6 +8,191 @@
 NULL
 
 #' @include AllClasses.R AllGenerics.R
+NULL
+
+#' Access hotspot assignments on a SpaceMarkersExperiment
+#'
+#' Read (\code{hotspots(x, type)}) or write
+#' (\code{hotspots(x, type) <- value}) the per-type hotspot data.frame stored
+#' in \code{metadata(x)$hotspots[[type]]}. \code{type} selects one of
+#' \code{"undirected"}, \code{"pattern"}, or \code{"influence"}.
+#'
+#' @name hotspots
+#' @aliases hotspots hotspots<-
+#' @param x A \code{SpaceMarkersExperiment}.
+#' @param type Character; one of \code{"undirected"}, \code{"pattern"},
+#'   \code{"influence"}.
+#' @param value A data.frame of hotspot assignments.
+#' @param ... Not used.
+#' @return For the getter, a data.frame or \code{NULL}. For the setter, the
+#'   modified \code{SpaceMarkersExperiment}.
+NULL
+
+#' Access pairwise interaction results on a SpaceMarkersExperiment
+#'
+#' Read (\code{interactions(x, pair)}) or write
+#' (\code{interactions(x) <- value}) the per-pattern-pair interaction results
+#' stored in \code{metadata(x)$interactions}. When \code{pair} is supplied to
+#' the getter, only that pair's results are returned; otherwise the full
+#' named list is returned.
+#'
+#' @name interactions
+#' @aliases interactions interactions<-
+#' @param x A \code{SpaceMarkersExperiment}.
+#' @param pair Optional character string specifying a pattern-pair name
+#'   (e.g. \code{"Pattern_1_Pattern_5"}). If \code{NULL}, all pairs are
+#'   returned.
+#' @param value A named list of per-pair interaction results.
+#' @param ... Not used.
+#' @return For the getter, a named list of per-pair results (or a single
+#'   pair's results when \code{pair} is specified). For the setter, the
+#'   modified \code{SpaceMarkersExperiment}.
+NULL
+
+#' Access the per-spot influence map on a SpaceMarkersExperiment
+#'
+#' Read (\code{influence_map(x)}) or write
+#' (\code{influence_map(x) <- value}) the per-spot influence values stored in
+#' \code{metadata(x)$influence}.
+#'
+#' @name influence_map
+#' @aliases influence_map influence_map<-
+#' @param x A \code{SpaceMarkersExperiment}.
+#' @param value A data.frame of per-spot influence values.
+#' @param ... Not used.
+#' @return For the getter, a data.frame of per-spot influence values or
+#'   \code{NULL}. For the setter, the modified \code{SpaceMarkersExperiment}.
+NULL
+
+#' Access undirected interaction scores on a SpaceMarkersExperiment
+#'
+#' Read (\code{undirected_scores(x)}) or write
+#' (\code{undirected_scores(x) <- value}) the data.frame of undirected
+#' interaction scores stored in \code{x@spacemarkers$results$undirected_scores}.
+#'
+#' @name undirected_scores
+#' @aliases undirected_scores undirected_scores<-
+#' @param x A \code{SpaceMarkersExperiment}.
+#' @param value A data.frame of undirected interaction scores
+#'   (genes x pattern pairs).
+#' @param ... Not used.
+#' @return For the getter, a data.frame of undirected scores or \code{NULL}.
+#'   For the setter, the modified \code{SpaceMarkersExperiment}.
+NULL
+
+#' Access directed interaction scores on a SpaceMarkersExperiment
+#'
+#' Read (\code{directed_scores(x)}) or write
+#' (\code{directed_scores(x) <- value}) the data.frame of directed
+#' interaction scores stored in \code{x@spacemarkers$results$directed_scores}.
+#'
+#' @name directed_scores
+#' @aliases directed_scores directed_scores<-
+#' @param x A \code{SpaceMarkersExperiment}.
+#' @param value A data.frame of directed interaction scores.
+#' @param ... Not used.
+#' @return For the getter, a data.frame of directed scores or \code{NULL}.
+#'   For the setter, the modified \code{SpaceMarkersExperiment}.
+NULL
+
+#' Access ligand-receptor scores on a SpaceMarkersExperiment
+#'
+#' Read (\code{lr_scores(x)}) or write (\code{lr_scores(x) <- value}) the
+#' matrix of ligand-receptor pair scores stored in
+#' \code{x@spacemarkers$results$lr_scores}.
+#'
+#' @name lr_scores
+#' @aliases lr_scores lr_scores<-
+#' @param x A \code{SpaceMarkersExperiment}.
+#' @param value A matrix of ligand-receptor pair scores.
+#' @param ... Not used.
+#' @return For the getter, a matrix of LR pair scores or \code{NULL}. For the
+#'   setter, the modified \code{SpaceMarkersExperiment}.
+NULL
+
+#' Access pattern overlap scores on a SpaceMarkersExperiment
+#'
+#' Read (\code{overlap_scores(x)}) or write
+#' (\code{overlap_scores(x) <- value}) the data.frame of pattern overlap
+#' scores stored in \code{x@spacemarkers$results$overlap_scores}.
+#'
+#' @name overlap_scores
+#' @aliases overlap_scores overlap_scores<-
+#' @param x A \code{SpaceMarkersExperiment}.
+#' @param value A data.frame of pattern overlap scores.
+#' @param ... Not used.
+#' @return For the getter, a data.frame of pattern overlap scores or
+#'   \code{NULL}. For the setter, the modified \code{SpaceMarkersExperiment}.
+NULL
+
+#' Access or set the analysis type on a SpaceMarkersExperiment
+#'
+#' Read (\code{analysis_type(x)}) or write
+#' (\code{analysis_type(x) <- value}) the analysis-type tag stored in
+#' \code{x@spacemarkers$analysis}. Valid values are \code{"undirected"},
+#' \code{"directed"}, or \code{"both"}. The setter delegates validation to
+#' \code{setValidity("SpaceMarkersExperiment", ...)}.
+#'
+#' @name analysis_type
+#' @aliases analysis_type analysis_type<-
+#' @param x A \code{SpaceMarkersExperiment}.
+#' @param value Character; one of \code{"undirected"}, \code{"directed"},
+#'   or \code{"both"}.
+#' @param ... Not used.
+#' @return For the getter, a character string or \code{NULL}. For the setter,
+#'   the modified \code{SpaceMarkersExperiment}.
+NULL
+
+#' Access analysis hyperparameters on a SpaceMarkersExperiment
+#'
+#' Read-only accessor that returns the full list stored in
+#' \code{x@spacemarkers$params}, including \code{spatial_params},
+#' \code{pattern_names}, \code{min_gene_expr}, \code{mode}, \code{analysis},
+#' \code{min_overlap}, \code{directed}, \code{outlier}, \code{null_samples},
+#' \code{genes}, and any other hyperparameters set during analysis.
+#'
+#' @name params
+#' @aliases params
+#' @param x A \code{SpaceMarkersExperiment}.
+#' @param ... Not used.
+#' @return The full list of hyperparameters, or \code{NULL} if none has been
+#'   set.
+NULL
+
+#' Access or set the spatial-kernel parameters on a SpaceMarkersExperiment
+#'
+#' Read (\code{spatial_params(x)}) or write
+#' (\code{spatial_params(x) <- value}) the 2 x N kernel-parameter matrix
+#' (rows \code{sigmaOpt}, \code{threshOpt}; one column per pattern) stored in
+#' \code{x@spacemarkers$params$spatial_params}.
+#'
+#' @name spatial_params
+#' @aliases spatial_params spatial_params<-
+#' @param x A \code{SpaceMarkersExperiment}.
+#' @param value A 2 x N numeric matrix of spatial kernel parameters (rows
+#'   \code{sigmaOpt}, \code{threshOpt}).
+#' @param ... Not used.
+#' @return For the getter, a 2 x N matrix of spatial parameters or
+#'   \code{NULL}. For the setter, the modified \code{SpaceMarkersExperiment}.
+NULL
+
+#' Access or set spatial pattern columns on a SpaceMarkersExperiment
+#'
+#' Read (\code{spatial_patterns(x)}) or write
+#' (\code{spatial_patterns(x) <- value}) the per-spot spatial-pattern values
+#' stored in the columns of \code{colData(x)} named by
+#' \code{x@spacemarkers$params$pattern_names}. The setter also updates
+#' \code{pattern_names} to the column names of \code{value}.
+#'
+#' @name spatial_patterns
+#' @aliases spatial_patterns spatial_patterns<-
+#' @param x A \code{SpaceMarkersExperiment}.
+#' @param value A data.frame or \code{DataFrame} of spatial pattern values
+#'   (rows matching \code{colnames(x)}).
+#' @param ... Not used.
+#' @return For the getter, a \code{DataFrame} of spatial patterns or
+#'   \code{NULL}. For the setter, the modified \code{SpaceMarkersExperiment}.
+NULL
 
 #' @rdname spatial_patterns
 #' @aliases spatial_patterns,SpaceMarkersExperiment-method
@@ -498,6 +683,11 @@ setMethod("calculate_influence", "SpaceMarkersExperiment",
 
 #' @rdname find_hotspots_gmm
 #' @aliases find_hotspots_gmm,SpaceMarkersExperiment-method
+#' @param type Character; one of \code{"pattern"} or \code{"influence"}.
+#'   Selects which SME slot to operate on.
+#' @param minvals,maxvals Numeric thresholds passed to
+#'   \code{calculate_thresholds} when the default \code{threshold = 0.1} is
+#'   used.
 #' @export
 setMethod("find_hotspots_gmm", "SpaceMarkersExperiment",
     function(df, threshold = 0.1, ..., type = c("pattern", "influence"),

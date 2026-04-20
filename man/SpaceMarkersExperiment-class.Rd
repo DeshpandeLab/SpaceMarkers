@@ -8,6 +8,9 @@
 \usage{
 \S4method{show}{SpaceMarkersExperiment}(object)
 }
+\arguments{
+\item{object}{A \code{SpaceMarkersExperiment}.}
+}
 \description{
 An S4 class extending SpatialExperiment to hold SpaceMarkers
 analysis results alongside spatial transcriptomics data.

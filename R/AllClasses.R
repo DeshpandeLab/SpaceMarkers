@@ -134,6 +134,7 @@ setAs("SpatialExperiment", "SpaceMarkersExperiment", function(from) {
 
 #' @rdname SpaceMarkersExperiment-class
 #' @aliases show,SpaceMarkersExperiment-method
+#' @param object A \code{SpaceMarkersExperiment}.
 setMethod("show", "SpaceMarkersExperiment", function(object) {
     callNextMethod()
     sm <- object@spacemarkers
