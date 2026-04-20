@@ -119,13 +119,12 @@ plot_overlap_scores <- function(df, title = "Spatial Overlap Scores", out = NULL
 #' @description Get the interaction scores for SpaceMarkers
 #' @param SpaceMarkers A list of SpaceMarkers objects
 #' @return A data frame with columns Gene and SpaceMarkersMetric
-#' @export
 #' @examples
 #' example(get_pairwise_interacting_genes)
 #' get_im_scores(SpaceMarkers)
 #' @importFrom stats setNames
-#' 
-get_im_scores <- function(SpaceMarkers){
+#' @rdname get_im_scores
+setMethod("get_im_scores", "list", function(SpaceMarkers) {
     # SME dispatch: extract stored scores if available
     if (is(SpaceMarkers, "SpaceMarkersExperiment")) {
         return(undirected_scores(SpaceMarkers))
@@ -142,12 +141,12 @@ get_im_scores <- function(SpaceMarkers){
     imscores <- Reduce(function(x, y) {
                 merge(x, y, by="Gene", all=TRUE)
             }, x=imscores, right=FALSE)
-    
+
     if(is.null(imscores)) {
         imscores <- data.frame(Gene=character(0))
     }
     return(imscores)
-}
+})
 
 
 #' @title plot_im_scores

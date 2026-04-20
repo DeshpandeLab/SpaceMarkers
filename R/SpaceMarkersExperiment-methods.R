@@ -446,3 +446,16 @@ setMethod("get_pairwise_interacting_genes", "SpaceMarkersExperiment",
         sme
     }
 )
+
+#' @rdname get_im_scores
+#' @aliases get_im_scores,SpaceMarkersExperiment-method
+#' @export
+setMethod("get_im_scores", "SpaceMarkersExperiment", function(SpaceMarkers) {
+    sme <- SpaceMarkers
+    ints <- interactions(sme)
+    if (is.null(ints)) {
+        stop("Run get_pairwise_interacting_genes(x) before get_im_scores().")
+    }
+    undirected_scores(sme) <- get_im_scores(ints)
+    sme
+})

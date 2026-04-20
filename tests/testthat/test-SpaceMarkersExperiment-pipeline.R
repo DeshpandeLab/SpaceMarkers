@@ -445,3 +445,20 @@ test_that("get_pairwise_interacting_genes(SME) errors without hotspots", {
         regexp = "find_all_hotspots"
     )
 })
+
+# ---- Task 4: get_im_scores as S4 generic with SME method ----
+
+test_that("get_im_scores(SME) stores undirected_scores", {
+    sme <- make_fixture_sme() |>
+        find_all_hotspots() |>
+        get_pairwise_interacting_genes(mode = "DE", analysis = "enrichment",
+                                       minOverlap = 1, workers = 1) |>
+        get_im_scores()
+    expect_false(is.null(undirected_scores(sme)))
+})
+
+test_that("get_im_scores(SME) errors without interactions", {
+    sme <- make_fixture_sme()
+    expect_error(get_im_scores(sme),
+                 regexp = "get_pairwise_interacting_genes")
+})

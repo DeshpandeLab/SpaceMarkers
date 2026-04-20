@@ -149,3 +149,9 @@ setGeneric("get_pairwise_interacting_genes",
         standardGeneric("get_pairwise_interacting_genes")
     }
 )
+
+#' @rdname get_im_scores
+#' @export
+setGeneric("get_im_scores", function(SpaceMarkers) {
+    standardGeneric("get_im_scores")
+})
