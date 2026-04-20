@@ -87,34 +87,54 @@ setMethod("calculate_overlap_undirected", "data.frame",
 #' plot_overlap_scores(df, "Overlap Scores", "overlapScores.png", 15)
 #' @import ggplot2
 #'
-plot_overlap_scores <- function(df, title = "Spatial Overlap Scores", out = NULL,fontsize = 15) {
-    # SME dispatch: compute overlap scores from stored hotspots
+plot_overlap_scores <- function(df, title = "Spatial Overlap Scores", out = NULL, fontsize = 15) {
+    # SME dispatch: use stored overlap_scores directly (no recomputation).
     if (is(df, "SpaceMarkersExperiment")) {
-        hs <- hotspots(df, type = "undirected")
-        if (is.null(hs)) stop("No undirected hotspots found in SpaceMarkersExperiment.")
-        df <- calculate_overlap_undirected(hs)
+        ov <- overlap_scores(df)
+        if (is.null(ov)) {
+            stop("No overlap_scores stored. Run calculate_overlap_undirected(x) or calculate_overlap_directed(x) first.")
+        }
+        df <- ov
     }
-    p <- ggplot2::ggplot(data = df, aes(pattern1, pattern2, fill = overlapScore)) +
-        geom_tile(color = "black", size = 0.8) +
-        geom_text(aes(label = round(overlapScore, 2)), size = 6) +  # Display values on the plot
-        scale_fill_gradient2(low = "#FFF7EC", mid = "#FDBB84", high = "#D7301F", midpoint = 0.5) +
-        scale_y_discrete(limits = rev, guide = guide_axis(angle = 45)) +
-        theme_minimal() +
-        theme(
-            axis.text.x = element_text(angle = 45, vjust = 1, size = fontsize, hjust = 1),
-            axis.text.y = element_text(size = fontsize)
+
+    # Detect shape:
+    #   undirected: columns pattern1, pattern2, overlapScore  (symmetric heatmap)
+    #   directed:   columns pattern, influence, relAbundance   (source -> "near.<target>")
+    cn <- colnames(df)
+    if (all(c("pattern1", "pattern2", "overlapScore") %in% cn)) {
+        xcol <- "pattern1"; ycol <- "pattern2"; fill <- "overlapScore"
+    } else if (all(c("pattern", "influence", "relAbundance") %in% cn)) {
+        xcol <- "pattern"; ycol <- "influence"; fill <- "relAbundance"
+    } else {
+        stop("Unknown overlap_scores shape; expected undirected (pattern1/pattern2/overlapScore) or directed (pattern/influence/relAbundance) columns.")
+    }
+
+    p <- ggplot2::ggplot(data = df,
+            ggplot2::aes(x = .data[[xcol]], y = .data[[ycol]],
+                         fill = .data[[fill]])) +
+        ggplot2::geom_tile(color = "black", size = 0.8) +
+        ggplot2::geom_text(ggplot2::aes(label = round(.data[[fill]], 2)), size = 6) +
+        ggplot2::scale_fill_gradient2(low = "#FFF7EC", mid = "#FDBB84",
+                                      high = "#D7301F", midpoint = 0.5) +
+        ggplot2::scale_y_discrete(limits = rev,
+                                  guide = ggplot2::guide_axis(angle = 45)) +
+        ggplot2::theme_minimal() +
+        ggplot2::theme(
+            axis.text.x = ggplot2::element_text(angle = 45, vjust = 1,
+                                                size = fontsize, hjust = 1),
+            axis.text.y = ggplot2::element_text(size = fontsize)
         ) +
-        coord_fixed() +
-        labs(x = NULL, y = NULL, fill = "overlapScore", title = title) +
-        theme(
-            panel.background = element_blank(),
-            panel.grid.major = element_blank(),
-            panel.border = element_blank()
+        ggplot2::coord_fixed() +
+        ggplot2::labs(x = NULL, y = NULL, fill = fill, title = title) +
+        ggplot2::theme(
+            panel.background = ggplot2::element_blank(),
+            panel.grid.major = ggplot2::element_blank(),
+            panel.border = ggplot2::element_blank()
         )
-    if(!is.null(out)){
+    if (!is.null(out)) {
         ggplot2::ggsave(filename = out, plot = p)
     }
-    return(p)
+    p
 }
 
 #' @title get_im_scores
@@ -414,6 +434,7 @@ plot_spatial <- function(sme, feature_col = NULL,
                          source = c("auto", "colData", "assay", "hotspots",
                                     "influence_map", "interaction"),
                          interaction_patterns = NULL,
+                         interaction_label = NULL,
                          image = NULL,
                          resolution = c("lowres", "hires", "fullres"),
                          colors = NULL, point_size = 2.5, stroke = 0.05,
@@ -482,15 +503,20 @@ plot_spatial <- function(sme, feature_col = NULL,
             stop(sprintf("Pattern(s) %s not found in %s hotspots.",
                          paste(missing_pats, collapse = ", "), hotspot_type))
         }
+        # Middle-class label: user override > directed default > undirected default
+        mid_label <- interaction_label %||%
+            (if (hotspot_type == "undirected") "interacting"
+             else sprintf("%s near %s", interaction_patterns[1],
+                          interaction_patterns[2]))
         col1 <- hs[[interaction_patterns[1]]]
         col2 <- hs[[interaction_patterns[2]]]
         labs <- rep(NA_character_, length(col1))
         in1 <- !is.na(col1); in2 <- !is.na(col2)
         labs[in1 & !in2] <- interaction_patterns[1]
         labs[!in1 & in2] <- interaction_patterns[2]
-        labs[in1 &  in2] <- "interacting"
+        labs[in1 &  in2] <- mid_label
         labs <- factor(labs,
-                       levels = c(interaction_patterns[1], "interacting",
+                       levels = c(interaction_patterns[1], mid_label,
                                   interaction_patterns[2]))
         names(labs) <- hs$barcode
         labs

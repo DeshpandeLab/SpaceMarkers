@@ -342,13 +342,18 @@ plot_spatial(sme_dir, feature_col = "Pattern_5",
              colors = "firebrick", title = "Pattern_5 GMM hotspots")
 ```
 
+For the directed workflow the middle category is labeled `<source> near
+<target>` by default (overridable via `interaction_label`). Here it's
+`"Pattern_1 near Pattern_5"` — the spots where both patterns have a GMM
+hotspot, interpreted as Pattern\_1 reaching into Pattern\_5.
+
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 plot_spatial(sme_dir,
              source = "interaction", hotspot_type = "pattern",
              interaction_patterns = c("Pattern_1", "Pattern_5"),
-             colors = c(Pattern_1 = "steelblue",
-                        interacting = "purple",
-                        Pattern_5 = "firebrick"))
+             colors = c(Pattern_1             = "steelblue",
+                        "Pattern_1 near Pattern_5" = "purple",
+                        Pattern_5             = "firebrick"))
 ```
 
 ## Step 3: Find influence hotspots
@@ -413,6 +418,15 @@ overlaps with the opposing pattern's influence zone, and sets
 sme_dir <- calculate_overlap_directed(sme_dir)
 overlap_scores(sme_dir)
 analysis_type(sme_dir)
+```
+
+`plot_overlap_scores()` auto-detects whether the stored scores are
+undirected (columns `pattern1`, `pattern2`, `overlapScore`) or directed
+(columns `pattern`, `influence`, `relAbundance`) and picks the right axes
+and fill scale accordingly.
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plot_overlap_scores(sme_dir, title = "Directed overlap (relative abundance)")
 ```
 
 # Putting it together

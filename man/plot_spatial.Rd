@@ -10,6 +10,7 @@ plot_spatial(
   hotspot_type = c("undirected", "pattern", "influence"),
   source = c("auto", "colData", "assay", "hotspots", "influence_map", "interaction"),
   interaction_patterns = NULL,
+  interaction_label = NULL,
   image = NULL,
   resolution = c("lowres", "hires", "fullres"),
   colors = NULL,
