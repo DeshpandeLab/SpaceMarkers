@@ -408,3 +408,41 @@ setMethod("find_all_hotspots", "SpaceMarkersExperiment",
         sme
     }
 )
+
+#' @rdname get_pairwise_interacting_genes
+#' @aliases get_pairwise_interacting_genes,SpaceMarkersExperiment-method
+#' @export
+setMethod("get_pairwise_interacting_genes", "SpaceMarkersExperiment",
+    function(data, spPatterns = NULL, mode = "residual", optParams = NULL,
+             reconstruction = NULL, hotspots = NULL, minOverlap = 50,
+             analysis = c("overlap", "enrichment"),
+             pattern_pairs = NULL, ..., workers = 1) {
+        sme <- data
+        hs <- hotspots %||% hotspots(sme, "undirected")
+        if (is.null(hs)) {
+            stop("Run find_all_hotspots(x) before get_pairwise_interacting_genes().")
+        }
+        analysis <- match.arg(analysis)
+        res <- get_pairwise_interacting_genes(
+            data = .sme_expr(sme),
+            spPatterns = spPatterns %||% .sme_spPatterns(sme),
+            mode = mode,
+            optParams = optParams %||% spatial_params(sme),
+            reconstruction = reconstruction,
+            hotspots = hs,
+            minOverlap = minOverlap,
+            analysis = analysis,
+            pattern_pairs = pattern_pairs,
+            workers = workers,
+            ...
+        )
+        interactions(sme) <- res
+        sm <- sme@spacemarkers
+        if (is.null(sm$params)) sm$params <- list()
+        sm$params$mode <- mode
+        sm$params$analysis_method <- analysis
+        sm$params$min_overlap <- minOverlap
+        sme@spacemarkers <- sm
+        sme
+    }
+)

@@ -29,7 +29,7 @@ find_all_hotspots(
   spPatterns,
   params = NULL,
   outlier = "positive",
-  nullSamples = 1000,
+  nullSamples = 100,
   includeSelf = TRUE,
   ...
 )

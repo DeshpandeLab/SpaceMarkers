@@ -423,3 +423,25 @@ test_that("find_all_hotspots(SME) parity with data.frame path", {
     hs_direct <- find_all_hotspots(spDF, params = spatial_params(sme))
     expect_identical(hotspots(sme2, "undirected"), hs_direct)
 })
+
+# ---- Task 3: get_pairwise_interacting_genes as S4 generic with SME method ----
+
+test_that("get_pairwise_interacting_genes(SME) stores interactions and updates params", {
+    sme <- make_fixture_sme() |> find_all_hotspots()
+    sme2 <- get_pairwise_interacting_genes(
+        sme, mode = "DE", analysis = "enrichment", minOverlap = 1, workers = 1)
+    expect_s4_class(sme2, "SpaceMarkersExperiment")
+    expect_type(interactions(sme2), "list")
+    p <- params(sme2)
+    expect_equal(p$mode, "DE")
+    expect_equal(p$analysis_method, "enrichment")
+    expect_equal(p$min_overlap, 1)
+})
+
+test_that("get_pairwise_interacting_genes(SME) errors without hotspots", {
+    sme <- make_fixture_sme()
+    expect_error(
+        get_pairwise_interacting_genes(sme, mode = "DE"),
+        regexp = "find_all_hotspots"
+    )
+})
