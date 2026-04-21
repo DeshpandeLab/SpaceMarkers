@@ -381,6 +381,8 @@ SpaceMarkers <- function(x = NULL,
                               resolution = resolution)
     message("Finding hotspots...")
     sme <- find_all_hotspots(sme)
+    message("Calculating overlap scores...")
+    sme <- calculate_overlap_undirected(sme)
     message("Finding interacting genes...")
     sme <- get_pairwise_interacting_genes(
         sme, mode = "DE", analysis = "enrichment",
@@ -388,8 +390,6 @@ SpaceMarkers <- function(x = NULL,
     message("Calculating Interaction Scores...")
     sme <- get_im_scores(sme)
     if (!returnSME) return(undirected_scores(sme))
-    message("Calculating overlap scores...")
-    sme <- calculate_overlap_undirected(sme)
     sm <- sme@spacemarkers
     if (is.null(sm$params)) sm$params <- list()
     sm$params$min_gene_expr <- min.gene.expr
@@ -419,11 +419,11 @@ SpaceMarkers <- function(x = NULL,
     sme <- calculate_influence(sme)
     sme <- find_hotspots_gmm(sme, type = "pattern")
     sme <- find_hotspots_gmm(sme, type = "influence")
+    message("Calculating overlap scores...")
+    sme <- calculate_overlap_directed(sme)
     message("Calculating directed interaction scores...")
     sme <- calculate_gene_scores_directed(sme, ...)
     if (!returnSME) return(directed_scores(sme))
-    message("Calculating overlap scores...")
-    sme <- calculate_overlap_directed(sme)
     if (!is.null(lr_pairs)) {
         message("Calculating LR scores...")
         sm <- sme@spacemarkers

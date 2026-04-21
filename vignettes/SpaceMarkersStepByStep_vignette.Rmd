@@ -209,13 +209,36 @@ plot_spatial(sme_ud,
                         Pattern_2 = "firebrick"))
 ```
 
-## Step 2: Find pairwise interacting genes
+## Step 2: Calculate overlap scores
+
+Before scoring genes we already know where every pair of hotspots sits
+in space, so we can compute the pairwise spatial overlap.
+`calculate_overlap_undirected()` measures how much each pair's hotspots
+overlap (Szymkiewicz–Simpson by default); the resulting table is stored
+via `overlap_scores<-` and `analysis_type(sme)` is set to
+`"undirected"`.
+
+```{r}
+sme_ud <- calculate_overlap_undirected(sme_ud)
+overlap_scores(sme_ud)
+analysis_type(sme_ud)
+```
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plot_overlap_scores(sme_ud)
+```
+
+The heatmap highlights which pattern pairs share territory; pairs with
+substantial overlap are the interesting candidates for the gene-level
+tests in the next step.
+
+## Step 3: Find pairwise interacting genes
 
 `get_pairwise_interacting_genes()` tests each gene for differential
-expression between the Pattern\_1 × Pattern\_2 overlap zone and each
-pattern's exclusive zone. The `pattern_pairs` argument scopes the test to a
-single pair so the narrative stays focused; omit it to compute all pairs.
-The full per-gene result list is written to `metadata(sme)$interactions`.
+expression between a pair's overlap zone and each pattern's exclusive
+zone. The `pattern_pairs` argument scopes the test to a single pair so
+the narrative stays focused; omit it to compute all pairs. The full
+per-gene result list is written to `metadata(sme)$interactions`.
 
 ```{r message=FALSE, warning=FALSE}
 sme_ud <- get_pairwise_interacting_genes(
@@ -235,7 +258,7 @@ if (length(pair1$interacting_genes) > 0) {
 }
 ```
 
-## Step 3: Calculate IM scores
+## Step 4: Calculate IM scores
 
 `get_im_scores()` aggregates the per-gene Kruskal–Wallis + Dunn's-test
 statistics from the previous step into a single score matrix (genes × pattern
@@ -261,23 +284,6 @@ ims <- undirected_scores(sme_ud)
 top_gene <- ims[order(ims[[pair_col]], decreasing = TRUE), "Gene"][1]
 plot_spatial(sme_ud, feature_col = top_gene,
              title = sprintf("%s (top %s gene)", top_gene, pair_col))
-```
-
-## Step 4: Calculate overlap scores
-
-`calculate_overlap_undirected()` measures how much each pair's hotspots
-actually overlap in space (Szymkiewicz–Simpson by default). The resulting
-table is stored via `overlap_scores<-` and `analysis_type(sme)` is set to
-`"undirected"`.
-
-```{r}
-sme_ud <- calculate_overlap_undirected(sme_ud)
-overlap_scores(sme_ud)
-analysis_type(sme_ud)
-```
-
-```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
-plot_overlap_scores(sme_ud)
 ```
 
 # Directed Analysis
@@ -421,7 +427,33 @@ plot_spatial(sme_dir,
                         Pattern_5                  = "firebrick"))
 ```
 
-## Step 4: Directed gene scores
+## Step 4: Directed overlap scores
+
+Before scoring genes we look at the pairwise directional overlap across
+every source → target pair. `calculate_overlap_directed()` quantifies
+how much each pattern's GMM hotspot overlaps with the opposing pattern's
+influence zone, stores the table via `overlap_scores<-`, and sets
+`analysis_type(sme)` to `"directed"`.
+
+```{r}
+sme_dir <- calculate_overlap_directed(sme_dir)
+overlap_scores(sme_dir)
+analysis_type(sme_dir)
+```
+
+`plot_overlap_scores()` auto-detects whether the stored scores are
+undirected (columns `pattern1`, `pattern2`, `overlapScore`) or directed
+(columns `pattern`, `influence`, `relAbundance`) and picks the right
+axes and fill scale accordingly.
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plot_overlap_scores(sme_dir, title = "Directed overlap (relative abundance)")
+```
+
+The heatmap flags which source → target pairs have the most directional
+interaction — good candidates for the per-gene tests in the next step.
+
+## Step 5: Directed gene scores
 
 `calculate_gene_scores_directed()` scores each gene for each source → target
 pair, using the intersection of the target's GMM hotspot and the source's
@@ -450,27 +482,6 @@ plot_spatial(sme_dir, feature_col = top_gene,
              title = sprintf("%s (top directed gene, %s)", top_gene, ci))
 ```
 
-## Step 5: Directed overlap scores
-
-`calculate_overlap_directed()` quantifies how much each pattern's hotspot
-overlaps with the opposing pattern's influence zone, and sets
-`analysis_type(sme)` to `"directed"`.
-
-```{r}
-sme_dir <- calculate_overlap_directed(sme_dir)
-overlap_scores(sme_dir)
-analysis_type(sme_dir)
-```
-
-`plot_overlap_scores()` auto-detects whether the stored scores are
-undirected (columns `pattern1`, `pattern2`, `overlapScore`) or directed
-(columns `pattern`, `influence`, `relAbundance`) and picks the right axes
-and fill scale accordingly.
-
-```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
-plot_overlap_scores(sme_dir, title = "Directed overlap (relative abundance)")
-```
-
 # Putting it together
 
 Once the individual steps make sense, the whole analysis is a single pipe
@@ -479,22 +490,22 @@ chain:
 ```{r eval=FALSE}
 sme_ud <- sme |>
     find_all_hotspots() |>
+    calculate_overlap_undirected() |>
     get_pairwise_interacting_genes(
         mode = "DE", analysis = "enrichment",
         minOverlap = 10, workers = 1,
         pattern_pairs = rbind(c("Pattern_1", "Pattern_2"))
     ) |>
-    get_im_scores() |>
-    calculate_overlap_undirected()
+    get_im_scores()
 
 sme_dir <- sme |>
     calculate_influence() |>
     find_hotspots_gmm(type = "pattern") |>
     find_hotspots_gmm(type = "influence") |>
+    calculate_overlap_directed() |>
     calculate_gene_scores_directed(
         pattern_pairs = rbind(c("Pattern_1", "Pattern_5"))
-    ) |>
-    calculate_overlap_directed()
+    )
 ```
 
 # Cleanup

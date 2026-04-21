@@ -145,17 +145,18 @@ sme
 
 The `SpaceMarkers()` function now accepts a `SpaceMarkersExperiment` as
 its first argument. All results are stored back in the returned object.
-For the undirected analysis we use Pattern_1 and Pattern_2, which show
-substantial overlap in this dataset.
+We keep all five CoGAPS patterns on the SME (so the overlap heatmap shows
+every pairwise relationship) and restrict the gene-level interaction
+tests to Pattern\_1 × Pattern\_2 — our narrative focus — via
+`pattern_pairs`, which `SpaceMarkers()` forwards to
+`get_pairwise_interacting_genes()`.
 
 ```{r message=FALSE, warning=FALSE}
-sme_ud <- sme
-spatial_patterns(sme_ud) <- spatial_patterns(sme_ud)[, c("Pattern_1", "Pattern_2")]
-
 sme_undirected <- SpaceMarkers(
-    x = sme_ud,
+    x = sme,
     directed = FALSE,
-    min.gene.expr = 3
+    min.gene.expr = 3,
+    pattern_pairs = rbind(c("Pattern_1", "Pattern_2"))
 )
 ```
 
@@ -198,17 +199,18 @@ if (length(pair_names) > 0) {
 
 ## Directed Analysis
 
-For the directed analysis we use Pattern_1 (immune) and Pattern_5 (cancer),
-following the main SpaceMarkers vignette.
+The directed analysis keeps every pattern on the SME so the directed
+overlap heatmap covers all source → target pairs, and restricts
+gene-level scoring to Pattern\_1 → Pattern\_5 (immune → cancer) via
+`pattern_pairs`, which `SpaceMarkers()` forwards to
+`calculate_gene_scores_directed()`.
 
 ```{r message=FALSE, warning=FALSE}
-sme_dir <- sme
-spatial_patterns(sme_dir) <- spatial_patterns(sme_dir)[, c("Pattern_1", "Pattern_5")]
-
 sme_directed <- SpaceMarkers(
-    x = sme_dir,
+    x = sme,
     directed = TRUE,
-    min.gene.expr = 3
+    min.gene.expr = 3,
+    pattern_pairs = rbind(c("Pattern_1", "Pattern_5"))
 )
 ```
 
@@ -253,7 +255,7 @@ plot_spatial(sme, feature_col = "Pattern_1", title = "Pattern_1 (immune)")
 plot_spatial(sme, feature_col = "Pattern_5", title = "Pattern_5 (cancer)")
 ```
 
-## Undirected hotspots and interaction overlay
+## Undirected hotspots
 
 Pass `source = "hotspots"` so `plot_spatial()` reads hotspot labels from
 `metadata(sme)$hotspots$undirected` rather than the continuous pattern
@@ -266,14 +268,30 @@ plot_spatial(sme_undirected, feature_col = "Pattern_1",
              colors = "steelblue", title = "Pattern_1 hotspots")
 ```
 
+…and Pattern\_2, from the same `find_all_hotspots()` pass:
+
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 plot_spatial(sme_undirected, feature_col = "Pattern_2",
              source = "hotspots", hotspot_type = "undirected",
              colors = "firebrick", title = "Pattern_2 hotspots")
 ```
 
-A three-way overlay classifies each hotspot spot as Pattern\_1 only,
-interacting (hot in both), or Pattern\_2 only:
+## Undirected overlap scores
+
+With hotspots in hand we can already answer the broader spatial question
+— which pattern pairs actually share territory. `plot_overlap_scores()`
+reads `overlap_scores(sme)` directly and auto-detects the undirected
+shape (symmetric `pattern1 × pattern2` heatmap) across every pair:
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plot_overlap_scores(sme_undirected, title = "Undirected overlap")
+```
+
+## Undirected interaction overlay
+
+For a chosen pair, a three-way overlay classifies each hotspot spot as
+Pattern\_1 only, interacting (hot in both), or Pattern\_2 only. This is
+the spatial region the per-gene tests below operate on.
 
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 plot_spatial(sme_undirected,
@@ -306,22 +324,12 @@ for (g in top_genes) {
 }
 ```
 
-## Undirected overlap scores
+## Directed hotspots
 
-`plot_overlap_scores()` reads `overlap_scores(sme)` directly and
-auto-detects the undirected shape (symmetric `pattern1 × pattern2`
-heatmap):
-
-```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
-plot_overlap_scores(sme_undirected, title = "Undirected overlap")
-```
-
-## Directed hotspots and interaction overlay
-
-The directed workflow splits hotspots into two flavors — pattern-value
+The directed workflow splits hotspots into two flavors: pattern-value
 GMM hotspots (`hotspot_type = "pattern"`) and influence-map GMM hotspots
-(`hotspot_type = "influence"`) — and the interaction overlay's middle
-label auto-switches to `"<source> near <target>"`.
+(`hotspot_type = "influence"`). Here we focus on the pattern-level
+hotspots that define the source/target regions of each directed pair.
 
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 plot_spatial(sme_directed, feature_col = "Pattern_1",
@@ -329,19 +337,33 @@ plot_spatial(sme_directed, feature_col = "Pattern_1",
              colors = "steelblue", title = "Pattern_1 GMM hotspots")
 ```
 
+…and Pattern\_5, the target region the immune pattern radiates into:
+
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 plot_spatial(sme_directed, feature_col = "Pattern_5",
              source = "hotspots", hotspot_type = "pattern",
              colors = "firebrick", title = "Pattern_5 GMM hotspots")
 ```
 
-Directed analyses use a richer four- or five-way classification: each spot
-is labeled as `Pattern_1`, `"Pattern_1 near Pattern_5"`, `"Pattern_5 near
-Pattern_1"`, `Pattern_5`, or `"both"` (the doubly-hot confounder region).
-`plot_spatial(..., source = "interaction")` auto-picks the directed scheme
-when pattern + influence hotspots are both populated, and delegates to
-`overlap_map()` so the plot categories match anything the user derives
-directly:
+## Directed overlap scores
+
+`plot_overlap_scores()` detects the directed shape (`pattern ×
+influence` with a relative-abundance fill) automatically, again across
+every source → target pair:
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plot_overlap_scores(sme_directed, title = "Directed overlap (relative abundance)")
+```
+
+## Directed interaction overlay
+
+For the chosen pair, the spot-level classification is richer than the
+undirected one: each spot is labeled `Pattern_1`, `"Pattern_1 near
+Pattern_5"`, `"Pattern_5 near Pattern_1"`, `Pattern_5`, or `"both"` (the
+doubly-hot confounder region). `plot_spatial(..., source =
+"interaction")` auto-picks the directed scheme when pattern + influence
+hotspots are both populated, and delegates to `overlap_map()` so the
+plot categories match anything the user derives directly:
 
 ```{r}
 labs <- overlap_map(sme_directed, c("Pattern_1", "Pattern_5"))
@@ -357,15 +379,6 @@ plot_spatial(sme_directed,
                         both                       = "gray40",
                         "Pattern_5 near Pattern_1" = "goldenrod",
                         Pattern_5                  = "firebrick"))
-```
-
-## Directed overlap scores
-
-`plot_overlap_scores()` detects the directed shape (`pattern × influence`
-with a relative-abundance fill) automatically:
-
-```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
-plot_overlap_scores(sme_directed, title = "Directed overlap (relative abundance)")
 ```
 
 # Constructing a SpaceMarkersExperiment Manually
