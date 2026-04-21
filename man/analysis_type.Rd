@@ -36,3 +36,12 @@ Read (\code{analysis_type(x)}) or write
 \code{"directed"}, or \code{"both"}. The setter delegates validation to
 \code{setValidity("SpaceMarkersExperiment", ...)}.
 }
+\examples{
+sme <- SpaceMarkersExperiment(
+    assays = list(logcounts = matrix(rpois(200, 2), 10, 20,
+        dimnames = list(paste0("G", 1:10), paste0("s", 1:20)))),
+    spatialCoords = matrix(runif(40), 20, 2,
+        dimnames = list(NULL, c("y", "x"))))
+analysis_type(sme) <- "undirected"
+analysis_type(sme)
+}

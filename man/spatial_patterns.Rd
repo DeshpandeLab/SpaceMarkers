@@ -41,3 +41,15 @@ stored in the columns of \code{colData(x)} named by
 \code{x@spacemarkers$params$pattern_names}. The setter also updates
 \code{pattern_names} to the column names of \code{value}.
 }
+\examples{
+sme <- SpaceMarkersExperiment(
+    assays = list(logcounts = matrix(rpois(200, 2), 10, 20,
+        dimnames = list(paste0("G", 1:10), paste0("s", 1:20)))),
+    spatialCoords = matrix(runif(40), 20, 2,
+        dimnames = list(NULL, c("y", "x"))))
+colnames(sme) <- paste0("s", seq_len(20))
+spatial_patterns(sme) <- S4Vectors::DataFrame(
+    Pattern_1 = runif(20), Pattern_2 = runif(20),
+    row.names = colnames(sme))
+head(spatial_patterns(sme))
+}

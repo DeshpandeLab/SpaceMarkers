@@ -1,9 +1,13 @@
 #' Internal imports for SpaceMarkersExperiment methods
 #'
+#' Documentation stub whose only job is to declare package imports that
+#' roxygen2 turns into \code{importFrom} entries in \code{NAMESPACE}.
+#'
 #' @importFrom S4Vectors metadata metadata<-
 #' @importFrom SummarizedExperiment assayNames colData<-
 #' @importFrom methods setGeneric validObject
 #' @name SpaceMarkersExperiment-imports
+#' @return No return value; used only for its roxygen side effects.
 #' @keywords internal
 NULL
 
@@ -26,6 +30,17 @@ NULL
 #' @param ... Not used.
 #' @return For the getter, a data.frame or \code{NULL}. For the setter, the
 #'   modified \code{SpaceMarkersExperiment}.
+#' @examples
+#' sme <- SpaceMarkersExperiment(
+#'     assays = list(logcounts = matrix(rpois(200, 2), 10, 20,
+#'         dimnames = list(paste0("G", 1:10), paste0("s", 1:20)))),
+#'     spatialCoords = matrix(runif(40), 20, 2,
+#'         dimnames = list(NULL, c("y", "x"))))
+#' colnames(sme) <- paste0("s", seq_len(20))
+#' hs <- data.frame(barcode = colnames(sme), x = 1:20, y = 1:20,
+#'                  Pattern_1 = c(rep("hot", 10), rep(NA, 10)))
+#' hotspots(sme, type = "undirected") <- hs
+#' head(hotspots(sme, "undirected"))
 NULL
 
 #' Access pairwise interaction results on a SpaceMarkersExperiment
@@ -47,6 +62,15 @@ NULL
 #' @return For the getter, a named list of per-pair results (or a single
 #'   pair's results when \code{pair} is specified). For the setter, the
 #'   modified \code{SpaceMarkersExperiment}.
+#' @examples
+#' sme <- SpaceMarkersExperiment(
+#'     assays = list(logcounts = matrix(rpois(200, 2), 10, 20,
+#'         dimnames = list(paste0("G", 1:10), paste0("s", 1:20)))),
+#'     spatialCoords = matrix(runif(40), 20, 2,
+#'         dimnames = list(NULL, c("y", "x"))))
+#' interactions(sme) <- list(
+#'     Pattern_1_Pattern_2 = list(interacting_genes = list()))
+#' names(interactions(sme))
 NULL
 
 #' Access the per-spot influence map on a SpaceMarkersExperiment
@@ -62,6 +86,16 @@ NULL
 #' @param ... Not used.
 #' @return For the getter, a data.frame of per-spot influence values or
 #'   \code{NULL}. For the setter, the modified \code{SpaceMarkersExperiment}.
+#' @examples
+#' sme <- SpaceMarkersExperiment(
+#'     assays = list(logcounts = matrix(rpois(200, 2), 10, 20,
+#'         dimnames = list(paste0("G", 1:10), paste0("s", 1:20)))),
+#'     spatialCoords = matrix(runif(40), 20, 2,
+#'         dimnames = list(NULL, c("y", "x"))))
+#' colnames(sme) <- paste0("s", seq_len(20))
+#' influence_map(sme) <- data.frame(barcode = colnames(sme),
+#'     x = 1:20, y = 1:20, Pattern_1 = runif(20))
+#' head(influence_map(sme))
 NULL
 
 #' Access undirected interaction scores on a SpaceMarkersExperiment
@@ -78,6 +112,15 @@ NULL
 #' @param ... Not used.
 #' @return For the getter, a data.frame of undirected scores or \code{NULL}.
 #'   For the setter, the modified \code{SpaceMarkersExperiment}.
+#' @examples
+#' sme <- SpaceMarkersExperiment(
+#'     assays = list(logcounts = matrix(rpois(200, 2), 10, 20,
+#'         dimnames = list(paste0("G", 1:10), paste0("s", 1:20)))),
+#'     spatialCoords = matrix(runif(40), 20, 2,
+#'         dimnames = list(NULL, c("y", "x"))))
+#' undirected_scores(sme) <- data.frame(
+#'     Gene = paste0("G", 1:5), Pattern_1_Pattern_2 = runif(5))
+#' head(undirected_scores(sme))
 NULL
 
 #' Access directed interaction scores on a SpaceMarkersExperiment
@@ -93,6 +136,17 @@ NULL
 #' @param ... Not used.
 #' @return For the getter, a data.frame of directed scores or \code{NULL}.
 #'   For the setter, the modified \code{SpaceMarkersExperiment}.
+#' @examples
+#' sme <- SpaceMarkersExperiment(
+#'     assays = list(logcounts = matrix(rpois(200, 2), 10, 20,
+#'         dimnames = list(paste0("G", 1:10), paste0("s", 1:20)))),
+#'     spatialCoords = matrix(runif(40), 20, 2,
+#'         dimnames = list(NULL, c("y", "x"))))
+#' directed_scores(sme) <- data.frame(
+#'     gene = paste0("G", 1:5),
+#'     cell_interaction = "Pattern_1->Pattern_5",
+#'     effect_size = runif(5))
+#' head(directed_scores(sme))
 NULL
 
 #' Access ligand-receptor scores on a SpaceMarkersExperiment
@@ -108,6 +162,15 @@ NULL
 #' @param ... Not used.
 #' @return For the getter, a matrix of LR pair scores or \code{NULL}. For the
 #'   setter, the modified \code{SpaceMarkersExperiment}.
+#' @examples
+#' sme <- SpaceMarkersExperiment(
+#'     assays = list(logcounts = matrix(rpois(200, 2), 10, 20,
+#'         dimnames = list(paste0("G", 1:10), paste0("s", 1:20)))),
+#'     spatialCoords = matrix(runif(40), 20, 2,
+#'         dimnames = list(NULL, c("y", "x"))))
+#' lr_scores(sme) <- matrix(runif(4), 2, 2,
+#'     dimnames = list(c("LR1", "LR2"), c("P1_P2", "P2_P1")))
+#' lr_scores(sme)
 NULL
 
 #' Access pattern overlap scores on a SpaceMarkersExperiment
@@ -123,6 +186,15 @@ NULL
 #' @param ... Not used.
 #' @return For the getter, a data.frame of pattern overlap scores or
 #'   \code{NULL}. For the setter, the modified \code{SpaceMarkersExperiment}.
+#' @examples
+#' sme <- SpaceMarkersExperiment(
+#'     assays = list(logcounts = matrix(rpois(200, 2), 10, 20,
+#'         dimnames = list(paste0("G", 1:10), paste0("s", 1:20)))),
+#'     spatialCoords = matrix(runif(40), 20, 2,
+#'         dimnames = list(NULL, c("y", "x"))))
+#' overlap_scores(sme) <- data.frame(pattern1 = "Pattern_1",
+#'     pattern2 = "Pattern_2", overlapScore = 0.5)
+#' overlap_scores(sme)
 NULL
 
 #' Access or set the analysis type on a SpaceMarkersExperiment
@@ -141,6 +213,14 @@ NULL
 #' @param ... Not used.
 #' @return For the getter, a character string or \code{NULL}. For the setter,
 #'   the modified \code{SpaceMarkersExperiment}.
+#' @examples
+#' sme <- SpaceMarkersExperiment(
+#'     assays = list(logcounts = matrix(rpois(200, 2), 10, 20,
+#'         dimnames = list(paste0("G", 1:10), paste0("s", 1:20)))),
+#'     spatialCoords = matrix(runif(40), 20, 2,
+#'         dimnames = list(NULL, c("y", "x"))))
+#' analysis_type(sme) <- "undirected"
+#' analysis_type(sme)
 NULL
 
 #' Access analysis hyperparameters on a SpaceMarkersExperiment
@@ -157,6 +237,13 @@ NULL
 #' @param ... Not used.
 #' @return The full list of hyperparameters, or \code{NULL} if none has been
 #'   set.
+#' @examples
+#' sme <- SpaceMarkersExperiment(
+#'     assays = list(logcounts = matrix(rpois(200, 2), 10, 20,
+#'         dimnames = list(paste0("G", 1:10), paste0("s", 1:20)))),
+#'     spatialCoords = matrix(runif(40), 20, 2,
+#'         dimnames = list(NULL, c("y", "x"))))
+#' params(sme)
 NULL
 
 #' Access or set the spatial-kernel parameters on a SpaceMarkersExperiment
@@ -174,6 +261,16 @@ NULL
 #' @param ... Not used.
 #' @return For the getter, a 2 x N matrix of spatial parameters or
 #'   \code{NULL}. For the setter, the modified \code{SpaceMarkersExperiment}.
+#' @examples
+#' sme <- SpaceMarkersExperiment(
+#'     assays = list(logcounts = matrix(rpois(200, 2), 10, 20,
+#'         dimnames = list(paste0("G", 1:10), paste0("s", 1:20)))),
+#'     spatialCoords = matrix(runif(40), 20, 2,
+#'         dimnames = list(NULL, c("y", "x"))))
+#' spatial_params(sme) <- matrix(c(1, 2, 1, 2), 2, 2,
+#'     dimnames = list(c("sigmaOpt", "threshOpt"),
+#'                     c("Pattern_1", "Pattern_2")))
+#' spatial_params(sme)
 NULL
 
 #' Access or set spatial pattern columns on a SpaceMarkersExperiment
@@ -192,6 +289,17 @@ NULL
 #' @param ... Not used.
 #' @return For the getter, a \code{DataFrame} of spatial patterns or
 #'   \code{NULL}. For the setter, the modified \code{SpaceMarkersExperiment}.
+#' @examples
+#' sme <- SpaceMarkersExperiment(
+#'     assays = list(logcounts = matrix(rpois(200, 2), 10, 20,
+#'         dimnames = list(paste0("G", 1:10), paste0("s", 1:20)))),
+#'     spatialCoords = matrix(runif(40), 20, 2,
+#'         dimnames = list(NULL, c("y", "x"))))
+#' colnames(sme) <- paste0("s", seq_len(20))
+#' spatial_patterns(sme) <- S4Vectors::DataFrame(
+#'     Pattern_1 = runif(20), Pattern_2 = runif(20),
+#'     row.names = colnames(sme))
+#' head(spatial_patterns(sme))
 NULL
 
 #' @rdname spatial_patterns

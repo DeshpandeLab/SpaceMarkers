@@ -34,3 +34,15 @@ Read (\code{directed_scores(x)}) or write
 (\code{directed_scores(x) <- value}) the data.frame of directed
 interaction scores stored in \code{x@spacemarkers$results$directed_scores}.
 }
+\examples{
+sme <- SpaceMarkersExperiment(
+    assays = list(logcounts = matrix(rpois(200, 2), 10, 20,
+        dimnames = list(paste0("G", 1:10), paste0("s", 1:20)))),
+    spatialCoords = matrix(runif(40), 20, 2,
+        dimnames = list(NULL, c("y", "x"))))
+directed_scores(sme) <- data.frame(
+    gene = paste0("G", 1:5),
+    cell_interaction = "Pattern_1->Pattern_5",
+    effect_size = runif(5))
+head(directed_scores(sme))
+}

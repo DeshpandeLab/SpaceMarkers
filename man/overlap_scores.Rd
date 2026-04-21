@@ -34,3 +34,13 @@ Read (\code{overlap_scores(x)}) or write
 (\code{overlap_scores(x) <- value}) the data.frame of pattern overlap
 scores stored in \code{x@spacemarkers$results$overlap_scores}.
 }
+\examples{
+sme <- SpaceMarkersExperiment(
+    assays = list(logcounts = matrix(rpois(200, 2), 10, 20,
+        dimnames = list(paste0("G", 1:10), paste0("s", 1:20)))),
+    spatialCoords = matrix(runif(40), 20, 2,
+        dimnames = list(NULL, c("y", "x"))))
+overlap_scores(sme) <- data.frame(pattern1 = "Pattern_1",
+    pattern2 = "Pattern_2", overlapScore = 0.5)
+overlap_scores(sme)
+}

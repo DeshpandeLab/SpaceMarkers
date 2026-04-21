@@ -34,3 +34,13 @@ Read (\code{lr_scores(x)}) or write (\code{lr_scores(x) <- value}) the
 matrix of ligand-receptor pair scores stored in
 \code{x@spacemarkers$results$lr_scores}.
 }
+\examples{
+sme <- SpaceMarkersExperiment(
+    assays = list(logcounts = matrix(rpois(200, 2), 10, 20,
+        dimnames = list(paste0("G", 1:10), paste0("s", 1:20)))),
+    spatialCoords = matrix(runif(40), 20, 2,
+        dimnames = list(NULL, c("y", "x"))))
+lr_scores(sme) <- matrix(runif(4), 2, 2,
+    dimnames = list(c("LR1", "LR2"), c("P1_P2", "P2_P1")))
+lr_scores(sme)
+}

@@ -37,3 +37,14 @@ Read (\code{spatial_params(x)}) or write
 (rows \code{sigmaOpt}, \code{threshOpt}; one column per pattern) stored in
 \code{x@spacemarkers$params$spatial_params}.
 }
+\examples{
+sme <- SpaceMarkersExperiment(
+    assays = list(logcounts = matrix(rpois(200, 2), 10, 20,
+        dimnames = list(paste0("G", 1:10), paste0("s", 1:20)))),
+    spatialCoords = matrix(runif(40), 20, 2,
+        dimnames = list(NULL, c("y", "x"))))
+spatial_params(sme) <- matrix(c(1, 2, 1, 2), 2, 2,
+    dimnames = list(c("sigmaOpt", "threshOpt"),
+                    c("Pattern_1", "Pattern_2")))
+spatial_params(sme)
+}

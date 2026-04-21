@@ -37,3 +37,15 @@ Read (\code{hotspots(x, type)}) or write
 in \code{metadata(x)$hotspots[[type]]}. \code{type} selects one of
 \code{"undirected"}, \code{"pattern"}, or \code{"influence"}.
 }
+\examples{
+sme <- SpaceMarkersExperiment(
+    assays = list(logcounts = matrix(rpois(200, 2), 10, 20,
+        dimnames = list(paste0("G", 1:10), paste0("s", 1:20)))),
+    spatialCoords = matrix(runif(40), 20, 2,
+        dimnames = list(NULL, c("y", "x"))))
+colnames(sme) <- paste0("s", seq_len(20))
+hs <- data.frame(barcode = colnames(sme), x = 1:20, y = 1:20,
+                 Pattern_1 = c(rep("hot", 10), rep(NA, 10)))
+hotspots(sme, type = "undirected") <- hs
+head(hotspots(sme, "undirected"))
+}

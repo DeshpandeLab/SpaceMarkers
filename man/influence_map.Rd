@@ -34,3 +34,14 @@ Read (\code{influence_map(x)}) or write
 (\code{influence_map(x) <- value}) the per-spot influence values stored in
 \code{metadata(x)$influence}.
 }
+\examples{
+sme <- SpaceMarkersExperiment(
+    assays = list(logcounts = matrix(rpois(200, 2), 10, 20,
+        dimnames = list(paste0("G", 1:10), paste0("s", 1:20)))),
+    spatialCoords = matrix(runif(40), 20, 2,
+        dimnames = list(NULL, c("y", "x"))))
+colnames(sme) <- paste0("s", seq_len(20))
+influence_map(sme) <- data.frame(barcode = colnames(sme),
+    x = 1:20, y = 1:20, Pattern_1 = runif(20))
+head(influence_map(sme))
+}

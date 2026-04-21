@@ -3,7 +3,11 @@
 \name{SpaceMarkersExperiment-imports}
 \alias{SpaceMarkersExperiment-imports}
 \title{Internal imports for SpaceMarkersExperiment methods}
+\value{
+No return value; used only for its roxygen side effects.
+}
 \description{
-Internal imports for SpaceMarkersExperiment methods
+Documentation stub whose only job is to declare package imports that
+roxygen2 turns into \code{importFrom} entries in \code{NAMESPACE}.
 }
 \keyword{internal}

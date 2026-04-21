@@ -32,3 +32,11 @@ Read-only accessor that returns the full list stored in
 \code{min_overlap}, \code{directed}, \code{outlier}, \code{null_samples},
 \code{genes}, and any other hyperparameters set during analysis.
 }
+\examples{
+sme <- SpaceMarkersExperiment(
+    assays = list(logcounts = matrix(rpois(200, 2), 10, 20,
+        dimnames = list(paste0("G", 1:10), paste0("s", 1:20)))),
+    spatialCoords = matrix(runif(40), 20, 2,
+        dimnames = list(NULL, c("y", "x"))))
+params(sme)
+}

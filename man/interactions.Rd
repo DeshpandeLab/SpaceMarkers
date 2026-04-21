@@ -41,3 +41,13 @@ stored in \code{metadata(x)$interactions}. When \code{pair} is supplied to
 the getter, only that pair's results are returned; otherwise the full
 named list is returned.
 }
+\examples{
+sme <- SpaceMarkersExperiment(
+    assays = list(logcounts = matrix(rpois(200, 2), 10, 20,
+        dimnames = list(paste0("G", 1:10), paste0("s", 1:20)))),
+    spatialCoords = matrix(runif(40), 20, 2,
+        dimnames = list(NULL, c("y", "x"))))
+interactions(sme) <- list(
+    Pattern_1_Pattern_2 = list(interacting_genes = list()))
+names(interactions(sme))
+}

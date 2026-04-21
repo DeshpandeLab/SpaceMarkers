@@ -35,3 +35,13 @@ Read (\code{undirected_scores(x)}) or write
 (\code{undirected_scores(x) <- value}) the data.frame of undirected
 interaction scores stored in \code{x@spacemarkers$results$undirected_scores}.
 }
+\examples{
+sme <- SpaceMarkersExperiment(
+    assays = list(logcounts = matrix(rpois(200, 2), 10, 20,
+        dimnames = list(paste0("G", 1:10), paste0("s", 1:20)))),
+    spatialCoords = matrix(runif(40), 20, 2,
+        dimnames = list(NULL, c("y", "x"))))
+undirected_scores(sme) <- data.frame(
+    Gene = paste0("G", 1:5), Pattern_1_Pattern_2 = runif(5))
+head(undirected_scores(sme))
+}
