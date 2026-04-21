@@ -27,12 +27,42 @@ plot_spatial(
 \arguments{
 \item{sme}{A \code{SpaceMarkersExperiment} object.}
 
-\item{feature_col}{Character. Name of the feature to plot. Searched in
-order: \code{colData(sme)}, \code{rownames(sme)} (gene expression),
-hotspots metadata for the specified \code{hotspot_type}.}
+\item{feature_col}{Character. Name of the feature to plot. Optional when
+\code{source = "interaction"} (derived from \code{interaction_patterns}).
+Otherwise searched according to \code{source}: \code{colData(sme)},
+\code{rownames(sme)} (gene expression), hotspots metadata for the
+specified \code{hotspot_type}, or the stored influence map.}
 
-\item{hotspot_type}{One of "undirected", "pattern", "influence". Only
-consulted if \code{feature_col} is not found in colData or rownames.}
+\item{hotspot_type}{One of \code{"undirected"}, \code{"pattern"},
+\code{"influence"}. Selects which hotspot slot \code{plot_spatial()}
+reads when \code{source = "hotspots"} (or when \code{source = "auto"}
+falls through to hotspots).}
+
+\item{source}{One of \code{"auto"}, \code{"colData"}, \code{"assay"},
+\code{"hotspots"}, \code{"influence_map"}, or \code{"interaction"}.
+Selects where \code{feature_col} is resolved.
+\itemize{
+\item \code{"auto"} (default): \code{colData} → \code{assay} →
+\code{hotspots} fall-through.
+\item \code{"colData"} / \code{"assay"} / \code{"hotspots"} /
+\code{"influence_map"}: force the lookup to a single source.
+\item \code{"interaction"}: synthesize a categorical overlay via
+\code{\link{overlap_map}} — feature_col is ignored; supply
+\code{interaction_patterns} instead.
+}}
+
+\item{interaction_patterns}{Length-2 character vector
+\code{c(pat1, pat2)}, required when \code{source = "interaction"}.
+Passed to \code{\link{overlap_map}}.}
+
+\item{interaction_label}{Optional override for the middle label of the
+undirected interaction overlay (default \code{"interacting"}); ignored
+when directed mode is auto-picked.}
+
+\item{direction}{For \code{source = "interaction"} in directed mode,
+one of \code{"forward"} (default; source = pat1, target = pat2) or
+\code{"reverse"} (source = pat2, target = pat1). Ignored in undirected
+mode.}
 
 \item{image}{Optional: a raster or matrix image to overlay. If NULL,
 tries \code{imgRaster(sme)}, then the stored \code{visiumDir} from
