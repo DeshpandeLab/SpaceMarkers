@@ -430,6 +430,7 @@ plot_spatial <- function(sme, feature_col = NULL,
                                     "influence_map", "interaction"),
                          interaction_patterns = NULL,
                          interaction_label = NULL,
+                         direction = c("forward", "reverse"),
                          image = NULL,
                          resolution = c("lowres", "hires", "fullres"),
                          colors = NULL, point_size = 2.5, stroke = 0.05,
@@ -440,6 +441,7 @@ plot_spatial <- function(sme, feature_col = NULL,
     }
     hotspot_type <- match.arg(hotspot_type)
     source <- match.arg(source)
+    direction <- match.arg(direction)
     resolution <- match.arg(resolution)
 
     # When plotting a three-level interaction overlay, feature_col is synthetic
@@ -488,16 +490,15 @@ plot_spatial <- function(sme, feature_col = NULL,
         }
     }
     lookup_interaction <- function() {
-        # Delegate to the public overlap_map() helper so the plot renders the
-        # exact same classification a user would get by calling overlap_map()
-        # directly. overlap_map auto-picks directed mode when both pattern
-        # and influence hotspots are populated; for an SME that has both an
-        # undirected hotspot and a directed set, callers who want the
-        # undirected overlay can compute it via
-        # `labs <- overlap_map(sme, pair, directed = FALSE)` and pass `labs`
-        # to a ggplot of their choice.
+        # Delegate to the public overlap_map() helper so the plot renders
+        # the exact same classification a user would get by calling
+        # overlap_map() directly. overlap_map auto-picks directed mode when
+        # both pattern and influence hotspots are populated; the direction
+        # arg selects which t-test perspective (pat1 near pat2 vs pat1, or
+        # pat2 near pat1 vs pat2) to visualize.
         overlap_map(sme,
                     interaction_patterns = interaction_patterns,
+                    direction = direction,
                     interaction_label = interaction_label)
     }
 

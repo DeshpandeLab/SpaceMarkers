@@ -4,50 +4,68 @@
 \alias{overlap_map}
 \title{Per-spot overlap classification map for a pattern pair}
 \usage{
-overlap_map(x, interaction_patterns, directed = NULL, interaction_label = NULL)
+overlap_map(
+  x,
+  interaction_patterns,
+  direction = c("forward", "reverse"),
+  directed = NULL,
+  interaction_label = NULL
+)
 }
 \arguments{
 \item{x}{A \code{SpaceMarkersExperiment}.}
 
-\item{interaction_patterns}{Length-2 character vector of pattern names.}
+\item{interaction_patterns}{Length-2 character vector of pattern names
+\code{c(pat1, pat2)}. For directed mode these are interpreted as
+\code{c(source, target)} under \code{direction = "forward"}.}
 
-\item{directed}{Logical or \code{NULL}. When \code{NULL} (default), picks
-directed mode iff pattern and influence hotspots are both stored.}
+\item{direction}{One of \code{"forward"} or \code{"reverse"} — controls
+which direction's classification is returned in directed mode. Ignored
+for undirected.}
+
+\item{directed}{Logical or \code{NULL}. When \code{NULL} (default),
+picks directed mode iff pattern and influence hotspots are both
+stored on the SME.}
 
 \item{interaction_label}{Optional override for the middle label in
-undirected mode (default \code{"interacting"}). Ignored in directed mode
-where labels are derived from \code{interaction_patterns}.}
+undirected mode (default \code{"interacting"}). Ignored in directed
+mode where labels are derived from \code{interaction_patterns}.}
 }
 \value{
-A factor with one entry per spot, \code{NA} for spots outside any
-hotspot. Names are the spot barcodes.
+A factor with one entry per spot, \code{NA} for spots outside
+any hotspot. Names are the spot barcodes.
 }
 \description{
 The spot-level counterpart to \code{\link{overlap_scores}}. Returns a
 factor with one label per spot, summarizing how each spot relates to a
-pattern pair given the hotspot information stored on the SME. Two modes:
+pattern pair given the hotspot information stored on the SME.
 }
 \details{
-\describe{
-\item{Undirected}{when \code{hotspots(x, "undirected")} is present and
-\code{directed = FALSE} (or auto-detected). Three levels:
-\code{<pat1>}, \code{"interacting"} (override via
-\code{interaction_label}), \code{<pat2>}.}
-\item{Directed}{when \code{hotspots(x, "pattern")} AND
-\code{hotspots(x, "influence")} are both present (default auto-pick
-when both are non-NULL). Up to five levels:
-\code{<pat1>}, \code{"<pat1> near <pat2>"}, \code{"both"},
-\code{"<pat2> near <pat1>"}, \code{<pat2>}. A spot gets \code{"<p> near
-    <q>"} when it sits in pattern \code{p}'s GMM hotspot and pattern
-\code{q}'s influence zone (the directed t-test's interaction region).
-The \code{"both"} level catches spots in both pattern hotspots
-simultaneously — the confounder region the directed t-test drops when
-\code{avoid_confounders = TRUE}.}
+\strong{Undirected} (when \code{hotspots(x, "undirected")} is present and
+\code{directed = FALSE} or auto-detected). Three levels: \code{<pat1>},
+\code{"interacting"} (override via \code{interaction_label}),
+\code{<pat2>}.
+
+\strong{Directed} (when \code{hotspots(x, "pattern")} AND
+\code{hotspots(x, "influence")} are both present). Because a directed
+analysis runs a separate t-test per direction (\code{pat1 near pat2}
+vs \code{pat1}, and \code{pat2 near pat1} vs \code{pat2}), the helper
+returns one direction at a time — the three-level factor that
+directly matches that direction's t-test:
+\itemize{
+\item \code{direction = "forward"} (default; source = \code{pat1},
+target = \code{pat2}). Levels: \code{<pat1>} (the "control" in
+the t-test), \code{"<pat1> near <pat2>"} (the interaction region
+- the "treatment"), \code{"<pat2> influence"} (context: where
+\code{pat2}'s influence extends beyond \code{pat1}'s hotspot).
+\item \code{direction = "reverse"} (source = \code{pat2}, target =
+\code{pat1}). Levels are the mirror image: \code{<pat2>},
+\code{"<pat2> near <pat1>"}, \code{"<pat1> influence"}.
 }
 
 Downstream callers (including \code{\link{plot_spatial}(..., source =
-"interaction")}) use this helper so the plot and any user-side analysis of
-the labels stay consistent.
+"interaction")}) use this helper so the plot and any user-side
+analysis stay consistent.
 }
 \examples{
 sme <- SpaceMarkersExperiment(

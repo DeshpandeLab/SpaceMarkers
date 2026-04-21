@@ -11,6 +11,7 @@ plot_spatial(
   source = c("auto", "colData", "assay", "hotspots", "influence_map", "interaction"),
   interaction_patterns = NULL,
   interaction_label = NULL,
+  direction = c("forward", "reverse"),
   image = NULL,
   resolution = c("lowres", "hires", "fullres"),
   colors = NULL,

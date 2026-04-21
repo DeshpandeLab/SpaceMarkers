@@ -461,38 +461,49 @@ setMethod("analysis_type", "SpaceMarkersExperiment", function(x) {
 #'
 #' The spot-level counterpart to \code{\link{overlap_scores}}. Returns a
 #' factor with one label per spot, summarizing how each spot relates to a
-#' pattern pair given the hotspot information stored on the SME. Two modes:
+#' pattern pair given the hotspot information stored on the SME.
 #'
-#' \describe{
-#'   \item{Undirected}{when \code{hotspots(x, "undirected")} is present and
-#'     \code{directed = FALSE} (or auto-detected). Three levels:
-#'     \code{<pat1>}, \code{"interacting"} (override via
-#'     \code{interaction_label}), \code{<pat2>}.}
-#'   \item{Directed}{when \code{hotspots(x, "pattern")} AND
-#'     \code{hotspots(x, "influence")} are both present (default auto-pick
-#'     when both are non-NULL). Up to five levels:
-#'     \code{<pat1>}, \code{"<pat1> near <pat2>"}, \code{"both"},
-#'     \code{"<pat2> near <pat1>"}, \code{<pat2>}. A spot gets \code{"<p> near
-#'     <q>"} when it sits in pattern \code{p}'s GMM hotspot and pattern
-#'     \code{q}'s influence zone (the directed t-test's interaction region).
-#'     The \code{"both"} level catches spots in both pattern hotspots
-#'     simultaneously — the confounder region the directed t-test drops when
-#'     \code{avoid_confounders = TRUE}.}
-#' }
+#' \strong{Undirected} (when \code{hotspots(x, "undirected")} is present and
+#'   \code{directed = FALSE} or auto-detected). Three levels: \code{<pat1>},
+#'   \code{"interacting"} (override via \code{interaction_label}),
+#'   \code{<pat2>}.
+#'
+#' \strong{Directed} (when \code{hotspots(x, "pattern")} AND
+#'   \code{hotspots(x, "influence")} are both present). Because a directed
+#'   analysis runs a separate t-test per direction (\code{pat1 near pat2}
+#'   vs \code{pat1}, and \code{pat2 near pat1} vs \code{pat2}), the helper
+#'   returns one direction at a time — the three-level factor that
+#'   directly matches that direction's t-test:
+#'   \itemize{
+#'     \item \code{direction = "forward"} (default; source = \code{pat1},
+#'       target = \code{pat2}). Levels: \code{<pat1>} (the "control" in
+#'       the t-test), \code{"<pat1> near <pat2>"} (the interaction region
+#'       - the "treatment"), \code{"<pat2> influence"} (context: where
+#'       \code{pat2}'s influence extends beyond \code{pat1}'s hotspot).
+#'     \item \code{direction = "reverse"} (source = \code{pat2}, target =
+#'       \code{pat1}). Levels are the mirror image: \code{<pat2>},
+#'       \code{"<pat2> near <pat1>"}, \code{"<pat1> influence"}.
+#'   }
 #'
 #' Downstream callers (including \code{\link{plot_spatial}(..., source =
-#' "interaction")}) use this helper so the plot and any user-side analysis of
-#' the labels stay consistent.
+#' "interaction")}) use this helper so the plot and any user-side
+#' analysis stay consistent.
 #'
 #' @param x A \code{SpaceMarkersExperiment}.
-#' @param interaction_patterns Length-2 character vector of pattern names.
-#' @param directed Logical or \code{NULL}. When \code{NULL} (default), picks
-#'   directed mode iff pattern and influence hotspots are both stored.
+#' @param interaction_patterns Length-2 character vector of pattern names
+#'   \code{c(pat1, pat2)}. For directed mode these are interpreted as
+#'   \code{c(source, target)} under \code{direction = "forward"}.
+#' @param direction One of \code{"forward"} or \code{"reverse"} — controls
+#'   which direction's classification is returned in directed mode. Ignored
+#'   for undirected.
+#' @param directed Logical or \code{NULL}. When \code{NULL} (default),
+#'   picks directed mode iff pattern and influence hotspots are both
+#'   stored on the SME.
 #' @param interaction_label Optional override for the middle label in
-#'   undirected mode (default \code{"interacting"}). Ignored in directed mode
-#'   where labels are derived from \code{interaction_patterns}.
-#' @return A factor with one entry per spot, \code{NA} for spots outside any
-#'   hotspot. Names are the spot barcodes.
+#'   undirected mode (default \code{"interacting"}). Ignored in directed
+#'   mode where labels are derived from \code{interaction_patterns}.
+#' @return A factor with one entry per spot, \code{NA} for spots outside
+#'   any hotspot. Names are the spot barcodes.
 #' @export
 #' @examples
 #' sme <- SpaceMarkersExperiment(
@@ -507,12 +518,14 @@ setMethod("analysis_type", "SpaceMarkersExperiment", function(x) {
 #' hotspots(sme, type = "undirected") <- hs
 #' table(overlap_map(sme, c("Pattern_1", "Pattern_2")))
 overlap_map <- function(x, interaction_patterns,
-                                       directed = NULL,
-                                       interaction_label = NULL) {
+                        direction = c("forward", "reverse"),
+                        directed = NULL,
+                        interaction_label = NULL) {
     stopifnot(is(x, "SpaceMarkersExperiment"))
     if (length(interaction_patterns) != 2L) {
         stop("interaction_patterns must be length-2.")
     }
+    direction <- match.arg(direction)
     pat1 <- interaction_patterns[1]; pat2 <- interaction_patterns[2]
 
     pat_hs <- hotspots(x, "pattern")
@@ -533,21 +546,24 @@ overlap_map <- function(x, interaction_patterns,
             if (!(p %in% colnames(inf_hs)))
                 stop(sprintf("Pattern '%s' not in influence hotspots.", p))
         }
-        p1_pat <- !is.na(pat_hs[[pat1]])
-        p2_pat <- !is.na(pat_hs[[pat2]])
-        p1_inf <- !is.na(inf_hs[[pat1]])
-        p2_inf <- !is.na(inf_hs[[pat2]])
-        labs <- rep(NA_character_, length(p1_pat))
-        labs[p1_pat & !p2_pat & !p2_inf] <- pat1
-        labs[p1_pat & !p2_pat &  p2_inf] <- sprintf("%s near %s", pat1, pat2)
-        labs[p2_pat & !p1_pat & !p1_inf] <- pat2
-        labs[p2_pat & !p1_pat &  p1_inf] <- sprintf("%s near %s", pat2, pat1)
-        labs[p1_pat &  p2_pat]            <- "both"
-        lvls <- c(pat1,
-                  sprintf("%s near %s", pat1, pat2),
-                  "both",
-                  sprintf("%s near %s", pat2, pat1),
-                  pat2)
+        # Source / target depend on direction
+        if (direction == "forward") {
+            src <- pat1; tgt <- pat2
+        } else {
+            src <- pat2; tgt <- pat1
+        }
+        src_pat <- !is.na(pat_hs[[src]])
+        tgt_inf <- !is.na(inf_hs[[tgt]])
+
+        src_only          <- src
+        src_near_tgt      <- sprintf("%s near %s", src, tgt)
+        tgt_influence_lbl <- sprintf("%s influence", tgt)
+
+        labs <- rep(NA_character_, length(src_pat))
+        labs[src_pat & !tgt_inf] <- src_only
+        labs[src_pat &  tgt_inf] <- src_near_tgt
+        labs[!src_pat &  tgt_inf] <- tgt_influence_lbl
+        lvls <- c(src_only, src_near_tgt, tgt_influence_lbl)
         out <- factor(labs, levels = lvls)
         nm <- pat_hs$barcode %||% rownames(pat_hs) %||% colnames(x)
         names(out) <- nm

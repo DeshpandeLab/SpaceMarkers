@@ -393,38 +393,52 @@ plot_spatial(sme_dir, feature_col = "Pattern_5",
 ```
 
 With both pattern and influence hotspots in place, the directed
-interaction classification is fully defined. It replaces the three-way
-undirected scheme (`pat1 / interacting / pat2`) with an asymmetric four-
-or five-way factor: `pat1`, `"<pat1> near <pat2>"`, `"<pat2> near <pat1>"`,
-`pat2`, and (optionally) `"both"` — the doubly-hot confounder region that
-`calculate_gene_scores_directed` drops when `avoid_confounders = TRUE`.
-A spot gets `"<P> near <Q>"` when it sits in pattern `P`'s GMM hotspot
-AND pattern `Q`'s influence zone, i.e. the exact region the directed
-t-test scores.
+interaction zone is well-defined. A directed analysis runs *two*
+independent t-tests per pair — one for each direction — so the
+per-spot classification is best read one direction at a time:
 
-The classification is exposed via `overlap_map()` for direct use in
-custom plots or downstream analysis:
+- **Forward (Pattern\_1 → Pattern\_5):** inside Pattern\_1's GMM
+  hotspot, split spots into `"Pattern_1"` (not in Pattern\_5's
+  influence) and `"Pattern_1 near Pattern_5"` (in Pattern\_5's
+  influence — the t-test's interaction zone). The "control" vs
+  "treatment" groups the gene-level test compares.
+- **Reverse (Pattern\_5 → Pattern\_1):** the mirror — `"Pattern_5"`
+  vs `"Pattern_5 near Pattern_1"`.
+
+Each plot also carries a `"<target> influence"` context layer so the
+reach of the target's influence is visible beyond the source's
+hotspot.
 
 ```{r}
-labs <- overlap_map(sme_dir, c("Pattern_1", "Pattern_5"))
-table(labs, useNA = "ifany")
+labs_fwd <- overlap_map(sme_dir, c("Pattern_1", "Pattern_5"),
+                        direction = "forward")
+table(labs_fwd, useNA = "ifany")
 ```
-
-`plot_spatial(..., source = "interaction")` calls `overlap_map()`
-internally and auto-picks directed mode when both
-`hotspots(sme, "pattern")` and `hotspots(sme, "influence")` are
-populated, so the rendered overlay is always in sync with the labels
-above:
 
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 plot_spatial(sme_dir,
              source = "interaction",
              interaction_patterns = c("Pattern_1", "Pattern_5"),
+             direction = "forward",
              colors = c(Pattern_1                  = "steelblue",
                         "Pattern_1 near Pattern_5" = "purple",
-                        both                       = "gray40",
+                        "Pattern_5 influence"      = "gray60"))
+```
+
+```{r}
+labs_rev <- overlap_map(sme_dir, c("Pattern_1", "Pattern_5"),
+                        direction = "reverse")
+table(labs_rev, useNA = "ifany")
+```
+
+```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
+plot_spatial(sme_dir,
+             source = "interaction",
+             interaction_patterns = c("Pattern_1", "Pattern_5"),
+             direction = "reverse",
+             colors = c(Pattern_5                  = "firebrick",
                         "Pattern_5 near Pattern_1" = "goldenrod",
-                        Pattern_5                  = "firebrick"))
+                        "Pattern_1 influence"      = "gray60"))
 ```
 
 ## Step 4: Directed overlap scores

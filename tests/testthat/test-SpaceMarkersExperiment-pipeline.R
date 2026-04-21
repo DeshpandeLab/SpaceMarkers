@@ -672,7 +672,7 @@ test_that("overlap_map undirected honors interaction_label override", {
     expect_true("co-hot" %in% labs)
 })
 
-test_that("overlap_map directed auto-detects and produces asymmetric 'near' labels", {
+test_that("overlap_map directed forward gives three-level per-direction factor", {
     sme <- make_fixture_sme()
     pat_hs <- data.frame(
         barcode   = colnames(sme), x = seq_len(60), y = seq_len(60),
@@ -687,22 +687,49 @@ test_that("overlap_map directed auto-detects and produces asymmetric 'near' labe
     hotspots(sme, type = "pattern")   <- pat_hs
     hotspots(sme, type = "influence") <- inf_hs
 
-    labs <- overlap_map(sme, c("Pattern_1", "Pattern_2"))
-    # directed auto-picked because both pattern + influence hotspots exist
+    # Forward = source Pattern_1, target Pattern_2. Three-level factor:
+    # Pattern_1 (pat1 hot, pat2 influence NOT hot),
+    # Pattern_1 near Pattern_2 (pat1 hot AND pat2 influence hot),
+    # Pattern_2 influence (pat1 NOT hot, pat2 influence hot).
+    labs_fwd <- overlap_map(sme, c("Pattern_1", "Pattern_2"))
     expect_equal(
-        levels(labs),
-        c("Pattern_1", "Pattern_1 near Pattern_2", "both",
-          "Pattern_2 near Pattern_1", "Pattern_2"))
-
-    # "Pattern_1 near Pattern_2" is exactly pat_hs$Pattern_1 hot AND
-    # inf_hs$Pattern_2 hot AND NOT pat_hs$Pattern_2 hot
+        levels(labs_fwd),
+        c("Pattern_1", "Pattern_1 near Pattern_2", "Pattern_2 influence"))
     p1p <- !is.na(pat_hs$Pattern_1)
-    p2p <- !is.na(pat_hs$Pattern_2)
     p2i <- !is.na(inf_hs$Pattern_2)
-    expected <- p1p & !p2p & p2i
+    expect_equal(which(labs_fwd == "Pattern_1 near Pattern_2"),
+                 which(p1p & p2i))
+    expect_equal(which(labs_fwd == "Pattern_1"),
+                 which(p1p & !p2i))
+    expect_equal(which(labs_fwd == "Pattern_2 influence"),
+                 which(!p1p & p2i))
+})
+
+test_that("overlap_map directed reverse mirrors the forward direction", {
+    sme <- make_fixture_sme()
+    pat_hs <- data.frame(
+        barcode   = colnames(sme), x = seq_len(60), y = seq_len(60),
+        Pattern_1 = c(rep("hot", 20), rep(NA, 40)),
+        Pattern_2 = c(rep(NA, 30), rep("hot", 20), rep(NA, 10)),
+        stringsAsFactors = FALSE)
+    inf_hs <- data.frame(
+        barcode   = colnames(sme), x = seq_len(60), y = seq_len(60),
+        Pattern_1 = c(rep(NA, 25), rep("hot", 25), rep(NA, 10)),
+        Pattern_2 = c(rep("hot", 15), rep(NA, 45)),
+        stringsAsFactors = FALSE)
+    hotspots(sme, type = "pattern")   <- pat_hs
+    hotspots(sme, type = "influence") <- inf_hs
+
+    # Reverse = source Pattern_2, target Pattern_1.
+    labs_rev <- overlap_map(sme, c("Pattern_1", "Pattern_2"),
+                            direction = "reverse")
     expect_equal(
-        which(labs == "Pattern_1 near Pattern_2"),
-        which(expected))
+        levels(labs_rev),
+        c("Pattern_2", "Pattern_2 near Pattern_1", "Pattern_1 influence"))
+    p2p <- !is.na(pat_hs$Pattern_2)
+    p1i <- !is.na(inf_hs$Pattern_1)
+    expect_equal(which(labs_rev == "Pattern_2 near Pattern_1"),
+                 which(p2p & p1i))
 })
 
 test_that("overlap_map directed errors without prerequisite hotspots", {
