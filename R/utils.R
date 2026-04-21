@@ -26,12 +26,8 @@ setMethod("calculate_overlap_undirected", "data.frame",
     function(hotspots, patternList = NULL,
              method = c("Szymkiewicz-Simpson", "Jaccard", "Sorensen-Dice",
                         "Ochiai", "absolute")) {
-        # SME dispatch: extract undirected hotspots
-        if (is(hotspots, "SpaceMarkersExperiment")) {
-            hs <- hotspots(hotspots, type = "undirected")
-            if (is.null(hs)) stop("No undirected hotspots found in SpaceMarkersExperiment.")
-            hotspots <- hs
-        }
+        # SpaceMarkersExperiment inputs are routed by the SME-dispatched
+        # method; this data.frame method only sees a hotspots data.frame.
 
         #stop if more than one method is supplied, do not warn by default
         if (length(method) > 1) {
@@ -147,10 +143,9 @@ plot_overlap_scores <- function(df, title = "Spatial Overlap Scores", out = NULL
 #' @importFrom stats setNames
 #' @rdname get_im_scores
 setMethod("get_im_scores", "list", function(SpaceMarkers) {
-    # SME dispatch: extract stored scores if available
-    if (is(SpaceMarkers, "SpaceMarkersExperiment")) {
-        return(undirected_scores(SpaceMarkers))
-    }
+    # SpaceMarkersExperiment inputs are routed by the SME-dispatched method;
+    # this list method only sees a list returned by
+    # get_pairwise_interacting_genes().
     smi <- SpaceMarkers[which(sapply(SpaceMarkers, function(x) length(x[['interacting_genes']]))>0)]
     fields <- c('Gene', 'SpaceMarkersMetric')
 
