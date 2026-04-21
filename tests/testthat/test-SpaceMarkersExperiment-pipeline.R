@@ -632,3 +632,108 @@ test_that("SpaceMarkers(SME, directed=TRUE) produces expected SME structure", {
     expect_false(is.null(directed_scores(result)))
     expect_true(analysis_type(result) %in% c("directed", "both"))
 })
+
+# ---- overlap_map (per-spot interaction classification) ----
+
+test_that("overlap_map undirected returns 3-level factor matching hotspot intersection", {
+    sme <- make_fixture_sme()
+    hs <- data.frame(
+        barcode   = colnames(sme),
+        x         = seq_len(60), y = seq_len(60),
+        Pattern_1 = c(rep("hot", 30), rep(NA, 30)),
+        Pattern_2 = c(rep(NA, 15), rep("hot", 30), rep(NA, 15)),
+        stringsAsFactors = FALSE)
+    hotspots(sme, type = "undirected") <- hs
+
+    labs <- overlap_map(sme, c("Pattern_1", "Pattern_2"))
+    expect_s3_class(labs, "factor")
+    expect_equal(levels(labs),
+                 c("Pattern_1", "interacting", "Pattern_2"))
+    expect_equal(names(labs), hs$barcode)
+
+    in1 <- !is.na(hs$Pattern_1); in2 <- !is.na(hs$Pattern_2)
+    expect_equal(sum(labs == "Pattern_1",   na.rm = TRUE), sum(in1 & !in2))
+    expect_equal(sum(labs == "interacting", na.rm = TRUE), sum(in1 &  in2))
+    expect_equal(sum(labs == "Pattern_2",   na.rm = TRUE), sum(!in1 & in2))
+})
+
+test_that("overlap_map undirected honors interaction_label override", {
+    sme <- make_fixture_sme()
+    hs <- data.frame(
+        barcode   = colnames(sme), x = seq_len(60), y = seq_len(60),
+        Pattern_1 = c(rep("hot", 30), rep(NA, 30)),
+        Pattern_2 = c(rep(NA, 15), rep("hot", 30), rep(NA, 15)),
+        stringsAsFactors = FALSE)
+    hotspots(sme, type = "undirected") <- hs
+
+    labs <- overlap_map(sme, c("Pattern_1", "Pattern_2"),
+                        interaction_label = "co-hot")
+    expect_equal(levels(labs), c("Pattern_1", "co-hot", "Pattern_2"))
+    expect_true("co-hot" %in% labs)
+})
+
+test_that("overlap_map directed auto-detects and produces asymmetric 'near' labels", {
+    sme <- make_fixture_sme()
+    pat_hs <- data.frame(
+        barcode   = colnames(sme), x = seq_len(60), y = seq_len(60),
+        Pattern_1 = c(rep("hot", 20), rep(NA, 40)),
+        Pattern_2 = c(rep(NA, 30), rep("hot", 20), rep(NA, 10)),
+        stringsAsFactors = FALSE)
+    inf_hs <- data.frame(
+        barcode   = colnames(sme), x = seq_len(60), y = seq_len(60),
+        Pattern_1 = c(rep(NA, 25), rep("hot", 25), rep(NA, 10)),
+        Pattern_2 = c(rep("hot", 15), rep(NA, 45)),
+        stringsAsFactors = FALSE)
+    hotspots(sme, type = "pattern")   <- pat_hs
+    hotspots(sme, type = "influence") <- inf_hs
+
+    labs <- overlap_map(sme, c("Pattern_1", "Pattern_2"))
+    # directed auto-picked because both pattern + influence hotspots exist
+    expect_equal(
+        levels(labs),
+        c("Pattern_1", "Pattern_1 near Pattern_2", "both",
+          "Pattern_2 near Pattern_1", "Pattern_2"))
+
+    # "Pattern_1 near Pattern_2" is exactly pat_hs$Pattern_1 hot AND
+    # inf_hs$Pattern_2 hot AND NOT pat_hs$Pattern_2 hot
+    p1p <- !is.na(pat_hs$Pattern_1)
+    p2p <- !is.na(pat_hs$Pattern_2)
+    p2i <- !is.na(inf_hs$Pattern_2)
+    expected <- p1p & !p2p & p2i
+    expect_equal(
+        which(labs == "Pattern_1 near Pattern_2"),
+        which(expected))
+})
+
+test_that("overlap_map directed errors without prerequisite hotspots", {
+    sme <- make_fixture_sme()
+    # only pattern hotspots set
+    pat_hs <- data.frame(
+        barcode = colnames(sme), x = 1:60, y = 1:60,
+        Pattern_1 = rep("hot", 60), Pattern_2 = rep(NA, 60))
+    hotspots(sme, type = "pattern") <- pat_hs
+    expect_error(
+        overlap_map(sme, c("Pattern_1", "Pattern_2"), directed = TRUE),
+        regexp = "influence"
+    )
+})
+
+test_that("overlap_map undirected errors without undirected hotspots", {
+    sme <- make_fixture_sme()
+    expect_error(
+        overlap_map(sme, c("Pattern_1", "Pattern_2"), directed = FALSE),
+        regexp = "find_all_hotspots"
+    )
+})
+
+test_that("plot_spatial source='interaction' builds a ggplot using overlap_map", {
+    sme <- make_fixture_sme() |> find_all_hotspots()
+    # plot_spatial's lookup_interaction delegates to overlap_map; here we
+    # just verify a ggplot object is constructed end-to-end for an undirected
+    # SME. The level-equivalence is covered by the other overlap_map tests.
+    p <- plot_spatial(sme,
+                      source = "interaction",
+                      hotspot_type = "undirected",
+                      interaction_patterns = c("Pattern_1", "Pattern_2"))
+    expect_s3_class(p, "ggplot")
+})

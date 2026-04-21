@@ -331,12 +331,27 @@ plot_spatial(sme_directed, feature_col = "Pattern_5",
              colors = "firebrick", title = "Pattern_5 GMM hotspots")
 ```
 
+Directed analyses use a richer four- or five-way classification: each spot
+is labeled as `Pattern_1`, `"Pattern_1 near Pattern_5"`, `"Pattern_5 near
+Pattern_1"`, `Pattern_5`, or `"both"` (the doubly-hot confounder region).
+`plot_spatial(..., source = "interaction")` auto-picks the directed scheme
+when pattern + influence hotspots are both populated, and delegates to
+`overlap_map()` so the plot categories match anything the user derives
+directly:
+
+```{r}
+labs <- overlap_map(sme_directed, c("Pattern_1", "Pattern_5"))
+table(labs, useNA = "ifany")
+```
+
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 plot_spatial(sme_directed,
-             source = "interaction", hotspot_type = "pattern",
+             source = "interaction",
              interaction_patterns = c("Pattern_1", "Pattern_5"),
              colors = c(Pattern_1                  = "steelblue",
                         "Pattern_1 near Pattern_5" = "purple",
+                        both                       = "gray40",
+                        "Pattern_5 near Pattern_1" = "goldenrod",
                         Pattern_5                  = "firebrick"))
 ```
 

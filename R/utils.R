@@ -488,33 +488,17 @@ plot_spatial <- function(sme, feature_col = NULL,
         }
     }
     lookup_interaction <- function() {
-        hs <- S4Vectors::metadata(sme)$hotspots[[hotspot_type]]
-        if (is.null(hs)) {
-            stop(sprintf("No %s hotspots found; run find_all_hotspots() (or find_hotspots_gmm()) first.",
-                         hotspot_type))
-        }
-        missing_pats <- setdiff(interaction_patterns, colnames(hs))
-        if (length(missing_pats) > 0L) {
-            stop(sprintf("Pattern(s) %s not found in %s hotspots.",
-                         paste(missing_pats, collapse = ", "), hotspot_type))
-        }
-        # Middle-class label: user override > directed default > undirected default
-        mid_label <- interaction_label %||%
-            (if (hotspot_type == "undirected") "interacting"
-             else sprintf("%s near %s", interaction_patterns[1],
-                          interaction_patterns[2]))
-        col1 <- hs[[interaction_patterns[1]]]
-        col2 <- hs[[interaction_patterns[2]]]
-        labs <- rep(NA_character_, length(col1))
-        in1 <- !is.na(col1); in2 <- !is.na(col2)
-        labs[in1 & !in2] <- interaction_patterns[1]
-        labs[!in1 & in2] <- interaction_patterns[2]
-        labs[in1 &  in2] <- mid_label
-        labs <- factor(labs,
-                       levels = c(interaction_patterns[1], mid_label,
-                                  interaction_patterns[2]))
-        names(labs) <- hs$barcode
-        labs
+        # Delegate to the public overlap_map() helper so the plot renders the
+        # exact same classification a user would get by calling overlap_map()
+        # directly. overlap_map auto-picks directed mode when both pattern
+        # and influence hotspots are populated; for an SME that has both an
+        # undirected hotspot and a directed set, callers who want the
+        # undirected overlay can compute it via
+        # `labs <- overlap_map(sme, pair, directed = FALSE)` and pass `labs`
+        # to a ggplot of their choice.
+        overlap_map(sme,
+                    interaction_patterns = interaction_patterns,
+                    interaction_label = interaction_label)
     }
 
     feature_vals <- switch(source,

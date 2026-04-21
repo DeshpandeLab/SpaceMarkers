@@ -455,6 +455,125 @@ setMethod("analysis_type", "SpaceMarkersExperiment", function(x) {
     x@spacemarkers$analysis
 })
 
+# ---- overlap_map ----
+
+#' Per-spot overlap classification map for a pattern pair
+#'
+#' The spot-level counterpart to \code{\link{overlap_scores}}. Returns a
+#' factor with one label per spot, summarizing how each spot relates to a
+#' pattern pair given the hotspot information stored on the SME. Two modes:
+#'
+#' \describe{
+#'   \item{Undirected}{when \code{hotspots(x, "undirected")} is present and
+#'     \code{directed = FALSE} (or auto-detected). Three levels:
+#'     \code{<pat1>}, \code{"interacting"} (override via
+#'     \code{interaction_label}), \code{<pat2>}.}
+#'   \item{Directed}{when \code{hotspots(x, "pattern")} AND
+#'     \code{hotspots(x, "influence")} are both present (default auto-pick
+#'     when both are non-NULL). Up to five levels:
+#'     \code{<pat1>}, \code{"<pat1> near <pat2>"}, \code{"both"},
+#'     \code{"<pat2> near <pat1>"}, \code{<pat2>}. A spot gets \code{"<p> near
+#'     <q>"} when it sits in pattern \code{p}'s GMM hotspot and pattern
+#'     \code{q}'s influence zone (the directed t-test's interaction region).
+#'     The \code{"both"} level catches spots in both pattern hotspots
+#'     simultaneously — the confounder region the directed t-test drops when
+#'     \code{avoid_confounders = TRUE}.}
+#' }
+#'
+#' Downstream callers (including \code{\link{plot_spatial}(..., source =
+#' "interaction")}) use this helper so the plot and any user-side analysis of
+#' the labels stay consistent.
+#'
+#' @param x A \code{SpaceMarkersExperiment}.
+#' @param interaction_patterns Length-2 character vector of pattern names.
+#' @param directed Logical or \code{NULL}. When \code{NULL} (default), picks
+#'   directed mode iff pattern and influence hotspots are both stored.
+#' @param interaction_label Optional override for the middle label in
+#'   undirected mode (default \code{"interacting"}). Ignored in directed mode
+#'   where labels are derived from \code{interaction_patterns}.
+#' @return A factor with one entry per spot, \code{NA} for spots outside any
+#'   hotspot. Names are the spot barcodes.
+#' @export
+#' @examples
+#' sme <- SpaceMarkersExperiment(
+#'     assays = list(logcounts = matrix(rpois(200, 2), 10, 20,
+#'         dimnames = list(paste0("G", 1:10), paste0("s", 1:20)))),
+#'     spatialCoords = matrix(runif(40), 20, 2,
+#'         dimnames = list(NULL, c("y", "x"))))
+#' colnames(sme) <- paste0("s", seq_len(20))
+#' hs <- data.frame(barcode = colnames(sme), x = 1:20, y = 1:20,
+#'                  Pattern_1 = c(rep("hot", 10), rep(NA, 10)),
+#'                  Pattern_2 = c(rep(NA, 5), rep("hot", 10), rep(NA, 5)))
+#' hotspots(sme, type = "undirected") <- hs
+#' table(overlap_map(sme, c("Pattern_1", "Pattern_2")))
+overlap_map <- function(x, interaction_patterns,
+                                       directed = NULL,
+                                       interaction_label = NULL) {
+    stopifnot(is(x, "SpaceMarkersExperiment"))
+    if (length(interaction_patterns) != 2L) {
+        stop("interaction_patterns must be length-2.")
+    }
+    pat1 <- interaction_patterns[1]; pat2 <- interaction_patterns[2]
+
+    pat_hs <- hotspots(x, "pattern")
+    inf_hs <- hotspots(x, "influence")
+    und_hs <- hotspots(x, "undirected")
+
+    if (is.null(directed)) {
+        directed <- !is.null(pat_hs) && !is.null(inf_hs)
+    }
+
+    if (directed) {
+        if (is.null(pat_hs) || is.null(inf_hs)) {
+            stop("Directed classification needs both pattern and influence hotspots; run calculate_influence() + find_hotspots_gmm(type='pattern') and find_hotspots_gmm(type='influence').")
+        }
+        for (p in interaction_patterns) {
+            if (!(p %in% colnames(pat_hs)))
+                stop(sprintf("Pattern '%s' not in pattern hotspots.", p))
+            if (!(p %in% colnames(inf_hs)))
+                stop(sprintf("Pattern '%s' not in influence hotspots.", p))
+        }
+        p1_pat <- !is.na(pat_hs[[pat1]])
+        p2_pat <- !is.na(pat_hs[[pat2]])
+        p1_inf <- !is.na(inf_hs[[pat1]])
+        p2_inf <- !is.na(inf_hs[[pat2]])
+        labs <- rep(NA_character_, length(p1_pat))
+        labs[p1_pat & !p2_pat & !p2_inf] <- pat1
+        labs[p1_pat & !p2_pat &  p2_inf] <- sprintf("%s near %s", pat1, pat2)
+        labs[p2_pat & !p1_pat & !p1_inf] <- pat2
+        labs[p2_pat & !p1_pat &  p1_inf] <- sprintf("%s near %s", pat2, pat1)
+        labs[p1_pat &  p2_pat]            <- "both"
+        lvls <- c(pat1,
+                  sprintf("%s near %s", pat1, pat2),
+                  "both",
+                  sprintf("%s near %s", pat2, pat1),
+                  pat2)
+        out <- factor(labs, levels = lvls)
+        nm <- pat_hs$barcode %||% rownames(pat_hs) %||% colnames(x)
+        names(out) <- nm
+        return(out)
+    }
+
+    # Undirected
+    if (is.null(und_hs)) {
+        stop("Undirected classification needs undirected hotspots; run find_all_hotspots() first.")
+    }
+    for (p in interaction_patterns) {
+        if (!(p %in% colnames(und_hs)))
+            stop(sprintf("Pattern '%s' not in undirected hotspots.", p))
+    }
+    mid <- interaction_label %||% "interacting"
+    in1 <- !is.na(und_hs[[pat1]])
+    in2 <- !is.na(und_hs[[pat2]])
+    labs <- rep(NA_character_, length(in1))
+    labs[in1 & !in2] <- pat1
+    labs[!in1 & in2] <- pat2
+    labs[in1 &  in2] <- mid
+    out <- factor(labs, levels = c(pat1, mid, pat2))
+    names(out) <- und_hs$barcode %||% rownames(und_hs) %||% colnames(x)
+    out
+}
+
 # ---- add_features ----
 
 #' @title Add spatial features to a SpaceMarkersExperiment
