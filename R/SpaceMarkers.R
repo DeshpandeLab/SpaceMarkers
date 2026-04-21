@@ -155,7 +155,9 @@ SpaceMarkers <- function(x = NULL,
   if (!is.null(genes)) {
     keepGenes <- intersect(genes, rownames(expr))
   } else {
-    keepGenes <- rownames(expr)[which(apply(expr, 1, sum) > min.gene.expr)]
+    # Matrix::rowSums stays sparse-aware on dgCMatrix; apply() would densify
+    # the whole expression matrix (~1 GB transient on a typical Visium load).
+    keepGenes <- rownames(expr)[Matrix::rowSums(expr) > min.gene.expr]
   }
 
   expr <- expr[keepGenes, , drop = FALSE]
@@ -338,12 +340,13 @@ SpaceMarkers <- function(x = NULL,
         }
     }
 
-    # Gene filtering
+    # Gene filtering — Matrix::rowSums avoids densifying a dgCMatrix
+    # (apply(e, 1, sum) would force a ~1 GB transient on a typical Visium load).
     e <- .sme_expr(sme)
     keep_genes <- if (!is.null(genes))
         intersect(genes, rownames(e))
     else
-        rownames(e)[which(apply(e, 1, sum) > min.gene.expr)]
+        rownames(e)[Matrix::rowSums(e) > min.gene.expr]
     sme <- sme[keep_genes, ]
 
     # Spatial params fallback

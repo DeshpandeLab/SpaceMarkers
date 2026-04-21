@@ -789,8 +789,11 @@ setMethod("calculate_gene_scores_directed", "SpaceMarkersExperiment",
             stop("Run find_hotspots_gmm(x, 'pattern') and find_hotspots_gmm(x, 'influence') before calculate_gene_scores_directed().")
         }
         if (is.null(pattern_pairs)) {
-            patnames <- setdiff(colnames(.sme_spPatterns(sme)),
-                                c("barcode", "x", "y"))
+            # Read pattern names from params() instead of materializing the full
+            # spPatterns data.frame just to take colnames().
+            patnames <- params(sme)$pattern_names %||%
+                setdiff(colnames(SummarizedExperiment::colData(sme)),
+                        c("barcode", "x", "y"))
             pattern_pairs <- t(utils::combn(patnames, 2))
         }
         scores <- calculate_gene_scores_directed(
