@@ -20,7 +20,11 @@ knitr::opts_knit$set(
     fig.align   = 'center'
 )
 
-knitr::opts_chunk$set(out.extra = 'style="display:block; margin:auto;"')
+knitr::opts_chunk$set(
+    out.extra = 'style="display:block; margin:auto;"',
+    warning = FALSE,
+    message = FALSE
+)
 
 ```
 

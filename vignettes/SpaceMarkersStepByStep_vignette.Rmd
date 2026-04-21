@@ -19,7 +19,11 @@ knitr::opts_knit$set(
     comment = "#>",
     fig.align = 'center'
 )
-knitr::opts_chunk$set(out.extra = 'style="display:block; margin:auto;"')
+knitr::opts_chunk$set(
+    out.extra = 'style="display:block; margin:auto;"',
+    warning = FALSE,
+    message = FALSE
+)
 ```
 
 # Overview
@@ -144,6 +148,8 @@ Before running any pipeline step, inspect the CoGAPS patterns on the tissue.
 plot_spatial(sme, feature_col = "Pattern_1", title = "Pattern_1 (immune)")
 ```
 
+And the second pattern we'll use for the undirected analysis:
+
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 plot_spatial(sme, feature_col = "Pattern_2", title = "Pattern_2")
 ```
@@ -179,6 +185,9 @@ plot_spatial(sme_ud, feature_col = "Pattern_1",
              source = "hotspots", hotspot_type = "undirected",
              colors = "steelblue", title = "Pattern_1 hotspots")
 ```
+
+…and the Pattern\_2 hotspots picked up by the same call (a single
+`find_all_hotspots()` populates hotspots for every pattern column):
 
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 plot_spatial(sme_ud, feature_col = "Pattern_2",
@@ -288,6 +297,10 @@ step differs — you supply `type = "pattern"` (on the pattern values) or
 plot_spatial(sme, feature_col = "Pattern_1", title = "Pattern_1 (immune)")
 ```
 
+The directed analysis focuses on how Pattern\_1 (immune) radiates into
+the Pattern\_5 (cancer) region, so we'll track the cancer pattern in the
+same way:
+
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 plot_spatial(sme, feature_col = "Pattern_5", title = "Pattern_5 (cancer)")
 ```
@@ -314,6 +327,8 @@ plot_spatial(sme_dir, feature_col = "Pattern_1",
              title = "Pattern_1 influence")
 ```
 
+Pattern\_5's influence map, on the same tissue:
+
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 plot_spatial(sme_dir, feature_col = "Pattern_5",
              source = "influence_map",
@@ -335,6 +350,9 @@ plot_spatial(sme_dir, feature_col = "Pattern_1",
              source = "hotspots", hotspot_type = "pattern",
              colors = "steelblue", title = "Pattern_1 GMM hotspots")
 ```
+
+…and Pattern\_5's GMM hotspot, which defines the *target* region the
+directed analysis will test:
 
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 plot_spatial(sme_dir, feature_col = "Pattern_5",
@@ -358,6 +376,9 @@ plot_spatial(sme_dir, feature_col = "Pattern_1",
              source = "hotspots", hotspot_type = "influence",
              colors = "steelblue", title = "Pattern_1 influence hotspots")
 ```
+
+Pattern\_5's influence hotspot — the complementary *source* region used
+in the reverse-direction test (Pattern\_5 influencing Pattern\_1):
 
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
 plot_spatial(sme_dir, feature_col = "Pattern_5",
