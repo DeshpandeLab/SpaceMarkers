@@ -6,6 +6,7 @@
 #' @importFrom S4Vectors metadata metadata<-
 #' @importFrom SummarizedExperiment assayNames colData<-
 #' @importFrom methods setGeneric validObject
+#' @importFrom rlang .data
 #' @name SpaceMarkersExperiment-imports
 #' @return No return value; used only for its roxygen side effects.
 #' @keywords internal
@@ -343,6 +344,23 @@ setMethod("spatial_patterns", "SpaceMarkersExperiment", function(x) {
 #' @export
 setMethod("spatial_patterns<-", "SpaceMarkersExperiment", function(x, value) {
     value <- S4Vectors::DataFrame(value)
+    rn <- rownames(value)
+    no_rn <- is.null(rn) || all(rn == as.character(seq_len(nrow(value))))
+    if (no_rn) {
+        if (nrow(value) != ncol(x)) {
+            stop("spatial_patterns(x) <- value: rownames(value) not set and ",
+                 "nrow(value) (", nrow(value), ") != ncol(x) (", ncol(x),
+                 "). Provide rownames matching colnames(x).")
+        }
+        message("spatial_patterns(x) <- value: rownames(value) not set; ",
+                "assuming rows are in colnames(x) order.")
+        rownames(value) <- colnames(x)
+    } else if (!setequal(rn, colnames(x))) {
+        stop("spatial_patterns(x) <- value: rownames(value) must match ",
+             "colnames(x) (same set of spot barcodes).")
+    } else {
+        value <- value[colnames(x), , drop = FALSE]
+    }
     cd <- SummarizedExperiment::colData(x)
     for (col in colnames(value)) {
         cd[[col]] <- value[[col]]

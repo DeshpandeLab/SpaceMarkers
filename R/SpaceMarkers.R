@@ -353,10 +353,18 @@ SpaceMarkers <- function(x = NULL,
     if (is.null(spatial_params(sme))) {
         message("Computing optimal parameters...")
         stored_visiumDir <- sme@spacemarkers$params$visiumDir
+        if (is.null(stored_visiumDir)) {
+            stop(
+                "spatial_params(sme) is NULL and no visiumDir is stored in ",
+                "sme@spacemarkers$params$visiumDir. For manually created ",
+                "SpaceMarkersExperiment objects, set spatial_params(sme) ",
+                "explicitly before running SpaceMarkers()."
+            )
+        }
         stored_res <- sme@spacemarkers$params$resolution %||% resolution
         op <- get_spatial_parameters(
             spatialPatterns = .sme_spPatterns(sme),
-            visiumDir = stored_visiumDir %||% ".",
+            visiumDir = stored_visiumDir,
             spatialDir = spatialDir, pattern = pattern,
             sigma = sigma, threshold = threshold, resolution = stored_res)
         spatial_params(sme) <- op

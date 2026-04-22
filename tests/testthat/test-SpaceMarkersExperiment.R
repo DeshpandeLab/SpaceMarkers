@@ -133,6 +133,30 @@ test_that("spatial_patterns<- setter works", {
     expect_equal(sme@spacemarkers$params$pattern_names, c("P1", "P2"))
 })
 
+test_that("spatial_patterns<- reorders by rownames and rejects mismatches", {
+    mat <- matrix(0, nrow = 2, ncol = 3)
+    rownames(mat) <- c("g1", "g2")
+    colnames(mat) <- c("s1", "s2", "s3")
+    coords <- matrix(1:6, ncol = 2); colnames(coords) <- c("y", "x")
+    rownames(coords) <- colnames(mat)
+    sme <- SpaceMarkersExperiment(
+        assays = list(logcounts = mat), spatialCoords = coords)
+
+    # Rownames in reverse order should be reordered to match colnames(x)
+    pats <- data.frame(P1 = c(0.3, 0.2, 0.1), row.names = c("s3", "s2", "s1"))
+    spatial_patterns(sme) <- pats
+    expect_equal(spatial_patterns(sme)$P1, c(0.1, 0.2, 0.3))
+
+    # Rowname set mismatch -> error
+    bad <- data.frame(P1 = c(0.1, 0.2, 0.3),
+                      row.names = c("s1", "s2", "sX"))
+    expect_error(spatial_patterns(sme) <- bad, "must match colnames")
+
+    # No rownames, wrong length -> error
+    wrong_len <- data.frame(P1 = c(0.1, 0.2))
+    expect_error(spatial_patterns(sme) <- wrong_len, "nrow\\(value\\)")
+})
+
 test_that("spatial_params accessor works", {
     mat <- matrix(0, nrow = 2, ncol = 3)
     rownames(mat) <- c("g1", "g2")

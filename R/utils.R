@@ -593,7 +593,11 @@ plot_spatial <- function(sme, feature_col = NULL,
             xr <- range(df$x, na.rm = TRUE); yr <- range(df$y, na.rm = TRUE)
             xmin <- max(1L, floor(xr[1])); xmax <- min(nc, ceiling(xr[2]))
             ymin <- max(1L, floor(yr[1])); ymax <- min(nr, ceiling(yr[2]))
-            img_mat <- img_mat[ymin:ymax, xmin:xmax, , drop = FALSE]
+            img_mat <- if (length(dim(img_mat)) == 2L) {
+                img_mat[ymin:ymax, xmin:xmax, drop = FALSE]
+            } else {
+                img_mat[ymin:ymax, xmin:xmax, , drop = FALSE]
+            }
             df <- dplyr::mutate(df, x_c = x - xmin + 1L, y_c = y - ymin + 1L)
             xl <- c(0, xmax - xmin + 1L); yl <- c(0, ymax - ymin + 1L)
         } else {
