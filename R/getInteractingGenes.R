@@ -346,6 +346,8 @@ get_interacting_genes <- function(data, spPatterns, refPattern="Pattern_1",
 #' @family getIntGenes
 #' @inheritParams get_interacting_genes
 #' @param pattern_pairs A matrix of pattern pairs to be analyzed. Default is
+#' @param patternList (optional) Character vector of pattern column names in
+#'   `spPatterns` to restrict the analysis to. Defaults to all pattern columns.
 #' @param workers (optional) Number of workers to
 #' be used for parallel processing.
 #' @return a list of data frames for each pattern with 1) names of the patterns

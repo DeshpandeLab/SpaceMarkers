@@ -89,6 +89,9 @@ significantly overexpressed in the interaction region are returned.}
 
 \item{workers}{(optional) Number of workers to
 be used for parallel processing.}
+
+\item{patternList}{(optional) Character vector of pattern column names in
+\code{spPatterns} to restrict the analysis to. Defaults to all pattern columns.}
 }
 \value{
 a list of data frames for each pattern with 1) names of the patterns
