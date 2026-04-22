@@ -443,8 +443,7 @@ setMethod("get_pairwise_interacting_genes", "ANY",
             if (is.null(workers)) {
                 workers <- BiocParallel::multicoreWorkers()  # Use default
             } else if (workers <= 0) {
-                stop("Invalid number of workers. #
-                    Please provide a positive integer.")
+                stop("Invalid number of workers. Please provide a positive integer.")
             }
 
             # Register parallel backend
