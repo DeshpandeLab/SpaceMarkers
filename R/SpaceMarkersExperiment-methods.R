@@ -11,6 +11,26 @@
 #' @keywords internal
 NULL
 
+#' SummarizedExperiment / SpatialExperiment accessors re-exported
+#'
+#' These generics are defined in \pkg{SummarizedExperiment} and
+#' \pkg{SpatialExperiment} and re-exported here so that
+#' \code{library(SpaceMarkers)} alone is enough to call them on a
+#' \code{SpaceMarkersExperiment} without also attaching their source packages.
+#'
+#' @importFrom SummarizedExperiment assay assays colData rowData
+#' @importFrom SpatialExperiment spatialCoords spatialCoords<- imgRaster
+#' @name reexports
+#' @keywords internal
+#' @aliases assay assays colData rowData spatialCoords spatialCoords<- imgRaster
+#' @export assay
+#' @export assays
+#' @export colData
+#' @export rowData
+#' @export spatialCoords
+#' @export imgRaster
+NULL
+
 #' @include AllClasses.R AllGenerics.R
 NULL
 

@@ -46,7 +46,6 @@ BiocManager::install("SpaceMarkers")
 
 ```{r message=FALSE, warning=FALSE}
 library(SpaceMarkers)
-library(SpatialExperiment)
 ```
 
 # Setup
