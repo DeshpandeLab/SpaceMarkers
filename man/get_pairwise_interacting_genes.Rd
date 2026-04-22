@@ -37,7 +37,7 @@ get_pairwise_interacting_genes(
 
 \S4method{get_pairwise_interacting_genes}{ANY}(
   data,
-  spPatterns = NULL,
+  spPatterns,
   mode = c("DE", "residual"),
   optParams = NULL,
   reconstruction = NULL,
@@ -45,6 +45,7 @@ get_pairwise_interacting_genes(
   minOverlap = 50,
   analysis = c("enrichment", "overlap"),
   pattern_pairs = NULL,
+  patternList = NULL,
   ...,
   workers = NULL
 )

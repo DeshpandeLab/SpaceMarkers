@@ -412,9 +412,9 @@ load10X <- function(visiumDir,
 
     # Pre-compute spatial parameters from the scalefactors JSON if available
     spatial_par <- NULL
-    if (!is.null(pattern_names)) {
-        spCoords <- coords[common, c("barcode", "y", "x"), drop = FALSE]
-        spPats <- as.data.frame(spFeatures[common, , drop = FALSE])
+    if (!is.null(pattern_names) && length(shared) > 0L) {
+        spCoords <- coords[shared, c("barcode", "y", "x"), drop = FALSE]
+        spPats <- as.data.frame(spFeatures[shared, , drop = FALSE])
         spPatterns_combined <- cbind(spCoords, spPats)
         tryCatch({
             spatial_par <- get_spatial_parameters(
@@ -422,7 +422,12 @@ load10X <- function(visiumDir,
                 visiumDir = visiumDir,
                 resolution = resolution
             )
-        }, error = function(e) NULL)
+        }, error = function(e) {
+            warning(sprintf(
+                "Pre-computing spatial_params failed: %s", conditionMessage(e)
+            ))
+            NULL
+        })
     }
 
     sm <- as(list(

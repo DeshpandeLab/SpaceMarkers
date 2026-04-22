@@ -16,10 +16,10 @@ Description: Spatial transcriptomic technologies have helped to resolve the conn
             can help to find molecular interactions, by identifying genes associated with latent space 
             interactions in spatial transcriptomics.
 Depends:
-    R (>= 4.4.0),
-    SpatialExperiment
+    R (>= 4.4.0)
 biocViews: SingleCell, GeneExpression, Software, Spatial, Transcriptomics
 Imports:
+    SpatialExperiment,
     SingleCellExperiment,
     SummarizedExperiment,
     S4Vectors,

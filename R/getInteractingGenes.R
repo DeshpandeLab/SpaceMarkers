@@ -123,8 +123,9 @@ setMethod("find_all_hotspots", "data.frame",
         hotspots <- matrix(NA, nrow = nrow(spPatterns), ncol = length(pattList))
         colnames(hotspots) <- pattList
         for (patternName in pattList) {
+            patternParams <- if (is.null(params)) NULL else params[, patternName]
             hotspots[, patternName] <- find_pattern_hotspots(
-                spPatterns = spPatterns, params = params[, patternName],
+                spPatterns = spPatterns, params = patternParams,
                 patternName = patternName, outlier = outlier,
                 nullSamples = nullSamples, includeSelf = includeSelf, ...)
         }
@@ -415,16 +416,16 @@ setMethod("get_pairwise_interacting_genes", "ANY",
              optParams = NULL, reconstruction = NULL,
              hotspots = NULL, minOverlap = 50,
              analysis = c("enrichment", "overlap"),
-             pattern_pairs = NULL, ..., workers = NULL) {
+             pattern_pairs = NULL, patternList = NULL,
+             ..., workers = NULL) {
         # save params in a list for easy passing
         argsParams <- list(spPatterns = spPatterns, mode = mode,
                             optParams = optParams, hotspots = hotspots,
                             analysis = analysis, minOverlap = minOverlap)
-        if (!exists("patternList"))
+        if (is.null(patternList)) {
             patternList <- setdiff(colnames(spPatterns), c("x", "y", "barcode"))
-        else {
-            if (!all(patternList %in% colnames(spPatterns)))
-                stop("patternList contains patterns not present in spPatterns.")
+        } else if (!all(patternList %in% colnames(spPatterns))) {
+            stop("patternList contains patterns not present in spPatterns.")
         }
 
         # check pattern_pairs if provided, if not generate them

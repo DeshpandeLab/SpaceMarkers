@@ -396,6 +396,14 @@ test_that("find_all_hotspots default method still accepts data.frame", {
     expect_equal(nrow(hs), nrow(spDF))
 })
 
+test_that("find_all_hotspots(data.frame) accepts params = NULL", {
+    sme <- make_fixture_sme()
+    spDF <- SpaceMarkers:::.sme_spPatterns(sme)
+    hs <- find_all_hotspots(spDF, params = NULL)
+    expect_s3_class(hs, "data.frame")
+    expect_equal(nrow(hs), nrow(spDF))
+})
+
 test_that("find_all_hotspots(SME) parity with data.frame path", {
     sme <- make_fixture_sme()
     set.seed(42)
@@ -468,6 +476,14 @@ test_that("calculate_influence(SME) stores influence_map", {
     sme <- make_fixture_sme() |> calculate_influence()
     expect_false(is.null(influence_map(sme)))
     expect_equal(nrow(influence_map(sme)), ncol(sme))
+})
+
+test_that("calculate_influence(data.frame) accepts optParams = NULL", {
+    sme <- make_fixture_sme()
+    spDF <- SpaceMarkers:::.sme_spPatterns(sme)
+    inf <- calculate_influence(spDF, optParams = NULL)
+    expect_s3_class(inf, "data.frame")
+    expect_equal(nrow(inf), nrow(spDF))
 })
 
 # ---- Task 7: find_hotspots_gmm as S4 generic with SME method ----

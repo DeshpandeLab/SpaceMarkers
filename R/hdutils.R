@@ -24,8 +24,12 @@ setMethod("calculate_influence", "data.frame",
                             marks = spPatterns[,pat])
 
     # Calculate the kernel for the specified pattern
-    Kact1 <- spatstat.explore::Smooth(
-      X, at = "points", sigma = optParams[1,pat],...)
+    Kact1 <- if (is.null(optParams)) {
+      spatstat.explore::Smooth(X, at = "points", ...)
+    } else {
+      spatstat.explore::Smooth(
+        X, at = "points", sigma = optParams[1, pat], ...)
+    }
 
     # Plot the K-function
     return(Kact1)
