@@ -46,11 +46,7 @@ Imports:
     readbitmap,
     rlang,
     effsize,
-    viridis,
-    ggalluvial,
-    fgsea,
-    pheatmap,
-    future
+    viridis
 Suggests:
     data.table,
     devtools,
@@ -62,9 +58,7 @@ Suggests:
     BiocFileCache,
     testthat (>= 3.0.0),
     CoGAPS,
-    ComplexHeatmap,
-    future.apply,
-    clusterProfiler
+    ComplexHeatmap
 Enhances: 
     BiocParallel
 VignetteBuilder: 
@@ -79,10 +73,8 @@ Collate:
     'getInteractingGenes.R'
     'getSpatialParameters.R'
     'hdutils.R'
-    'multisample.R'
     'plotLRCircos.R'
     'preprocessing.R'
-    'protocol-helpers.R'
     'test-helper.R'
     'utils.R'
 Config/testthat/edition: 3
