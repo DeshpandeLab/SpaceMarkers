@@ -72,10 +72,16 @@ sp_url <- paste(c(main_10xlink, sp_folder, sp_file), collapse = "/")
 
 ## Downloading Data
 
+Downloads are routed through `BiocFileCache` so the ~260 MB dataset is
+fetched once and reused across vignette builds and across the other
+SpaceMarkers vignettes.
+
 ```{r}
-download.file(counts_url, file.path(data_dir, basename(counts_url)), mode = "wb")
-download.file(sp_url, file.path(data_dir, basename(sp_url)), mode = "wb")
-untar(file.path(data_dir, basename(sp_url)), exdir = file.path(data_dir))
+bfc <- BiocFileCache::BiocFileCache(ask = FALSE)
+counts_cache <- BiocFileCache::bfcrpath(bfc, counts_url)
+sp_cache     <- BiocFileCache::bfcrpath(bfc, sp_url)
+file.copy(counts_cache, file.path(data_dir, counts_file), overwrite = TRUE)
+untar(sp_cache, exdir = data_dir)
 ```
 
 # Loading Data into a SpaceMarkersExperiment
