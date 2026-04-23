@@ -446,3 +446,29 @@ load10X <- function(visiumDir,
         spaceMarkers = sm
     )
 }
+
+#===================
+#' @title Load an AnnData file as a SpaceMarkersExperiment
+#' @description Convenience wrapper that reads an `.h5ad` file via
+#'   \pkg{zellkonverter} and coerces the resulting
+#'   \code{SingleCellExperiment} directly into a
+#'   \code{\link{SpaceMarkersExperiment}}. If the AnnData stores spatial
+#'   coordinates under \code{obsm["spatial"]}, they are promoted to
+#'   \code{spatialCoords()}.
+#' @param file Path to an \code{.h5ad} file.
+#' @param ... Additional arguments forwarded to
+#'   \code{zellkonverter::readH5AD()}.
+#' @return A \code{\link{SpaceMarkersExperiment}} object.
+#' @details \pkg{zellkonverter} is a \code{Suggests} dependency — install
+#'   it with \code{BiocManager::install("zellkonverter")} before calling
+#'   this function. On first use it will also set up a small
+#'   \pkg{basilisk}-managed Python environment for the AnnData reader.
+#' @export
+load_anndata <- function(file, ...) {
+    if (!requireNamespace("zellkonverter", quietly = TRUE)) {
+        stop("load_anndata() requires the 'zellkonverter' package. ",
+             "Install it with BiocManager::install('zellkonverter').")
+    }
+    sce <- zellkonverter::readH5AD(file, ...)
+    methods::as(sce, "SpaceMarkersExperiment")
+}

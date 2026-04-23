@@ -545,3 +545,18 @@ test_that("SCE -> SME leaves spatialCoords empty when no spatial reducedDim", {
     # SPE default from SCE yields a matrix with ncells rows and 0 columns.
     expect_equal(ncol(SpatialExperiment::spatialCoords(sme)), 0L)
 })
+
+test_that("load_anndata errors clearly when zellkonverter is unavailable", {
+    # Simulate zellkonverter missing by shadowing requireNamespace via the
+    # function's own environment. Faster and more portable than actually
+    # unloading the package.
+    with_mocked_bindings(
+        requireNamespace = function(package, ...) {
+            if (identical(package, "zellkonverter")) FALSE
+            else base::requireNamespace(package, ...)
+        },
+        .package = "base",
+        expect_error(load_anndata("ignored.h5ad"),
+                     "requires the 'zellkonverter' package")
+    )
+})
