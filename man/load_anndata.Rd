@@ -4,28 +4,36 @@
 \alias{load_anndata}
 \title{Load an AnnData file as a SpaceMarkersExperiment}
 \usage{
-load_anndata(file, ...)
+load_anndata(file, reader = c("auto", "anndataR", "zellkonverter"), ...)
 }
 \arguments{
 \item{file}{Path to an \code{.h5ad} file.}
 
-\item{...}{Additional arguments forwarded to
-\code{zellkonverter::readH5AD()}.}
+\item{reader}{One of \code{"auto"}, \code{"anndataR"},
+\code{"zellkonverter"}.}
+
+\item{...}{Additional arguments forwarded to the chosen reader's
+read function.}
 }
 \value{
 A \code{\link{SpaceMarkersExperiment}} object.
 }
 \description{
-Convenience wrapper that reads an \code{.h5ad} file via
-\pkg{zellkonverter} and coerces the resulting
-\code{SingleCellExperiment} directly into a
+Convenience wrapper that reads an \code{.h5ad} file and
+coerces the resulting \code{SingleCellExperiment} directly into a
 \code{\link{SpaceMarkersExperiment}}. If the AnnData stores spatial
 coordinates under \code{obsm["spatial"]}, they are promoted to
 \code{spatialCoords()}.
+
+Two readers are supported:
+\itemize{
+\item \pkg{anndataR} — pure-R, no Python/conda dependency, faster
+on first call. Recommended when available.
+\item \pkg{zellkonverter} — Bioconductor-standard, uses a
+\pkg{basilisk}-managed Python environment under the hood.
 }
-\details{
-\pkg{zellkonverter} is a \code{Suggests} dependency — install
-it with \code{BiocManager::install("zellkonverter")} before calling
-this function. On first use it will also set up a small
-\pkg{basilisk}-managed Python environment for the AnnData reader.
+Both are \code{Suggests} dependencies. With \code{reader = "auto"}
+(default), anndataR is preferred when installed; otherwise
+zellkonverter is used. Pass \code{reader = "zellkonverter"} or
+\code{reader = "anndataR"} to force a specific backend.
 }

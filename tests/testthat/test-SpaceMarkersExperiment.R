@@ -546,17 +546,91 @@ test_that("SCE -> SME leaves spatialCoords empty when no spatial reducedDim", {
     expect_equal(ncol(SpatialExperiment::spatialCoords(sme)), 0L)
 })
 
-test_that("load_anndata errors clearly when zellkonverter is unavailable", {
-    # Simulate zellkonverter missing by shadowing requireNamespace via the
-    # function's own environment. Faster and more portable than actually
-    # unloading the package.
+test_that("load_anndata auto-errors when neither backend is installed", {
+    with_mocked_bindings(
+        requireNamespace = function(package, ...) {
+            if (package %in% c("anndataR", "zellkonverter")) FALSE
+            else base::requireNamespace(package, ...)
+        },
+        .package = "base",
+        expect_error(load_anndata("ignored.h5ad"),
+                     "anndataR.*zellkonverter|zellkonverter.*anndataR")
+    )
+})
+
+test_that("load_anndata with explicit reader errors cleanly when missing", {
     with_mocked_bindings(
         requireNamespace = function(package, ...) {
             if (identical(package, "zellkonverter")) FALSE
             else base::requireNamespace(package, ...)
         },
         .package = "base",
-        expect_error(load_anndata("ignored.h5ad"),
-                     "requires the 'zellkonverter' package")
+        expect_error(load_anndata("x.h5ad", reader = "zellkonverter"),
+                     "'zellkonverter' package")
     )
+    with_mocked_bindings(
+        requireNamespace = function(package, ...) {
+            if (identical(package, "anndataR")) FALSE
+            else base::requireNamespace(package, ...)
+        },
+        .package = "base",
+        expect_error(load_anndata("x.h5ad", reader = "anndataR"),
+                     "'anndataR' package")
+    )
+})
+
+test_that("save_anndata auto-errors when neither backend is installed", {
+    mat <- matrix(runif(30), nrow = 3, ncol = 10,
+                  dimnames = list(paste0("g", 1:3), paste0("c", 1:10)))
+    coords <- matrix(runif(20), ncol = 2)
+    colnames(coords) <- c("y", "x"); rownames(coords) <- colnames(mat)
+    sme <- SpaceMarkersExperiment(assays = list(logcounts = mat),
+                                  spatialCoords = coords)
+    with_mocked_bindings(
+        requireNamespace = function(package, ...) {
+            if (package %in% c("anndataR", "zellkonverter")) FALSE
+            else base::requireNamespace(package, ...)
+        },
+        .package = "base",
+        expect_error(save_anndata(sme, tempfile(fileext = ".h5ad")),
+                     "anndataR.*zellkonverter|zellkonverter.*anndataR")
+    )
+})
+
+test_that("pack/unpack round-trip preserves SpaceMarkers state", {
+    mat <- matrix(runif(30), nrow = 3, ncol = 10,
+                  dimnames = list(paste0("g", 1:3), paste0("c", 1:10)))
+    coords <- matrix(runif(20), ncol = 2)
+    colnames(coords) <- c("y", "x"); rownames(coords) <- colnames(mat)
+    sme <- SpaceMarkersExperiment(assays = list(logcounts = mat),
+                                  spatialCoords = coords)
+    # populate some analysis state
+    sm <- sme@spacemarkers
+    sm$params$pattern_names <- c("A", "B")
+    sm$params$spatial_params <- matrix(c(6, 4, 6, 4), nrow = 2,
+        dimnames = list(c("sigmaOpt", "threshOpt"), c("A", "B")))
+    sm$analysis <- "undirected"
+    sm$results$overlap_scores <- data.frame(
+        pattern1 = "A", pattern2 = "B", overlapScore = 0.5,
+        stringsAsFactors = FALSE)
+    sme@spacemarkers <- sm
+    md <- S4Vectors::metadata(sme)
+    md$hotspots <- list(undirected = data.frame(
+        barcode = colnames(mat), y = 1:10, x = 1:10, A = NA, B = NA))
+    S4Vectors::metadata(sme) <- md
+
+    # Pack -> attach to metadata -> unpack, simulating what save/load does.
+    state <- SpaceMarkers:::.pack_spacemarkers_state(sme)
+    plain <- SpaceMarkersExperiment(assays = list(logcounts = mat),
+                                    spatialCoords = coords)
+    md2 <- S4Vectors::metadata(plain); md2$spacemarkers <- state
+    S4Vectors::metadata(plain) <- md2
+    restored <- SpaceMarkers:::.unpack_spacemarkers_state(plain)
+
+    expect_equal(restored@spacemarkers$params$pattern_names, c("A", "B"))
+    expect_equal(restored@spacemarkers$results$overlap_scores$overlapScore, 0.5)
+    expect_equal(restored@spacemarkers$analysis, "undirected")
+    expect_equal(names(S4Vectors::metadata(restored)$hotspots), "undirected")
+    # Sidecar should be scrubbed after unpack to avoid re-packing on save.
+    expect_null(S4Vectors::metadata(restored)$spacemarkers)
 })

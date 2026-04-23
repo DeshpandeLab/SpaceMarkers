@@ -449,26 +449,161 @@ load10X <- function(visiumDir,
 
 #===================
 #' @title Load an AnnData file as a SpaceMarkersExperiment
-#' @description Convenience wrapper that reads an `.h5ad` file via
-#'   \pkg{zellkonverter} and coerces the resulting
-#'   \code{SingleCellExperiment} directly into a
+#' @description Convenience wrapper that reads an `.h5ad` file and
+#'   coerces the resulting \code{SingleCellExperiment} directly into a
 #'   \code{\link{SpaceMarkersExperiment}}. If the AnnData stores spatial
 #'   coordinates under \code{obsm["spatial"]}, they are promoted to
 #'   \code{spatialCoords()}.
+#'
+#'   Two readers are supported:
+#'   \itemize{
+#'     \item \pkg{anndataR} — pure-R, no Python/conda dependency, faster
+#'       on first call. Recommended when available.
+#'     \item \pkg{zellkonverter} — Bioconductor-standard, uses a
+#'       \pkg{basilisk}-managed Python environment under the hood.
+#'   }
+#'   Both are \code{Suggests} dependencies. With \code{reader = "auto"}
+#'   (default), anndataR is preferred when installed; otherwise
+#'   zellkonverter is used. Pass \code{reader = "zellkonverter"} or
+#'   \code{reader = "anndataR"} to force a specific backend.
 #' @param file Path to an \code{.h5ad} file.
-#' @param ... Additional arguments forwarded to
-#'   \code{zellkonverter::readH5AD()}.
+#' @param reader One of \code{"auto"}, \code{"anndataR"},
+#'   \code{"zellkonverter"}.
+#' @param ... Additional arguments forwarded to the chosen reader's
+#'   read function.
 #' @return A \code{\link{SpaceMarkersExperiment}} object.
-#' @details \pkg{zellkonverter} is a \code{Suggests} dependency — install
-#'   it with \code{BiocManager::install("zellkonverter")} before calling
-#'   this function. On first use it will also set up a small
-#'   \pkg{basilisk}-managed Python environment for the AnnData reader.
 #' @export
-load_anndata <- function(file, ...) {
-    if (!requireNamespace("zellkonverter", quietly = TRUE)) {
-        stop("load_anndata() requires the 'zellkonverter' package. ",
-             "Install it with BiocManager::install('zellkonverter').")
+load_anndata <- function(file,
+                         reader = c("auto", "anndataR", "zellkonverter"),
+                         ...) {
+    reader <- match.arg(reader)
+    if (reader == "auto") {
+        reader <- if (requireNamespace("anndataR", quietly = TRUE)) {
+            "anndataR"
+        } else if (requireNamespace("zellkonverter", quietly = TRUE)) {
+            "zellkonverter"
+        } else {
+            stop(
+                "load_anndata() requires either 'anndataR' (pure R) or ",
+                "'zellkonverter' (Bioconductor). Install one of: ",
+                "install.packages('anndataR')  or  ",
+                "BiocManager::install('zellkonverter')."
+            )
+        }
+    } else if (!requireNamespace(reader, quietly = TRUE)) {
+        stop(sprintf("load_anndata(reader = '%s') requires the '%s' package.",
+                     reader, reader))
     }
-    sce <- zellkonverter::readH5AD(file, ...)
-    methods::as(sce, "SpaceMarkersExperiment")
+    sce <- switch(reader,
+        anndataR      = anndataR::as_SingleCellExperiment(
+                            anndataR::read_h5ad(file, ...)),
+        zellkonverter = zellkonverter::readH5AD(file, ...)
+    )
+    sme <- methods::as(sce, "SpaceMarkersExperiment")
+    .unpack_spacemarkers_state(sme)
+}
+
+#===================
+#' @title Save a SpaceMarkersExperiment as an AnnData (.h5ad) file
+#' @description Writes a \code{\link{SpaceMarkersExperiment}} out to
+#'   an \code{.h5ad} file, preserving the full SpaceMarkers analysis
+#'   state (hotspots, overlap scores, interactions, influence map,
+#'   kernel parameters) under \code{uns["spacemarkers"]}. Reloading
+#'   with \code{load_anndata()} restores that state.
+#'
+#'   The reader selection logic is identical to
+#'   \code{\link{load_anndata}}: \pkg{anndataR} is preferred when
+#'   installed, \pkg{zellkonverter} is the fallback.
+#' @param sme A \code{\link{SpaceMarkersExperiment}} object.
+#' @param file Path to the \code{.h5ad} file to write.
+#' @param reader One of \code{"auto"}, \code{"anndataR"},
+#'   \code{"zellkonverter"}.
+#' @param ... Additional arguments forwarded to the chosen reader's
+#'   write function.
+#' @return The path \code{file}, returned invisibly.
+#' @export
+save_anndata <- function(sme, file,
+                         reader = c("auto", "anndataR", "zellkonverter"),
+                         ...) {
+    reader <- match.arg(reader)
+    if (reader == "auto") {
+        reader <- if (requireNamespace("anndataR", quietly = TRUE)) {
+            "anndataR"
+        } else if (requireNamespace("zellkonverter", quietly = TRUE)) {
+            "zellkonverter"
+        } else {
+            stop(
+                "save_anndata() requires either 'anndataR' (pure R) or ",
+                "'zellkonverter' (Bioconductor). Install one of: ",
+                "install.packages('anndataR')  or  ",
+                "BiocManager::install('zellkonverter')."
+            )
+        }
+    } else if (!requireNamespace(reader, quietly = TRUE)) {
+        stop(sprintf("save_anndata(reader = '%s') requires the '%s' package.",
+                     reader, reader))
+    }
+    state <- .pack_spacemarkers_state(sme)
+    # Coerce SME down to SCE, but carry the packed state in metadata so it
+    # round-trips as uns["spacemarkers"] when the reader writes it out.
+    sce <- methods::as(sme, "SingleCellExperiment")
+    md <- S4Vectors::metadata(sce)
+    md$spacemarkers <- state
+    S4Vectors::metadata(sce) <- md
+    switch(reader,
+        anndataR      = anndataR::write_h5ad(
+                            anndataR::as_AnnData(sce), file, ...),
+        zellkonverter = zellkonverter::writeH5AD(sce, file, ...)
+    )
+    invisible(file)
+}
+
+#===================
+# Pack / unpack SpaceMarkers analysis state as a plain nested list so it
+# survives AnnData serialization (uns accepts lists of atomic / matrix /
+# data.frame values but not arbitrary S4 objects).
+.pack_spacemarkers_state <- function(sme) {
+    sm <- sme@spacemarkers
+    md <- S4Vectors::metadata(sme)
+    as_plain_df <- function(x) {
+        if (is.null(x)) NULL
+        else if (methods::is(x, "DataFrame")) as.data.frame(x)
+        else x
+    }
+    list(
+        params = list(
+            pattern_names  = sm$params$pattern_names,
+            spatial_params = sm$params$spatial_params,
+            visiumDir      = sm$params$visiumDir,
+            resolution     = sm$params$resolution
+        ),
+        results = list(
+            undirected_scores = as_plain_df(sm$results$undirected_scores),
+            directed_scores   = as_plain_df(sm$results$directed_scores),
+            overlap_scores    = as_plain_df(sm$results$overlap_scores),
+            lr_scores         = as_plain_df(sm$results$lr_scores)
+        ),
+        analysis       = sm$analysis,
+        hotspots       = lapply(md$hotspots, as_plain_df),
+        interactions   = md$interactions,
+        influence_map  = as_plain_df(md$influence)
+    )
+}
+
+.unpack_spacemarkers_state <- function(sme) {
+    md <- S4Vectors::metadata(sme)
+    state <- md$spacemarkers
+    if (is.null(state)) return(sme)
+    sm <- sme@spacemarkers
+    if (is.null(sm)) sm <- S4Vectors::SimpleList()
+    if (!is.null(state$params))  sm$params  <- state$params
+    if (!is.null(state$results)) sm$results <- state$results
+    if (!is.null(state$analysis)) sm$analysis <- state$analysis
+    sme@spacemarkers <- sm
+    if (!is.null(state$hotspots))      md$hotspots      <- state$hotspots
+    if (!is.null(state$interactions))  md$interactions  <- state$interactions
+    if (!is.null(state$influence_map)) md$influence     <- state$influence_map
+    md$spacemarkers <- NULL  # scrub the sidecar so we don't re-pack on next save
+    S4Vectors::metadata(sme) <- md
+    sme
 }

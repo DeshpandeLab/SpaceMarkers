@@ -59,7 +59,8 @@ Suggests:
     testthat (>= 3.0.0),
     CoGAPS,
     ComplexHeatmap,
-    zellkonverter
+    zellkonverter,
+    anndataR
 Enhances:
     BiocParallel
 VignetteBuilder: 
