@@ -495,8 +495,7 @@ load_anndata <- function(file,
                      reader, reader))
     }
     sce <- switch(reader,
-        anndataR      = anndataR::as_SingleCellExperiment(
-                            anndataR::read_h5ad(file, ...)),
+        anndataR      = anndataR::read_h5ad(file, ...)$as_SingleCellExperiment(),
         zellkonverter = zellkonverter::readH5AD(file, ...)
     )
     sme <- methods::as(sce, "SpaceMarkersExperiment")
