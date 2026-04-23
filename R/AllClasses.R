@@ -132,6 +132,43 @@ setAs("SpatialExperiment", "SpaceMarkersExperiment", function(from) {
         spacemarkers = S4Vectors::SimpleList())
 })
 
+#' Coercion from SingleCellExperiment to SpaceMarkersExperiment
+#'
+#' AnnData-sourced objects (e.g. via `zellkonverter::readH5AD()` or
+#' `anndataR::as_SingleCellExperiment()`) typically arrive as
+#' `SingleCellExperiment` with spatial coordinates stored as a
+#' reducedDim, commonly named "spatial". This coerce method promotes
+#' that reducedDim into `spatialCoords()` and wraps the result as an
+#' SME, so a full AnnData -> SME path reads:
+#'
+#'     sme <- as(zellkonverter::readH5AD(path), "SpaceMarkersExperiment")
+#'
+#' If no suitable spatial reducedDim is found, the SME is built with
+#' empty `spatialCoords`; the caller can populate them afterwards.
+#'
+#' @name as-SingleCellExperiment-SpaceMarkersExperiment
+setAs("SingleCellExperiment", "SpaceMarkersExperiment", function(from) {
+    # Look for a spatial reducedDim under common AnnData conventions.
+    rd_names <- SingleCellExperiment::reducedDimNames(from)
+    spatial_rd <- intersect(c("spatial", "X_spatial", "SPATIAL"), rd_names)
+    spatial_coords <- NULL
+    if (length(spatial_rd) > 0L) {
+        spatial_coords <- as.matrix(
+            SingleCellExperiment::reducedDim(from, spatial_rd[1L])
+        )
+        if (ncol(spatial_coords) >= 2L) {
+            colnames(spatial_coords)[seq_len(2L)] <- c("x", "y")
+        }
+        rownames(spatial_coords) <- colnames(from)
+    }
+    spe <- methods::as(from, "SpatialExperiment")
+    if (!is.null(spatial_coords) &&
+        ncol(SpatialExperiment::spatialCoords(spe)) == 0L) {
+        SpatialExperiment::spatialCoords(spe) <- spatial_coords
+    }
+    methods::as(spe, "SpaceMarkersExperiment")
+})
+
 #' @rdname SpaceMarkersExperiment-class
 #' @aliases show,SpaceMarkersExperiment-method
 #' @param object A \code{SpaceMarkersExperiment}.

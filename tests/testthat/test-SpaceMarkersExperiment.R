@@ -516,3 +516,32 @@ test_that("as() coercion from SPE to SME works", {
     expect_equal(nrow(sme), 3L)
     expect_equal(ncol(sme), 10L)
 })
+
+test_that("SCE -> SME promotes reducedDim('spatial') to spatialCoords", {
+    mat <- matrix(runif(30), nrow = 3, ncol = 10)
+    rownames(mat) <- paste0("g", 1:3)
+    colnames(mat) <- paste0("c", 1:10)
+    sce <- SingleCellExperiment::SingleCellExperiment(
+        assays = list(logcounts = mat)
+    )
+    SingleCellExperiment::reducedDim(sce, "spatial") <-
+        matrix(runif(20), ncol = 2,
+               dimnames = list(colnames(sce), c("row", "col")))
+    sme <- as(sce, "SpaceMarkersExperiment")
+    expect_s4_class(sme, "SpaceMarkersExperiment")
+    expect_equal(nrow(SpatialExperiment::spatialCoords(sme)), 10L)
+    expect_equal(ncol(SpatialExperiment::spatialCoords(sme)), 2L)
+})
+
+test_that("SCE -> SME leaves spatialCoords empty when no spatial reducedDim", {
+    mat <- matrix(runif(30), nrow = 3, ncol = 10)
+    rownames(mat) <- paste0("g", 1:3)
+    colnames(mat) <- paste0("c", 1:10)
+    sce <- SingleCellExperiment::SingleCellExperiment(
+        assays = list(logcounts = mat)
+    )
+    sme <- as(sce, "SpaceMarkersExperiment")
+    expect_s4_class(sme, "SpaceMarkersExperiment")
+    # SPE default from SCE yields a matrix with ncells rows and 0 columns.
+    expect_equal(ncol(SpatialExperiment::spatialCoords(sme)), 0L)
+})
