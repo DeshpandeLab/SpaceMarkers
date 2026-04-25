@@ -43,3 +43,13 @@ a data frame with the same dimensions as the input data frame.
 Convenience function to find hotspots for all spatial patterns
 or influence dataframes based on provided thresholds
 }
+\examples{
+set.seed(1)
+spPatterns <- data.frame(
+    barcode = paste0("s", 1:50),
+    x = runif(50), y = runif(50),
+    Pattern_1 = rnorm(50), Pattern_2 = rnorm(50))
+thr <- calculate_thresholds(spPatterns)
+hs  <- find_hotspots_gmm(spPatterns, threshold = thr)
+head(hs)
+}

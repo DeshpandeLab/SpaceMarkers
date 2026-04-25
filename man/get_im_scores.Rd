@@ -14,7 +14,9 @@ get_im_scores(SpaceMarkers)
 \S4method{get_im_scores}{list}(SpaceMarkers)
 }
 \arguments{
-\item{SpaceMarkers}{A list of SpaceMarkers objects}
+\item{SpaceMarkers}{A list returned by
+\code{\link{get_pairwise_interacting_genes}} (or a
+\code{SpaceMarkersExperiment} with interactions populated).}
 }
 \value{
 A data frame with columns Gene and SpaceMarkersMetric
@@ -23,6 +25,15 @@ A data frame with columns Gene and SpaceMarkersMetric
 Get the interaction scores for SpaceMarkers
 }
 \examples{
-example(get_pairwise_interacting_genes)
-get_im_scores(SpaceMarkers)
+# Minimal mock of the list shape get_pairwise_interacting_genes returns:
+sm_result <- list(
+    list(patterns = c("A","B"),
+         interacting_genes = list(data.frame(
+             Gene = paste0("G", 1:5),
+             SpaceMarkersMetric = sort(runif(5), decreasing = TRUE)))),
+    list(patterns = c("A","C"),
+         interacting_genes = list(data.frame(
+             Gene = paste0("G", 1:5),
+             SpaceMarkersMetric = sort(runif(5), decreasing = TRUE)))))
+get_im_scores(sm_result)
 }

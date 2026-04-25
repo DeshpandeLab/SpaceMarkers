@@ -218,8 +218,9 @@ get_spatial_features <- function(filePath, method = NULL, featureNames = "."){
 
 #' readFormat
 #' Reads a format into an R object
+#' @return The deserialized R object: result of \code{readRDS} for .rds,
+#'   an open \code{H5File} for .h5ad, a \code{data.frame} for .csv.
 #' @keywords internal
-#' 
 .read_format <- function(path){
     if(grepl(".rds",path)){
         obj <- readRDS(path)
@@ -236,6 +237,8 @@ get_spatial_features <- function(filePath, method = NULL, featureNames = "."){
 
 #' inferMethod
 #' Infer the method used to obtain spatial features
+#' @return Character of length one: one of \code{"SpatialExperiment"},
+#'   \code{"BayesTME"}, \code{"CoGAPS"}, \code{"Seurat"}, or \code{"CSV"}.
 #' @keywords internal
 .infer_method <- function(spObject, method){
     if(is.null(method)){
@@ -258,8 +261,9 @@ get_spatial_features <- function(filePath, method = NULL, featureNames = "."){
 
 #' .get_cogaps_features
 #' Load features CoGAPS object
+#' @return Numeric matrix of CoGAPS sample factors (rows = barcodes,
+#'   cols = patterns).
 #' @keywords internal
-#' 
 .get_cogaps_features <- function(obj){
     spFeatures <- slot(obj, "sampleFactors")
     return(spFeatures)
@@ -267,9 +271,9 @@ get_spatial_features <- function(filePath, method = NULL, featureNames = "."){
 
 #' .get_BTME_features
 #' Load features BayesTME object
-#' 
+#' @return Numeric matrix of BayesTME cell-type counts (rows = barcodes,
+#'   cols = cell types).
 #' @keywords internal
-#' 
 .get_BTME_features <- function(hf){
     feat_loc <- "obsm/bayestme_cell_type_counts"
     barc_loc <- "obs/_index"
@@ -285,8 +289,9 @@ get_spatial_features <- function(filePath, method = NULL, featureNames = "."){
 
 #' .get_seurat_features
 #' Load features Seurat object
+#' @return data.frame of \code{_Feature}-suffixed metadata columns extracted
+#'   from \code{slot(obj, "meta.data")}.
 #' @keywords internal
-#' 
 .get_seurat_features <- function(obj){
     spFeatures <- slot(obj, "meta.data")
     selection <- grepl("_Feature",colnames(spFeatures), ignore.case = TRUE)
@@ -299,8 +304,8 @@ get_spatial_features <- function(filePath, method = NULL, featureNames = "."){
 
 #' .get_csv_features
 #' Load features from dataframe
+#' @return data.frame of features with barcodes as rownames.
 #' @keywords internal
-#'
 .get_csv_features <- function(obj){
     spFeatures <- obj
     if ("barcode" %in% colnames(spFeatures)){
@@ -320,6 +325,8 @@ get_spatial_features <- function(filePath, method = NULL, featureNames = "."){
 
 #' .get_spe_features
 #' Extract spatial features from a SpatialExperiment object's colData
+#' @return data.frame of numeric \code{colData} columns (rows = spots) with
+#'   standard SE/SPE bookkeeping columns removed.
 #' @keywords internal
 .get_spe_features <- function(obj) {
     cd <- as.data.frame(SummarizedExperiment::colData(obj))
@@ -353,6 +360,13 @@ get_spatial_features <- function(filePath, method = NULL, featureNames = "."){
 #' @param version Optional Spaceranger version.
 #' @param ... Additional arguments passed to \code{get_spatial_features}.
 #' @return A \code{\link{SpaceMarkersExperiment}} object.
+#' @examples
+#' \donttest{
+#' # Requires a 10x Visium directory on disk:
+#' # sme <- load10X("path/to/Visium_outs",
+#' #                features = "deconv_features.csv",
+#' #                resolution = "lowres")
+#' }
 #' @export
 load10X <- function(visiumDir,
                          features = NULL,
@@ -472,6 +486,11 @@ load10X <- function(visiumDir,
 #' @param ... Additional arguments forwarded to the chosen reader's
 #'   read function.
 #' @return A \code{\link{SpaceMarkersExperiment}} object.
+#' @examples
+#' \donttest{
+#' # Requires anndataR or zellkonverter installed and a real .h5ad file:
+#' # sme <- load_anndata("path/to/visium.h5ad")
+#' }
 #' @export
 load_anndata <- function(file,
                          reader = c("auto", "anndataR", "zellkonverter"),
@@ -520,6 +539,16 @@ load_anndata <- function(file,
 #' @param ... Additional arguments forwarded to the chosen reader's
 #'   write function.
 #' @return The path \code{file}, returned invisibly.
+#' @examples
+#' \donttest{
+#' # Requires anndataR or zellkonverter installed:
+#' # sme <- SpaceMarkersExperiment(
+#' #     assays = list(logcounts = matrix(rpois(200, 2), 10, 20,
+#' #         dimnames = list(paste0("G", 1:10), paste0("s", 1:20)))),
+#' #     spatialCoords = matrix(runif(40), 20, 2,
+#' #         dimnames = list(NULL, c("y", "x"))))
+#' # save_anndata(sme, tempfile(fileext = ".h5ad"))
+#' }
 #' @export
 save_anndata <- function(sme, file,
                          reader = c("auto", "anndataR", "zellkonverter"),

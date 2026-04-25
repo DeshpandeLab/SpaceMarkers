@@ -4,6 +4,17 @@
 #' @param optParams A data frame with optimal parameters for the pattern
 #' @param ... Additional parameters for the Smooth function
 #' @return A data frame with the spatial influence of the specified pattern
+#' @examples
+#' set.seed(1)
+#' spPatterns <- data.frame(
+#'     barcode = paste0("s", 1:50),
+#'     x = runif(50), y = runif(50),
+#'     Pattern_1 = runif(50), Pattern_2 = runif(50))
+#' optParams <- matrix(c(0.1, 4, 0.1, 4), nrow = 2,
+#'     dimnames = list(c("sigmaOpt", "threshOpt"),
+#'                     c("Pattern_1", "Pattern_2")))
+#' inf <- calculate_influence(spPatterns, optParams)
+#' head(inf)
 #' @rdname calculate_influence
 setMethod("calculate_influence", "data.frame",
     function(spPatterns, optParams = NULL, ...) {
@@ -83,7 +94,14 @@ return(thresh)
 #' @param maxvals Maximum value for quantile threshold
 #' @param ... Additional parameters to pass to lower level functions
 #' @return A list containing the computed thresholds for each pattern
-#' @export 
+#' @examples
+#' set.seed(1)
+#' spPatterns <- data.frame(
+#'     barcode = paste0("s", 1:50),
+#'     x = runif(50), y = runif(50),
+#'     Pattern_1 = rnorm(50), Pattern_2 = rnorm(50))
+#' calculate_thresholds(spPatterns)
+#' @export
 calculate_thresholds <- function(df, minvals = 0.01, maxvals = 0.99,...) {
   
     patnames <- setdiff(colnames(df), c("x", "y", "barcode"))
@@ -114,6 +132,15 @@ calculate_thresholds <- function(df, minvals = 0.01, maxvals = 0.99,...) {
 #' @param threshold a scalar or vector of thresholds for each column in the data frame.
 #'  Either user provided or the output of @calculate_thresholds
 #' @return a data frame with the same dimensions as the input data frame.
+#' @examples
+#' set.seed(1)
+#' spPatterns <- data.frame(
+#'     barcode = paste0("s", 1:50),
+#'     x = runif(50), y = runif(50),
+#'     Pattern_1 = rnorm(50), Pattern_2 = rnorm(50))
+#' thr <- calculate_thresholds(spPatterns)
+#' hs  <- find_hotspots_gmm(spPatterns, threshold = thr)
+#' head(hs)
 #' @rdname find_hotspots_gmm
 setMethod("find_hotspots_gmm", "data.frame",
     function(df, threshold = 0.1, ...) {
@@ -269,6 +296,22 @@ return(df)
 #' Each row should represent a pair of patterns for which interaction scores will be calculated.
 #' @param ... Additional parameters to pass to lower level functions.
 #' @return A data frame with interaction scores for all pattern pairs.
+#' @examples
+#' set.seed(1)
+#' nb <- 30
+#' spHotspots <- data.frame(
+#'     barcode = paste0("s", seq_len(nb)),
+#'     x = runif(nb), y = runif(nb),
+#'     Pattern_1 = ifelse(seq_len(nb) <= 10, "Pattern_1", NA),
+#'     Pattern_2 = ifelse(seq_len(nb) > 10 & seq_len(nb) <= 20,
+#'                        "Pattern_2", NA),
+#'     Pattern_3 = ifelse(seq_len(nb) > 20, "Pattern_3", NA))
+#' spInfl <- spHotspots
+#' counts <- matrix(rpois(5 * nb, 3), nrow = 5,
+#'     dimnames = list(paste0("G", 1:5), spHotspots$barcode))
+#' pattern_pairs <- t(utils::combn(c("Pattern_1","Pattern_2","Pattern_3"), 2))
+#' calculate_gene_scores_directed(counts, spHotspots, spInfl,
+#'                                pattern_pairs = pattern_pairs)
 #' @rdname calculate_gene_scores_directed
 setMethod("calculate_gene_scores_directed", "ANY",
     function(data, pat_hotspots = NULL, influence_hotspots = NULL,

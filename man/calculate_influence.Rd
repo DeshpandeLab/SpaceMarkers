@@ -26,3 +26,15 @@ A data frame with the spatial influence of the specified pattern
 \description{
 This function computes the spatial influence of a specified pattern
 }
+\examples{
+set.seed(1)
+spPatterns <- data.frame(
+    barcode = paste0("s", 1:50),
+    x = runif(50), y = runif(50),
+    Pattern_1 = runif(50), Pattern_2 = runif(50))
+optParams <- matrix(c(0.1, 4, 0.1, 4), nrow = 2,
+    dimnames = list(c("sigmaOpt", "threshOpt"),
+                    c("Pattern_1", "Pattern_2")))
+inf <- calculate_influence(spPatterns, optParams)
+head(inf)
+}

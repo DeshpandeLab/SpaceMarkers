@@ -18,6 +18,11 @@
   ...
 )
 }
+\value{
+If \code{returnSME = TRUE}, the input SME with directed
+hotspots, gene scores, and LR scores attached; otherwise the
+legacy data frame produced by the underlying pipeline.
+}
 \description{
 Directed workflow on a SpaceMarkersExperiment
 }

@@ -3,6 +3,11 @@
 \name{as-SpatialExperiment-SpaceMarkersExperiment}
 \alias{as-SpatialExperiment-SpaceMarkersExperiment}
 \title{Coercion from SpatialExperiment to SpaceMarkersExperiment}
+\value{
+A \code{SpaceMarkersExperiment} wrapping \code{from}, with an
+empty \code{spacemarkers} slot ready to be populated by the
+pipeline.
+}
 \description{
 Coercion from SpatialExperiment to SpaceMarkersExperiment
 }

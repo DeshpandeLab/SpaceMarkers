@@ -60,7 +60,15 @@ Calculate Gene Set Specificity Scores
 }
 }
 \examples{
-# Example usage:
-# gene_set_scores <- calculate_gene_set_specificity(expr_matrix, spPatterns, gene_sets)
-
+set.seed(1)
+nb <- 30
+counts <- matrix(rpois(6 * nb, 3), nrow = 6,
+    dimnames = list(paste0("G", 1:6), paste0("s", seq_len(nb))))
+spPatterns <- data.frame(
+    barcode = paste0("s", seq_len(nb)),
+    x = runif(nb), y = runif(nb),
+    A = runif(nb), B = runif(nb))
+gene_sets <- list(set1 = c("G1","G2"), set2 = c("G4","G5"))
+calculate_gene_set_specificity(counts, spPatterns, gene_sets,
+                               method = "arithmetic_mean")
 }

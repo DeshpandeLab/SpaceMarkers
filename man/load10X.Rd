@@ -37,3 +37,11 @@ Convenience function that loads expression, coordinates, and
 optionally spatial features from a 10X Visium directory and assembles them
 into a \code{\link{SpaceMarkersExperiment}} object.
 }
+\examples{
+\donttest{
+# Requires a 10x Visium directory on disk:
+# sme <- load10X("path/to/Visium_outs",
+#                features = "deconv_features.csv",
+#                resolution = "lowres")
+}
+}

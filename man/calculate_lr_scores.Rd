@@ -61,3 +61,19 @@ overexpression scores using either geometric or arithmetic mean. It can also
 weight L-R pairs based on their presence in multiple pairs to reduce bias from
 promiscuous ligands or receptors.
 }
+\examples{
+set.seed(1)
+lr_pairs <- data.frame(
+    ligand          = c("L1", "L2"),
+    receptor        = c("R1", "R2"),
+    ligand.symbol   = c("L1", "L2"),
+    receptor.symbol = c("R1", "R2"),
+    row.names       = c("L1_R1", "L2_R2"))
+ls <- matrix(runif(4), 2, 2,
+             dimnames = list(rownames(lr_pairs),
+                             c("A_near_B", "B_near_A")))
+rs <- matrix(runif(4), 2, 2,
+             dimnames = list(rownames(lr_pairs), c("A", "B")))
+calculate_lr_scores(ls, rs, lr_pairs = lr_pairs,
+                    method = "arithmetic_mean", weighted = FALSE)
+}

@@ -7,6 +7,10 @@ Load features CoGAPS object}
 \usage{
 .get_cogaps_features(obj)
 }
+\value{
+Numeric matrix of CoGAPS sample factors (rows = barcodes,
+cols = patterns).
+}
 \description{
 .get_cogaps_features
 Load features CoGAPS object

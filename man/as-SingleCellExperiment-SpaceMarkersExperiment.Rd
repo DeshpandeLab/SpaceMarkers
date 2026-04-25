@@ -3,6 +3,11 @@
 \name{as-SingleCellExperiment-SpaceMarkersExperiment}
 \alias{as-SingleCellExperiment-SpaceMarkersExperiment}
 \title{Coercion from SingleCellExperiment to SpaceMarkersExperiment}
+\value{
+A \code{SpaceMarkersExperiment} carrying the same assays /
+colData / rowData as \code{from}, with the spatial reducedDim
+promoted to \code{spatialCoords()} when present.
+}
 \description{
 AnnData-sourced objects (e.g. via \code{zellkonverter::readH5AD()} or
 \code{anndataR::as_SingleCellExperiment()}) typically arrive as

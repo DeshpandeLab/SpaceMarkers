@@ -135,11 +135,22 @@ plot_overlap_scores <- function(df, title = "Spatial Overlap Scores", out = NULL
 
 #' @title get_im_scores
 #' @description Get the interaction scores for SpaceMarkers
-#' @param SpaceMarkers A list of SpaceMarkers objects
+#' @param SpaceMarkers A list returned by
+#'   \code{\link{get_pairwise_interacting_genes}} (or a
+#'   \code{SpaceMarkersExperiment} with interactions populated).
 #' @return A data frame with columns Gene and SpaceMarkersMetric
 #' @examples
-#' example(get_pairwise_interacting_genes)
-#' get_im_scores(SpaceMarkers)
+#' # Minimal mock of the list shape get_pairwise_interacting_genes returns:
+#' sm_result <- list(
+#'     list(patterns = c("A","B"),
+#'          interacting_genes = list(data.frame(
+#'              Gene = paste0("G", 1:5),
+#'              SpaceMarkersMetric = sort(runif(5), decreasing = TRUE)))),
+#'     list(patterns = c("A","C"),
+#'          interacting_genes = list(data.frame(
+#'              Gene = paste0("G", 1:5),
+#'              SpaceMarkersMetric = sort(runif(5), decreasing = TRUE)))))
+#' get_im_scores(sm_result)
 #' @importFrom stats setNames
 #' @rdname get_im_scores
 setMethod("get_im_scores", "list", function(SpaceMarkers) {
@@ -176,10 +187,14 @@ setMethod("get_im_scores", "list", function(SpaceMarkers) {
 #' @param metricText The font size for the metric text
 #' @param increments The increments for the y-axis
 #' @param out The output path for the plot
+#' @return A \code{ggplot} object showing the top genes ranked by
+#'   SpaceMarkersMetric for \code{interaction}.
 #' @export
-#' @examples 
-#' example(get_pairwise_interacting_genes)
-#' plot_im_scores(get_im_scores(SpaceMarkers), "Pattern_1_Pattern_3")
+#' @examples
+#' df <- data.frame(Gene = paste0("G", 1:20),
+#'                  Pattern_1_Pattern_2 = sort(runif(20), decreasing = TRUE))
+#' plot_im_scores(df, interaction = "Pattern_1_Pattern_2",
+#'                nGenes = 10)
 #' @import ggplot2
 #' @importFrom stats reorder
 #' @importFrom utils head
@@ -224,6 +239,16 @@ plot_im_scores <- function(df, interaction, cutOff = 0, nGenes = 20,
 #' It supports both geometric and arithmetic means, and can weight gene contributions based on their presence in multiple gene sets.
 #' @return A matrix of mean interaction scores for genes in each gene set, with
 #' attributes for log p-value sums and number of genes for later fisher combination
+#' @examples
+#' set.seed(1)
+#' IMscores <- data.frame(
+#'     gene = rep(paste0("G", 1:6), 2),
+#'     effect_size = runif(12),
+#'     p.value = runif(12),
+#'     cell_interaction = rep(c("A_near_B", "B_near_A"), each = 6))
+#' gene_sets <- list(set1 = c("G1","G2","G3"), set2 = c("G4","G5","G6"))
+#' calculate_gene_set_score(IMscores, gene_sets = gene_sets,
+#'                          method = "arithmetic_mean")
 #' @rdname calculate_gene_set_score
 setMethod("calculate_gene_set_score", "ANY",
     function(IMscores, gene_sets = NULL, weighted = TRUE,
@@ -334,8 +359,16 @@ setMethod("calculate_gene_set_score", "ANY",
 #' @param crop crop spatial plot to a zoomed in window, Default: TRUE
 #' @param text_size size of text on the plot, Default: 15
 #' @return a ggplot object
-#
-#' @export 
+#' @examples
+#' \donttest{
+#' # Requires a 10x Visium directory on disk and a per-spot data.frame
+#' # with at least `barcode` plus the column referenced by `feature_col`.
+#' # Sketch:
+#' # df <- data.frame(barcode = c("s1","s2"), Pattern_1 = c(0.2, 0.8))
+#' # plot_spatial_data_over_image(visiumDir = "path/to/visium",
+#' #                              df = df, feature_col = "Pattern_1")
+#' }
+#' @export
 #' @importFrom rlang sym
 #' @importFrom SpaceMarkers load10XCoords
 #' @importFrom readbitmap read.bitmap
@@ -447,6 +480,18 @@ plot_spatial_data_over_image <- function(
 #'   aesthetics (see \code{plot_spatial_data_over_image}).
 #' @param crop Logical; crop the view to the spot bounding box. Default TRUE.
 #' @return A ggplot object.
+#' @examples
+#' set.seed(1)
+#' nb <- 40
+#' coord_mat <- matrix(runif(2 * nb), nb, 2,
+#'     dimnames = list(paste0("s", seq_len(nb)), c("y", "x")))
+#' sme <- SpaceMarkersExperiment(
+#'     assays        = list(logcounts = matrix(rpois(5 * nb, 3), nrow = 5,
+#'         dimnames = list(paste0("G", 1:5), rownames(coord_mat)))),
+#'     colData       = data.frame(Pattern_1 = runif(nb),
+#'                                row.names = rownames(coord_mat)),
+#'     spatialCoords = coord_mat)
+#' plot_spatial(sme, feature_col = "Pattern_1", source = "colData")
 #' @export
 #' @importFrom SummarizedExperiment assay
 #' @importFrom SpatialExperiment spatialCoords imgRaster
@@ -663,6 +708,21 @@ plot_spatial <- function(sme, feature_col = NULL,
 #' weight L-R pairs based on their presence in multiple pairs to reduce bias from
 #' promiscuous ligands or receptors.
 #' @return Data frame with L-R scores and p-values
+#' @examples
+#' set.seed(1)
+#' lr_pairs <- data.frame(
+#'     ligand          = c("L1", "L2"),
+#'     receptor        = c("R1", "R2"),
+#'     ligand.symbol   = c("L1", "L2"),
+#'     receptor.symbol = c("R1", "R2"),
+#'     row.names       = c("L1_R1", "L2_R2"))
+#' ls <- matrix(runif(4), 2, 2,
+#'              dimnames = list(rownames(lr_pairs),
+#'                              c("A_near_B", "B_near_A")))
+#' rs <- matrix(runif(4), 2, 2,
+#'              dimnames = list(rownames(lr_pairs), c("A", "B")))
+#' calculate_lr_scores(ls, rs, lr_pairs = lr_pairs,
+#'                     method = "arithmetic_mean", weighted = FALSE)
 #' @rdname calculate_lr_scores
 setMethod("calculate_lr_scores", "ANY",
     function(ligand_scores, receptor_scores = NULL, lr_pairs = NULL,
@@ -752,9 +812,17 @@ setMethod("calculate_lr_scores", "ANY",
 #' - For each gene set, scores are aggregated using the specified method and gene weights.
 #'
 #' @examples
-#' # Example usage:
-#' # gene_set_scores <- calculate_gene_set_specificity(expr_matrix, spPatterns, gene_sets)
-#'
+#' set.seed(1)
+#' nb <- 30
+#' counts <- matrix(rpois(6 * nb, 3), nrow = 6,
+#'     dimnames = list(paste0("G", 1:6), paste0("s", seq_len(nb))))
+#' spPatterns <- data.frame(
+#'     barcode = paste0("s", seq_len(nb)),
+#'     x = runif(nb), y = runif(nb),
+#'     A = runif(nb), B = runif(nb))
+#' gene_sets <- list(set1 = c("G1","G2"), set2 = c("G4","G5"))
+#' calculate_gene_set_specificity(counts, spPatterns, gene_sets,
+#'                                method = "arithmetic_mean")
 #' @rdname calculate_gene_set_specificity
 setMethod("calculate_gene_set_specificity", "ANY",
     function(data, spPatterns = NULL, gene_sets = NULL, weighted = TRUE,

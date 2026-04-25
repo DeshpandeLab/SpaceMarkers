@@ -48,3 +48,13 @@ either a \code{SpatialExperiment} object to coerce or raw components
 provided, features can optionally be added in the same call via
 \code{\link{add_features}}.
 }
+\examples{
+set.seed(1)
+nb <- 20
+sme <- SpaceMarkersExperiment(
+    assays = list(logcounts = matrix(rpois(10 * nb, 2), 10, nb,
+        dimnames = list(paste0("G", 1:10), paste0("s", seq_len(nb))))),
+    spatialCoords = matrix(runif(2 * nb), nb, 2,
+        dimnames = list(paste0("s", seq_len(nb)), c("y", "x"))))
+sme
+}

@@ -7,6 +7,10 @@ Extract spatial features from a SpatialExperiment object's colData}
 \usage{
 .get_spe_features(obj)
 }
+\value{
+data.frame of numeric \code{colData} columns (rows = spots) with
+standard SE/SPE bookkeeping columns removed.
+}
 \description{
 .get_spe_features
 Extract spatial features from a SpatialExperiment object's colData

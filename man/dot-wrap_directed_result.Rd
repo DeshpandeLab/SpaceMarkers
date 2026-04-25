@@ -13,6 +13,11 @@
   h5filename
 )
 }
+\value{
+A \code{SpaceMarkersExperiment} carrying the legacy
+directed result (\code{IMScores}, hotspots, LR scores) in its
+\code{spacemarkers} slot.
+}
 \description{
 Wrap legacy directed result as SME (when file-path input used with returnSME=TRUE)
 }

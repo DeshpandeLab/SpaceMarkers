@@ -85,6 +85,15 @@ setValidity("SpaceMarkersExperiment", function(object) {
 #'   building from scratch, or to \code{\link{get_spatial_features}} when
 #'   \code{features} is provided.
 #' @return A \code{SpaceMarkersExperiment} object.
+#' @examples
+#' set.seed(1)
+#' nb <- 20
+#' sme <- SpaceMarkersExperiment(
+#'     assays = list(logcounts = matrix(rpois(10 * nb, 2), 10, nb,
+#'         dimnames = list(paste0("G", 1:10), paste0("s", seq_len(nb))))),
+#'     spatialCoords = matrix(runif(2 * nb), nb, 2,
+#'         dimnames = list(paste0("s", seq_len(nb)), c("y", "x"))))
+#' sme
 #' @export
 #' @importFrom SpatialExperiment SpatialExperiment spatialCoords
 #' @importFrom SummarizedExperiment assays colData rowData
@@ -125,6 +134,10 @@ SpaceMarkersExperiment <- function(
 }
 
 #' Coercion from SpatialExperiment to SpaceMarkersExperiment
+#'
+#' @return A \code{SpaceMarkersExperiment} wrapping \code{from}, with an
+#'   empty \code{spacemarkers} slot ready to be populated by the
+#'   pipeline.
 #' @name as-SpatialExperiment-SpaceMarkersExperiment
 #' @importFrom methods setAs
 setAs("SpatialExperiment", "SpaceMarkersExperiment", function(from) {
@@ -146,6 +159,9 @@ setAs("SpatialExperiment", "SpaceMarkersExperiment", function(from) {
 #' If no suitable spatial reducedDim is found, the SME is built with
 #' empty `spatialCoords`; the caller can populate them afterwards.
 #'
+#' @return A \code{SpaceMarkersExperiment} carrying the same assays /
+#'   colData / rowData as \code{from}, with the spatial reducedDim
+#'   promoted to \code{spatialCoords()} when present.
 #' @name as-SingleCellExperiment-SpaceMarkersExperiment
 setAs("SingleCellExperiment", "SpaceMarkersExperiment", function(from) {
     # Look for a spatial reducedDim under common AnnData conventions.

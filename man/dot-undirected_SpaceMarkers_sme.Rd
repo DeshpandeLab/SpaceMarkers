@@ -18,6 +18,11 @@
   ...
 )
 }
+\value{
+If \code{returnSME = TRUE}, the input SME with hotspot,
+overlap, and interaction results attached; otherwise the legacy
+data frame produced by the underlying pipeline.
+}
 \description{
 Undirected workflow on a SpaceMarkersExperiment
 }

@@ -65,3 +65,13 @@ a ggplot object
 This function plots spatial data over the complementary
 histology image of varing resolutions
 }
+\examples{
+\donttest{
+# Requires a 10x Visium directory on disk and a per-spot data.frame
+# with at least `barcode` plus the column referenced by `feature_col`.
+# Sketch:
+# df <- data.frame(barcode = c("s1","s2"), Pattern_1 = c(0.2, 0.8))
+# plot_spatial_data_over_image(visiumDir = "path/to/visium",
+#                              df = df, feature_col = "Pattern_1")
+}
+}

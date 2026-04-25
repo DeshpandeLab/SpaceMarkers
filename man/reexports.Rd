@@ -10,10 +10,27 @@
 \alias{spatialCoords<-}
 \alias{imgRaster}
 \title{SummarizedExperiment / SpatialExperiment accessors re-exported}
+\value{
+The values returned by the underlying generics from
+\pkg{SummarizedExperiment} (\code{assay}, \code{assays},
+\code{colData}, \code{rowData}) and \pkg{SpatialExperiment}
+(\code{spatialCoords}, \code{spatialCoords<-}, \code{imgRaster}).
+}
 \description{
 These generics are defined in \pkg{SummarizedExperiment} and
 \pkg{SpatialExperiment} and re-exported here so that
 \code{library(SpaceMarkers)} alone is enough to call them on a
 \code{SpaceMarkersExperiment} without also attaching their source packages.
+}
+\examples{
+set.seed(1)
+sme <- SpaceMarkersExperiment(
+    assays        = list(logcounts = matrix(rpois(40, 2), 4, 10,
+        dimnames = list(paste0("G", 1:4), paste0("s", 1:10)))),
+    spatialCoords = matrix(runif(20), 10, 2,
+        dimnames = list(paste0("s", 1:10), c("y", "x"))))
+dim(assay(sme))
+colnames(colData(sme))
+head(spatialCoords(sme))
 }
 \keyword{internal}

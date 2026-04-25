@@ -27,3 +27,16 @@ Adds spatial features (patterns) to a
 initialization.  When spots differ between the SME and the features,
 only the common spots are kept and a warning is emitted.
 }
+\examples{
+set.seed(1)
+nb <- 20
+sme <- SpaceMarkersExperiment(
+    assays = list(logcounts = matrix(rpois(10 * nb, 2), 10, nb,
+        dimnames = list(paste0("G", 1:10), paste0("s", seq_len(nb))))),
+    spatialCoords = matrix(runif(2 * nb), nb, 2,
+        dimnames = list(paste0("s", seq_len(nb)), c("y", "x"))))
+feat <- data.frame(Pattern_1 = runif(nb), Pattern_2 = runif(nb),
+                   row.names = paste0("s", seq_len(nb)))
+sme <- add_features(sme, feat)
+spatial_patterns(sme)[1:3, ]
+}

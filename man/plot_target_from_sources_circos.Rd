@@ -102,7 +102,7 @@ and its incoming interactions from a specified set of source cell types. Only
 relevant ligands from the source cells and receptors on the target cell are shown.
 }
 \examples{
-\dontrun{
+\donttest{
 if (requireNamespace("circlize", quietly = TRUE) &&
     requireNamespace("RColorBrewer", quietly = TRUE)) {
   # Use the same test data from previous examples

@@ -15,6 +15,10 @@
   resolution = "fullres"
 )
 }
+\value{
+The filtered \code{SpaceMarkersExperiment} (genes/spots restricted,
+\code{spatial_params(sme)} populated when not already set).
+}
 \description{
 Filter an SME by gene expression / barcode match and (re)compute spatial params
 }

@@ -86,3 +86,16 @@ rownames (gene expression), or hotspot metadata, and overlays on the
 tissue image if available. If no image is found, plots on a blank
 background.
 }
+\examples{
+set.seed(1)
+nb <- 40
+coord_mat <- matrix(runif(2 * nb), nb, 2,
+    dimnames = list(paste0("s", seq_len(nb)), c("y", "x")))
+sme <- SpaceMarkersExperiment(
+    assays        = list(logcounts = matrix(rpois(5 * nb, 3), nrow = 5,
+        dimnames = list(paste0("G", 1:5), rownames(coord_mat)))),
+    colData       = data.frame(Pattern_1 = runif(nb),
+                               row.names = rownames(coord_mat)),
+    spatialCoords = coord_mat)
+plot_spatial(sme, feature_col = "Pattern_1", source = "colData")
+}

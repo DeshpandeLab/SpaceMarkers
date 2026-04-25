@@ -19,6 +19,20 @@ NULL
 #' \code{library(SpaceMarkers)} alone is enough to call them on a
 #' \code{SpaceMarkersExperiment} without also attaching their source packages.
 #'
+#' @return The values returned by the underlying generics from
+#'   \pkg{SummarizedExperiment} (\code{assay}, \code{assays},
+#'   \code{colData}, \code{rowData}) and \pkg{SpatialExperiment}
+#'   (\code{spatialCoords}, \code{spatialCoords<-}, \code{imgRaster}).
+#' @examples
+#' set.seed(1)
+#' sme <- SpaceMarkersExperiment(
+#'     assays        = list(logcounts = matrix(rpois(40, 2), 4, 10,
+#'         dimnames = list(paste0("G", 1:4), paste0("s", 1:10)))),
+#'     spatialCoords = matrix(runif(20), 10, 2,
+#'         dimnames = list(paste0("s", 1:10), c("y", "x"))))
+#' dim(assay(sme))
+#' colnames(colData(sme))
+#' head(spatialCoords(sme))
 #' @importFrom SummarizedExperiment assay assays colData rowData
 #' @importFrom SpatialExperiment spatialCoords spatialCoords<- imgRaster
 #' @name reexports
@@ -645,6 +659,18 @@ overlap_map <- function(x, interaction_patterns,
 #' @return The \code{SpaceMarkersExperiment} with features added to
 #'   \code{colData} and \code{pattern_names} updated in the
 #'   \code{spacemarkers} slot.
+#' @examples
+#' set.seed(1)
+#' nb <- 20
+#' sme <- SpaceMarkersExperiment(
+#'     assays = list(logcounts = matrix(rpois(10 * nb, 2), 10, nb,
+#'         dimnames = list(paste0("G", 1:10), paste0("s", seq_len(nb))))),
+#'     spatialCoords = matrix(runif(2 * nb), nb, 2,
+#'         dimnames = list(paste0("s", seq_len(nb)), c("y", "x"))))
+#' feat <- data.frame(Pattern_1 = runif(nb), Pattern_2 = runif(nb),
+#'                    row.names = paste0("s", seq_len(nb)))
+#' sme <- add_features(sme, feat)
+#' spatial_patterns(sme)[1:3, ]
 #' @export
 add_features <- function(sme, features, ...) {
     if (!is(sme, "SpaceMarkersExperiment")) {

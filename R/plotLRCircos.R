@@ -346,7 +346,7 @@
 #' @return Invisibly returns NULL. The function is called for its side effect of creating a plot.
 #' @export
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' if (requireNamespace("circlize", quietly = TRUE) &&
 #'     requireNamespace("RColorBrewer", quietly = TRUE)) {
 #'   lr_data <- data.frame(
@@ -507,7 +507,7 @@ plot_cell_interaction_circos <- function(lr_interactions_df,
 #' @return Invisibly returns NULL. The function is called for its side effect of creating a plot.
 #' @export
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' if (requireNamespace("circlize", quietly = TRUE) &&
 #'     requireNamespace("RColorBrewer", quietly = TRUE)) {
 #'   lr_data <- data.frame(
@@ -668,7 +668,7 @@ plot_source_to_target_circos <- function(lr_interactions_df,
 #' @import circlize
 #' @import RColorBrewer
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' if (requireNamespace("circlize", quietly = TRUE) &&
 #'     requireNamespace("RColorBrewer", quietly = TRUE)) {
 #'   # Use the same test data from previous examples

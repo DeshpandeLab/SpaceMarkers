@@ -48,3 +48,14 @@ Calculate the mean interaction score for a set of genes
 This function computes mean interaction scores for given gene sets across cell interactions.
 It supports both geometric and arithmetic means, and can weight gene contributions based on their presence in multiple gene sets.
 }
+\examples{
+set.seed(1)
+IMscores <- data.frame(
+    gene = rep(paste0("G", 1:6), 2),
+    effect_size = runif(12),
+    p.value = runif(12),
+    cell_interaction = rep(c("A_near_B", "B_near_A"), each = 6))
+gene_sets <- list(set1 = c("G1","G2","G3"), set2 = c("G4","G5","G6"))
+calculate_gene_set_score(IMscores, gene_sets = gene_sets,
+                         method = "arithmetic_mean")
+}

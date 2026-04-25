@@ -31,3 +31,14 @@ The reader selection logic is identical to
 \code{\link{load_anndata}}: \pkg{anndataR} is preferred when
 installed, \pkg{zellkonverter} is the fallback.
 }
+\examples{
+\donttest{
+# Requires anndataR or zellkonverter installed:
+# sme <- SpaceMarkersExperiment(
+#     assays = list(logcounts = matrix(rpois(200, 2), 10, 20,
+#         dimnames = list(paste0("G", 1:10), paste0("s", 1:20)))),
+#     spatialCoords = matrix(runif(40), 20, 2,
+#         dimnames = list(NULL, c("y", "x"))))
+# save_anndata(sme, tempfile(fileext = ".h5ad"))
+}
+}

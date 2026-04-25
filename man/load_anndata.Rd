@@ -37,3 +37,9 @@ Both are \code{Suggests} dependencies. With \code{reader = "auto"}
 zellkonverter is used. Pass \code{reader = "zellkonverter"} or
 \code{reader = "anndataR"} to force a specific backend.
 }
+\examples{
+\donttest{
+# Requires anndataR or zellkonverter installed and a real .h5ad file:
+# sme <- load_anndata("path/to/visium.h5ad")
+}
+}

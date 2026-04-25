@@ -52,3 +52,20 @@ A data frame with interaction scores for all pattern pairs.
 This function calculates interaction scores for all pattern pairs
 using the \code{.calc_IM_scores} function. It can run in parallel if BiocParallel is available.
 }
+\examples{
+set.seed(1)
+nb <- 30
+spHotspots <- data.frame(
+    barcode = paste0("s", seq_len(nb)),
+    x = runif(nb), y = runif(nb),
+    Pattern_1 = ifelse(seq_len(nb) <= 10, "Pattern_1", NA),
+    Pattern_2 = ifelse(seq_len(nb) > 10 & seq_len(nb) <= 20,
+                       "Pattern_2", NA),
+    Pattern_3 = ifelse(seq_len(nb) > 20, "Pattern_3", NA))
+spInfl <- spHotspots
+counts <- matrix(rpois(5 * nb, 3), nrow = 5,
+    dimnames = list(paste0("G", 1:5), spHotspots$barcode))
+pattern_pairs <- t(utils::combn(c("Pattern_1","Pattern_2","Pattern_3"), 2))
+calculate_gene_scores_directed(counts, spHotspots, spInfl,
+                               pattern_pairs = pattern_pairs)
+}

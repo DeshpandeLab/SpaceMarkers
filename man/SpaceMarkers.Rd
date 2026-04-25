@@ -84,3 +84,22 @@ Main dispatcher for SpaceMarkers. Accepts either a
 \code{\link{SpaceMarkersExperiment}} object or file paths to features
 and a Visium directory, and returns interaction scores.
 }
+\examples{
+\donttest{
+# End-to-end on an SME (small synthetic example):
+set.seed(1)
+nb <- 30
+bc <- paste0("s", seq_len(nb))
+sme <- SpaceMarkersExperiment(
+    assays = list(logcounts = matrix(rpois(20 * nb, 3), 20, nb,
+        dimnames = list(paste0("G", 1:20), bc))),
+    spatialCoords = matrix(runif(2 * nb), nb, 2,
+        dimnames = list(bc, c("y", "x"))))
+spatial_patterns(sme) <- data.frame(Pattern_1 = runif(nb),
+                                    Pattern_2 = runif(nb),
+                                    row.names = bc)
+spatial_params(sme) <- matrix(c(0.1, 4, 0.1, 4), nrow = 2,
+    dimnames = list(c("sigmaOpt","threshOpt"), c("Pattern_1","Pattern_2")))
+result <- SpaceMarkers(sme, directed = FALSE)
+}
+}

@@ -115,6 +115,17 @@ find_pattern_hotspots <- function(
 #' @title Find hotSpots for all spatial patterns
 #' @description Convenience function to find hotspots for all spatial patterns
 #' @inheritParams find_pattern_hotspots
+#' @return A data.frame with one column per pattern containing the
+#'   pattern name where the spot is a hotspot and \code{NA} otherwise,
+#'   plus the original \code{barcode}/\code{x}/\code{y} columns.
+#' @examples
+#' set.seed(1)
+#' spPatterns <- data.frame(
+#'     barcode = paste0("s", 1:50),
+#'     x = runif(50), y = runif(50),
+#'     Pattern_1 = runif(50), Pattern_2 = runif(50))
+#' hs <- find_all_hotspots(spPatterns, nullSamples = 50)
+#' head(hs)
 #' @rdname find_all_hotspots
 setMethod("find_all_hotspots", "data.frame",
     function(spPatterns, params = NULL, outlier = "positive",

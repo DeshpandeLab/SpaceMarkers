@@ -39,6 +39,24 @@
 #' @return If \code{returnSME = TRUE}, a \code{SpaceMarkersExperiment} with
 #'   analysis results. If \code{returnSME = FALSE}, a matrix or data frame of
 #'   interaction scores (legacy format).
+#' @examples
+#' \donttest{
+#' # End-to-end on an SME (small synthetic example):
+#' set.seed(1)
+#' nb <- 30
+#' bc <- paste0("s", seq_len(nb))
+#' sme <- SpaceMarkersExperiment(
+#'     assays = list(logcounts = matrix(rpois(20 * nb, 3), 20, nb,
+#'         dimnames = list(paste0("G", 1:20), bc))),
+#'     spatialCoords = matrix(runif(2 * nb), nb, 2,
+#'         dimnames = list(bc, c("y", "x"))))
+#' spatial_patterns(sme) <- data.frame(Pattern_1 = runif(nb),
+#'                                     Pattern_2 = runif(nb),
+#'                                     row.names = bc)
+#' spatial_params(sme) <- matrix(c(0.1, 4, 0.1, 4), nrow = 2,
+#'     dimnames = list(c("sigmaOpt","threshOpt"), c("Pattern_1","Pattern_2")))
+#' result <- SpaceMarkers(sme, directed = FALSE)
+#' }
 #' @export
 SpaceMarkers <- function(x = NULL,
                          features = NULL,
@@ -322,6 +340,8 @@ SpaceMarkers <- function(x = NULL,
 # ---- SME-based workflows ----
 
 #' Filter an SME by gene expression / barcode match and (re)compute spatial params
+#' @return The filtered \code{SpaceMarkersExperiment} (genes/spots restricted,
+#'   \code{spatial_params(sme)} populated when not already set).
 #' @keywords internal
 .apply_sme_filters <- function(sme, genes = NULL, min.gene.expr = 10,
                                spatialDir = "spatial",
@@ -374,6 +394,9 @@ SpaceMarkers <- function(x = NULL,
 }
 
 #' Undirected workflow on a SpaceMarkersExperiment
+#' @return If \code{returnSME = TRUE}, the input SME with hotspot,
+#'   overlap, and interaction results attached; otherwise the legacy
+#'   data frame produced by the underlying pipeline.
 #' @keywords internal
 .undirected_SpaceMarkers_sme <- function(sme, cpus = 1, genes = NULL,
                                          min.gene.expr = 10,
@@ -409,6 +432,9 @@ SpaceMarkers <- function(x = NULL,
 }
 
 #' Directed workflow on a SpaceMarkersExperiment
+#' @return If \code{returnSME = TRUE}, the input SME with directed
+#'   hotspots, gene scores, and LR scores attached; otherwise the
+#'   legacy data frame produced by the underlying pipeline.
 #' @keywords internal
 .directed_SpaceMarkers_sme <- function(sme, genes = NULL,
                                        min.gene.expr = 10,
@@ -454,6 +480,9 @@ SpaceMarkers <- function(x = NULL,
 # ---- Legacy result wrapping helpers ----
 
 #' Wrap legacy undirected result as SME (when file-path input used with returnSME=TRUE)
+#' @return A \code{SpaceMarkersExperiment} carrying the legacy
+#'   undirected result (\code{IMScores}, hotspots, params) in its
+#'   \code{spacemarkers} slot.
 #' @keywords internal
 .wrap_undirected_result <- function(IMScores, features, data, resolution,
                                    version, h5filename) {
@@ -473,6 +502,9 @@ SpaceMarkers <- function(x = NULL,
 }
 
 #' Wrap legacy directed result as SME (when file-path input used with returnSME=TRUE)
+#' @return A \code{SpaceMarkersExperiment} carrying the legacy
+#'   directed result (\code{IMScores}, hotspots, LR scores) in its
+#'   \code{spacemarkers} slot.
 #' @keywords internal
 .wrap_directed_result <- function(IMscores, features, data, resolution,
                                  version, h5filename) {
