@@ -9,21 +9,19 @@
 # =============================================================================
 # .row_dunn_test
 # =============================================================================
-# Receives a dense matrix (expressed genes x pair spots) and a region vector
-# that may contain NAs. The NA-subsetting is retained for interface
-# compatibility with get_interacting_genes; when called from
-# .find_genes_of_interest the input is already pair-subsetted so
-# keep_cols is all-TRUE, which is a no-op.
+# Receives a dense matrix and a region vector. region may contain NAs;
+# keep_cols subsetting is retained for interface compatibility. When called
+# from .find_genes_of_interest the slice is already pair-subsetted so
+# keep_cols is all-TRUE (no-op).
 #
-
+# Tie correction: exact formula from the original paper implementation,
+# written verbatim: sum(table(rr)^3 - table(rr)).
 
 .row_dunn_test <- function(in.data, region, pattern1, pattern2) {
 
   keep_cols <- !is.na(region)
   rsub      <- region[keep_cols]
 
-  # matrixStats::rowRanks handles dense matrices correctly.
-  # in.data is always dense at this point (converted in .find_genes_of_interest).
   in.ranks <- matrixStats::rowRanks(
     in.data[, keep_cols, drop = FALSE],
     ties.method = "average"
@@ -38,22 +36,11 @@
   idx_p1  <- which(rsub == pattern1)
   idx_p2  <- which(rsub == pattern2)
 
-  # ── Exact tie correction ───────────────────────────────────────────────────
-  # For each gene, compute sum over tie groups of t*(t^2-1) where t is the
-  # size of each tied group. This matches kruskal.test() and the original
-  # matrixStats-based implementation exactly.
-  tiesStat <- apply(in.ranks, 1, function(rr) {
-    rr_table <- table(rr)
-    sum(rr_table * (rr_table^2 - 1))
-  })
+  # Exact tie correction — verbatim from original
+  tiesStat  <- apply(in.ranks, 1, function(rr) sum(table(rr)^3 - table(rr)))
   tiesStat2 <- sqrt(1 - tiesStat / N / (N - 1) / (N + 1))
+  tiesStat2[tiesStat2 == 0] <- 1   # guard: constant genes → z = 0
 
-  # Guard: constant genes (all tied) produce tiesStat2 = 0.
-  # Set to 1 so z-scores are 0 rather than NaN; these genes are zeroed out
-  # downstream by the zero_genes correction anyway.
-  tiesStat2[tiesStat2 == 0] <- 1
-
-  # ── Mean ranks per region ──────────────────────────────────────────────────
   mInt <- rowMeans(in.ranks[, idx_int, drop = FALSE])
   mP1  <- rowMeans(in.ranks[, idx_p1,  drop = FALSE])
   mP2  <- rowMeans(in.ranks[, idx_p2,  drop = FALSE])
@@ -68,12 +55,23 @@
   zP2_P1  <- (mP2 - mP1)  / SE12  / tiesStat2
 
   zVals <- cbind(zP1_Int, zP2_Int, zP2_P1)
-  pvals <- cbind(
-    pmin(1, 2 * pnorm(zP1_Int, lower.tail = TRUE)),
-    pmin(1, 2 * pnorm(zP2_Int, lower.tail = TRUE)),
-    2  * pnorm(abs(zP2_P1), lower.tail = FALSE)
+
+  # P-values — verbatim ifelse logic from original
+  pval_1_Int <- ifelse(
+    2 * pnorm(zP1_Int, lower.tail = TRUE) <= 1,
+    2 * pnorm(zP1_Int, lower.tail = TRUE), 1
+  )
+  pval_2_Int <- ifelse(
+    2 * pnorm(zP2_Int, lower.tail = TRUE) <= 1,
+    2 * pnorm(zP2_Int, lower.tail = TRUE), 1
+  )
+  pval_2_1 <- ifelse(
+    zP2_P1 > 0,
+    2 * pnorm(zP2_P1, lower.tail = FALSE),
+    2 * pnorm(zP2_P1, lower.tail = TRUE)
   )
 
+  pvals <- cbind(pval_1_Int, pval_2_Int, pval_2_1)
   colnames(zVals) <- c("zP1_Int", "zP2_Int", "zP2_P1")
   colnames(pvals) <- c("pval_1_Int", "pval_2_Int", "pval_2_1")
   cbind(zVals, pvals)
@@ -84,27 +82,36 @@
 # =============================================================================
 #' .find_genes_of_interest
 #' Identify genes associated with pattern interaction.
-#' This function identifies genes exhibiting significantly higher values of
-#' testMat in the Interaction region of the two patterns compared to regions
-#' with exclusive influence from either pattern. It uses a Kruskal-Wallis
-#' test followed by posthoc analysis using Dunn's Test to identify the genes.
 #'
-#' @usage
-#' .find_genes_of_interest(testMat, goodGenes, region, fdr.level=0.05,
-#'        analysis=c("enrichment","overlap"),...)
-#' @param    testMat A matrix of counts with genes as rows and spots as columns.
-#'           Sparse (dgCMatrix) or dense. For residual mode, the reconstruction
-#'           has already been subtracted before this function is called.
-#' @param    goodGenes A vector of user specified genes expected to interact
-#'           a priori. The default is NULL.
-#' @param    region A character/factor vector of region labels for each spot.
-#'           Values are the two pattern names, "Interacting", or NA.
-#' @param    fdr.level False Discovery Rate threshold. Default 0.05.
-#' @param    analysis "enrichment" (default) or "overlap".
-#' @param    ... Additional arguments passed to lower level functions.
-#' @return A list containing one data frame of per-gene statistics and
-#'   SpaceMarkersMetric, sorted by the metric.
+#' @param testMat  genes x spots matrix (sparse dgCMatrix or dense).
+#' @param goodGenes optional vector of genes to restrict analysis to.
+#' @param region   region label vector per spot ("Interacting", p1, p2, NA).
+#' @param fdr.level FDR threshold (default 0.05).
+#' @param analysis "enrichment" (default) or "overlap".
+#' @param ...      additional arguments.
 #'
+#' Bug fixed vs previous sparse implementation
+#' --------------------------------------------
+#' Bug 1 (KW qvalue denominator) — the only confirmed bug:
+#'   The previous version pre-filtered to expressed genes before running
+#'   qvalue on KW p-values. With pi0 = 1, qvalue is BH-equivalent; the
+#'   threshold for rank-k gene among m tests is p <= (k/m)*alpha. Halving m
+#'   by dropping zero genes doubles the effective threshold, producing
+#'   too many genes passing KW FDR. The original passes ALL genes to
+#'   row_kruskalwallis; zero-expression genes produce p = 1, contributing
+#'   to a properly calibrated denominator.
+#'   Fix: convert the full pair slice (all genes x pair spots) to dense
+#'   before KW, with no gene pre-filtering.
+#'
+#' Mode-specific Dunn behaviour (by design, not bugs)
+#' ---------------------------------------------------
+#' enrichment: Dunn on ALL expressed genes, two-step qvalue, .adj
+#'   classification. Returns all genes sorted by SpaceMarkersMetric —
+#'   needed for GSEA-style ranking of the full gene list.
+#'
+#' overlap: Dunn on ind genes ONLY (matching original paper), single
+#'   qvalue on ind p-values, .adj classification. Returns only non-FALSE
+#'   classified genes — matches original paper output counts.
 
 .find_genes_of_interest <- function(testMat, goodGenes = NULL, region,
                                     fdr.level = 0.05,
@@ -121,104 +128,150 @@
   pattern1 <- patnames[1]
   pattern2 <- patnames[2]
 
-  # ── Gene filter: sparse-aware, no dense conversion yet ────────────────────
+  # goodGenes filter — only when explicitly provided (matching original)
   if (!is.null(goodGenes)) {
-    subset_goodGenes <- intersect(rownames(testMat), goodGenes)
-  } else {
-    # rowSums2 dispatches efficiently on dgCMatrix
-    subset_goodGenes <- names(which(sparseMatrixStats::rowSums2(testMat) > 0))
+    testMat <- testMat[intersect(rownames(testMat), goodGenes), , drop = FALSE]
   }
 
-  # ── Convert only the pair-relevant slice to dense ─────────────────────────
-  # Dimensions: expressed_genes x pair_spots (spots with non-NA region only).
-  # This is the minimum materializaton needed for exact rank-based tests.
-  # The full G x S matrix is never converted.
+  # ── Bug 1 fix: materialize ALL genes x pair spots ─────────────────────────
+  # No expressed-gene pre-filtering. Zero genes produce KW p = 1, which
+  # calibrates the qvalue denominator correctly — matching the original's
+  # row_kruskalwallis(x = as.matrix(testMat), g = region) call where
+  # matrixTests excludes NA-group observations but uses all genes.
   keep_cells   <- !is.na(region)
-  testMat_pair <- as.matrix(
-    testMat[subset_goodGenes, keep_cells, drop = FALSE]
-  )
+  testMat_pair <- as.matrix(testMat[, keep_cells, drop = FALSE])
   region_pair  <- droplevels(region[keep_cells])
 
-  # ── Exact Kruskal-Wallis via matrixTests ───────────────────────────────────
-  # Produces identical results to the original implementation and exactly
-  # matches kruskal.test() output including the tie-correction denominator.
+  # ── Exact KW on all genes ──────────────────────────────────────────────────
   res_kruskal <- matrixTests::row_kruskalwallis(x = testMat_pair,
                                                 g = region_pair)
-
-  qq <- qvalue::qvalue(res_kruskal$pvalue, fdr.level = fdr.level,
-                       pfdr = FALSE, pi0 = 1)
-  res_kruskal <- cbind(res_kruskal, p.adj = qq$qvalues)
-
-  # Force zero-variance genes to p = 1
-  zero_genes <- names(which(rowSums(testMat_pair) == 0))
-  res_kruskal[zero_genes, c("df", "statistic")] <- 0
-  res_kruskal[zero_genes, c("pvalue", "p.adj")]  <- 1
-
-  # ── Exact Dunn's test on the same dense slice ─────────────────────────────
-  # region_pair has no NAs so keep_cols inside .row_dunn_test is all-TRUE;
-  # the subsetting is a no-op, preserving interface compatibility.
-  res_dunn_test <- .row_dunn_test(
-    in.data  = testMat_pair,
-    region   = region_pair,
-    pattern1 = pattern1,
-    pattern2 = pattern2
-  )
-  rownames(res_dunn_test) <- rownames(res_kruskal)
-
-  # ── FDR correction for Dunn ───────────────────────────────────────────────
-  qDunn <- qvalue::qvalue(res_dunn_test[, 4:6], fdr.level = fdr.level,
+  qq_kw <- qvalue::qvalue(res_kruskal$pvalue, fdr.level = fdr.level,
                           pfdr = FALSE, pi0 = 1)
+  res_kruskal <- cbind(res_kruskal, p.adj = qq_kw$qvalues)
 
   ind <- rownames(res_kruskal[res_kruskal$p.adj < fdr.level, ])
 
-  if (length(ind) > 0) {
-    if (length(ind) == 1) {
-      qDunn$qvalues[ind, ] <- res_dunn_test[ind, 4:6]
-    } else {
-      qq2 <- qvalue::qvalue(res_dunn_test[ind, 4:6],
-                            fdr.level = fdr.level, pfdr = FALSE, pi0 = 1)
-      qDunn$qvalues[ind, ] <- qq2$qvalues
-    }
+  if (length(ind) == 0) {
+    empty <- matrix(
+      FALSE, nrow = 0L, ncol = 2L,
+      dimnames = list(NULL, c("Gene", paste0(pattern1, " x ", pattern2)))
+    )
+    return(list(empty))
   }
 
-  res_dunn_test <- cbind(res_dunn_test, qDunn$qvalues)
-  colnames(res_dunn_test)[7:9] <- paste0(colnames(res_dunn_test)[7:9], ".adj")
+  # ── Mode-specific Dunn path ────────────────────────────────────────────────
 
-  res_dunn_test[zero_genes, 1:3] <- 0
-  res_dunn_test[zero_genes, 4:9] <- 1
+  if (analysis == "enrichment") {
 
-  .build_interact_genes_df(res_kruskal, res_dunn_test, ind,
-                           fdr.level, pattern1, pattern2, analysis)
+    # Dunn on all expressed genes — enables full-gene SpaceMarkersMetric
+    # ranking needed for GSEA. Two-step qvalue: global correction first,
+    # then re-corrected within ind for genes that passed KW.
+    expressed <- names(which(sparseMatrixStats::rowSums2(
+      testMat[, keep_cells, drop = FALSE]) > 0))
+
+    res_dunn_test <- .row_dunn_test(
+      in.data  = testMat_pair[expressed, , drop = FALSE],
+      region   = region_pair,
+      pattern1 = pattern1,
+      pattern2 = pattern2
+    )
+    rownames(res_dunn_test) <- expressed
+
+    qDunn <- qvalue::qvalue(res_dunn_test[, 4:6], fdr.level = fdr.level,
+                            pfdr = FALSE, pi0 = 1)
+
+    # Re-adjust within ind (expressed subset)
+    ind_expressed <- intersect(ind, expressed)
+    if (length(ind_expressed) > 1) {
+      qq2 <- qvalue::qvalue(res_dunn_test[ind_expressed, 4:6],
+                            fdr.level = fdr.level, pfdr = FALSE, pi0 = 1)
+      qDunn$qvalues[ind_expressed, ] <- qq2$qvalues
+    } else if (length(ind_expressed) == 1L) {
+      qDunn$qvalues[ind_expressed, ] <- res_dunn_test[ind_expressed, 4:6]
+    }
+
+    res_dunn_test <- cbind(res_dunn_test, qDunn$qvalues)
+    colnames(res_dunn_test)[7:9] <- paste0(colnames(res_dunn_test)[7:9], ".adj")
+
+    # ind for classification is restricted to expressed genes
+    .build_interact_genes_df(res_kruskal, res_dunn_test, ind_expressed,
+                             fdr.level, pattern1, pattern2, analysis)
+
+  } else {
+
+    # overlap: Dunn on ind only — matches original paper behaviour.
+    # Single qvalue on ind p-values only.
+    res_dunn_test <- .row_dunn_test(
+      in.data  = testMat_pair[ind, , drop = FALSE],
+      region   = region_pair,
+      pattern1 = pattern1,
+      pattern2 = pattern2
+    )
+    rownames(res_dunn_test) <- ind
+
+    qq_dunn <- qvalue::qvalue(res_dunn_test[, 4:6], fdr.level = fdr.level,
+                              pfdr = FALSE, pi0 = 1)
+    res_dunn_test <- cbind(res_dunn_test, qq_dunn$qvalues)
+    colnames(res_dunn_test)[7:9] <- paste0(colnames(res_dunn_test)[7:9], ".adj")
+
+    .build_interact_genes_df(res_kruskal, res_dunn_test, ind,
+                             fdr.level, pattern1, pattern2, analysis)
+  }
 }
 
 # =============================================================================
-# .build_interact_genes_df  — unchanged
+# .build_interact_genes_df
 # =============================================================================
+# Used by both modes. Key design:
+#   - res_dunn_test rows define the gene set included in output.
+#     enrichment: all expressed genes; overlap: ind genes only.
+#   - ind defines which rows receive a non-FALSE classification label.
+#     enrichment: ind_expressed; overlap: ind (same as res_dunn_test rows).
+#   - res_kruskal is subsetted to rownames(res_dunn_test) for the cbind,
+#     ensuring row counts always match.
+#   - Classification uses .adj Dunn p-values (user-confirmed valid choice).
+#   - overlap mode filters FALSE-classified rows at the end.
+
 .build_interact_genes_df <- function(res_kruskal, res_dunn_test, ind,
                                      fdr.level = 0.05, pattern1, pattern2,
                                      analysis) {
-    interact_patt1 <- res_dunn_test[ind, "pval_1_Int.adj"] < fdr.level
-    interact_patt2 <- res_dunn_test[ind, "pval_2_Int.adj"] < fdr.level
-    interacting_over_both_patterns <- interact_patt1 & interact_patt2
-    not_pattern1_diff_pattern2 <- res_dunn_test[ind, "pval_2_1.adj"] >= fdr.level
-    exc_interact_patt1 <- interact_patt1 & not_pattern1_diff_pattern2
-    exc_interact_patt2 <- interact_patt2 & not_pattern1_diff_pattern2
-    names(exc_interact_patt2)              <- ind
-    names(exc_interact_patt1)              <- names(exc_interact_patt2)
-    names(interacting_over_both_patterns)  <- names(exc_interact_patt1)
-    interact_genes <- matrix(
-        FALSE, nrow = nrow(res_dunn_test), ncol = 2,
-        dimnames = list(rownames(res_dunn_test),
-                        c("Gene", paste0(pattern1, " x ", pattern2)))
-    )
-    interact_genes[, 1] <- rownames(interact_genes)
-    interact_genes[ind[which(exc_interact_patt1)], 2] <- paste0("vs", pattern1)
-    interact_genes[ind[which(exc_interact_patt2)], 2] <- paste0("vs", pattern2)
-    interact_genes[ind[which(interacting_over_both_patterns)], 2] <- "vsBoth"
-    colnames(res_kruskal)   <- paste0("KW.",   colnames(res_kruskal))
-    colnames(res_dunn_test) <- paste0("Dunn.", colnames(res_dunn_test))
-    interact_genes <- cbind(interact_genes, res_kruskal, res_dunn_test)
-    if (analysis == "overlap")
-        interact_genes <- interact_genes[interact_genes[, 2] != "FALSE", ]
-    return(list(interact_genes))
+
+  genes_for_output <- rownames(res_dunn_test)
+
+  # Classification using .adj p-values
+  interact_patt1 <- res_dunn_test[ind, "pval_1_Int.adj"] < fdr.level
+  interact_patt2 <- res_dunn_test[ind, "pval_2_Int.adj"] < fdr.level
+  interacting_over_both_patterns <- interact_patt1 & interact_patt2
+  not_pattern1_diff_pattern2     <- res_dunn_test[ind, "pval_2_1.adj"] >= fdr.level
+  exc_interact_patt1 <- interact_patt1 & not_pattern1_diff_pattern2
+  exc_interact_patt2 <- interact_patt2 & not_pattern1_diff_pattern2
+
+  names(exc_interact_patt2)             <- ind
+  names(exc_interact_patt1)             <- names(exc_interact_patt2)
+  names(interacting_over_both_patterns) <- names(exc_interact_patt1)
+
+  interact_genes <- matrix(
+    FALSE, nrow = length(genes_for_output), ncol = 2,
+    dimnames = list(genes_for_output,
+                    c("Gene", paste0(pattern1, " x ", pattern2)))
+  )
+  interact_genes[, 1] <- rownames(interact_genes)
+  interact_genes[ind[which(exc_interact_patt1)], 2] <- paste0("vs", pattern1)
+  interact_genes[ind[which(exc_interact_patt2)], 2] <- paste0("vs", pattern2)
+  interact_genes[ind[which(interacting_over_both_patterns)], 2] <- "vsBoth"
+
+  colnames(res_kruskal)   <- paste0("KW.",   colnames(res_kruskal))
+  colnames(res_dunn_test) <- paste0("Dunn.", colnames(res_dunn_test))
+
+  # res_kruskal subsetted to genes_for_output so row counts match
+  interact_genes <- cbind(
+    interact_genes,
+    res_kruskal[genes_for_output, ],
+    res_dunn_test
+  )
+
+  if (analysis == "overlap")
+    interact_genes <- interact_genes[interact_genes[, 2] != "FALSE", ]
+
+  return(list(interact_genes))
 }
