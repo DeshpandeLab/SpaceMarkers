@@ -32,10 +32,16 @@ plot_im_scores(
 
 \item{out}{The output path for the plot}
 }
+\value{
+A \code{ggplot} object showing the top genes ranked by
+SpaceMarkersMetric for \code{interaction}.
+}
 \description{
 Plot the top SpaceMarkers IMScores
 }
 \examples{
-example(get_pairwise_interacting_genes)
-plot_im_scores(get_im_scores(SpaceMarkers), "Pattern_1_Pattern_3")
+df <- data.frame(Gene = paste0("G", 1:20),
+                 Pattern_1_Pattern_2 = sort(runif(20), decreasing = TRUE))
+plot_im_scores(df, interaction = "Pattern_1_Pattern_2",
+               nGenes = 10)
 }

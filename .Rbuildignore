@@ -4,3 +4,6 @@ Dockerfile
 .dockerignore
 nextflow
 /vignettes/test-args.Rmd
+^docs$
+^docs/superpowers$
+^SpaceMarkers\.BiocCheck$

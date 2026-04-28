@@ -175,8 +175,13 @@ load10XCoords <- function(visiumDir, resolution = c("fullres","lowres","hires"),
 
 get_spatial_features <- function(filePath, method = NULL, featureNames = "."){
 
-    #read the features object based on the format
-    spObject <- .read_format(filePath)
+    # If already an R object (e.g., SpatialExperiment), use directly
+    if (is.object(filePath) && !is.character(filePath)) {
+        spObject <- filePath
+    } else {
+        #read the features object based on the format
+        spObject <- .read_format(filePath)
+    }
 
     #determine the method to use for feature extractioin
     method <- .infer_method(spObject, method)
@@ -184,7 +189,8 @@ get_spatial_features <- function(filePath, method = NULL, featureNames = "."){
     spFun <- c("CoGAPS"=.get_cogaps_features,
                 "BayesTME"=.get_BTME_features,
                 "Seurat"=.get_seurat_features,
-                "CSV"=.get_csv_features)
+                "CSV"=.get_csv_features,
+                "SpatialExperiment"=.get_spe_features)
 
     spFeatures <- spFun[[method]](spObject)
 
@@ -212,8 +218,9 @@ get_spatial_features <- function(filePath, method = NULL, featureNames = "."){
 
 #' readFormat
 #' Reads a format into an R object
+#' @return The deserialized R object: result of \code{readRDS} for .rds,
+#'   an open \code{H5File} for .h5ad, a \code{data.frame} for .csv.
 #' @keywords internal
-#' 
 .read_format <- function(path){
     if(grepl(".rds",path)){
         obj <- readRDS(path)
@@ -230,10 +237,14 @@ get_spatial_features <- function(filePath, method = NULL, featureNames = "."){
 
 #' inferMethod
 #' Infer the method used to obtain spatial features
+#' @return Character of length one: one of \code{"SpatialExperiment"},
+#'   \code{"BayesTME"}, \code{"CoGAPS"}, \code{"Seurat"}, or \code{"CSV"}.
 #' @keywords internal
 .infer_method <- function(spObject, method){
     if(is.null(method)){
-        if(inherits(spObject, "H5File")){
+        if(inherits(spObject, "SpatialExperiment")){
+            method <- "SpatialExperiment"
+        } else if(inherits(spObject, "H5File")){
             method <- "BayesTME"
         } else if(inherits(spObject, "CogapsResult")){
             method <- "CoGAPS"
@@ -250,8 +261,9 @@ get_spatial_features <- function(filePath, method = NULL, featureNames = "."){
 
 #' .get_cogaps_features
 #' Load features CoGAPS object
+#' @return Numeric matrix of CoGAPS sample factors (rows = barcodes,
+#'   cols = patterns).
 #' @keywords internal
-#' 
 .get_cogaps_features <- function(obj){
     spFeatures <- slot(obj, "sampleFactors")
     return(spFeatures)
@@ -259,9 +271,9 @@ get_spatial_features <- function(filePath, method = NULL, featureNames = "."){
 
 #' .get_BTME_features
 #' Load features BayesTME object
-#' 
+#' @return Numeric matrix of BayesTME cell-type counts (rows = barcodes,
+#'   cols = cell types).
 #' @keywords internal
-#' 
 .get_BTME_features <- function(hf){
     feat_loc <- "obsm/bayestme_cell_type_counts"
     barc_loc <- "obs/_index"
@@ -277,8 +289,9 @@ get_spatial_features <- function(filePath, method = NULL, featureNames = "."){
 
 #' .get_seurat_features
 #' Load features Seurat object
+#' @return data.frame of \code{_Feature}-suffixed metadata columns extracted
+#'   from \code{slot(obj, "meta.data")}.
 #' @keywords internal
-#' 
 .get_seurat_features <- function(obj){
     spFeatures <- slot(obj, "meta.data")
     selection <- grepl("_Feature",colnames(spFeatures), ignore.case = TRUE)
@@ -291,8 +304,8 @@ get_spatial_features <- function(filePath, method = NULL, featureNames = "."){
 
 #' .get_csv_features
 #' Load features from dataframe
+#' @return data.frame of features with barcodes as rownames.
 #' @keywords internal
-#' 
 .get_csv_features <- function(obj){
     spFeatures <- obj
     if ("barcode" %in% colnames(spFeatures)){
@@ -308,4 +321,317 @@ get_spatial_features <- function(filePath, method = NULL, featureNames = "."){
     removeCols <- c("NA","barcode","in_tissue","array_row","array_col","pxl_col_in_fullres","pxl_row_in_fullres")
     spFeatures <- spFeatures[,-which(startsWith(colnames(spFeatures),"X") | colnames(spFeatures) %in% removeCols)]
     return(spFeatures)
+}
+
+#' .get_spe_features
+#' Extract spatial features from a SpatialExperiment object's colData
+#' @return data.frame of numeric \code{colData} columns (rows = spots) with
+#'   standard SE/SPE bookkeeping columns removed.
+#' @keywords internal
+.get_spe_features <- function(obj) {
+    cd <- as.data.frame(SummarizedExperiment::colData(obj))
+    # Remove standard SE/SPE columns
+    remove_cols <- c("sample_id", "in_tissue", "array_row", "array_col",
+                     "pxl_col_in_fullres", "pxl_row_in_fullres",
+                     "sizeFactor")
+    keep_cols <- setdiff(colnames(cd), remove_cols)
+    # Keep only numeric columns as features
+    is_numeric <- vapply(cd[, keep_cols, drop = FALSE], is.numeric,
+                         logical(1))
+    spFeatures <- cd[, keep_cols[is_numeric], drop = FALSE]
+    if (ncol(spFeatures) == 0) {
+        stop("No numeric feature columns found in SpatialExperiment colData.")
+    }
+    return(as.data.frame(spFeatures))
+}
+
+#===================
+#' @title Load 10X Visium data as a SpaceMarkersExperiment
+#' @description Convenience function that loads expression, coordinates, and
+#'   optionally spatial features from a 10X Visium directory and assembles them
+#'   into a \code{\link{SpaceMarkersExperiment}} object.
+#' @param visiumDir A string path to the 10X Visium directory.
+#' @param features Optional: a file path or object for spatial features, passed
+#'   to \code{\link{get_spatial_features}}.
+#' @param h5filename Name of the H5 expression file. Default
+#'   "filtered_feature_bc_matrix.h5".
+#' @param resolution Resolution for coordinates. One of "fullres", "lowres",
+#'   "hires".
+#' @param version Optional Spaceranger version.
+#' @param ... Additional arguments passed to \code{get_spatial_features}.
+#' @return A \code{\link{SpaceMarkersExperiment}} object.
+#' @examples
+#' \donttest{
+#' # Requires a 10x Visium directory on disk:
+#' # sme <- load10X("path/to/Visium_outs",
+#' #                features = "deconv_features.csv",
+#' #                resolution = "lowres")
+#' }
+#' @export
+load10X <- function(visiumDir,
+                         features = NULL,
+                         h5filename = "filtered_feature_bc_matrix.h5",
+                         resolution = c("fullres", "lowres", "hires"),
+                         version = NULL,
+                         ...) {
+    resolution <- match.arg(resolution)
+    expr <- load10XExpr(visiumDir = visiumDir, h5filename = h5filename)
+    coords <- load10XCoords(visiumDir = visiumDir,
+                            resolution = resolution, version = version)
+    rownames(coords) <- coords$barcode
+
+    all_expr <- colnames(expr)
+    all_coords <- coords$barcode
+    common <- intersect(all_expr, all_coords)
+    dropped <- length(all_expr) + length(all_coords) - 2L * length(common)
+    if (dropped > 0L) {
+        warning(sprintf(
+            "Dropped %d spots not present in both expression and coordinates. Keeping %d common spots.",
+            dropped, length(common)
+        ))
+    }
+    expr <- expr[, common, drop = FALSE]
+    coords <- coords[common, , drop = FALSE]
+
+    coord_mat <- as.matrix(coords[, c("y", "x")])
+    rownames(coord_mat) <- common
+
+    cd <- S4Vectors::DataFrame(row.names = common)
+    pattern_names <- NULL
+
+    if (!is.null(features)) {
+        spFeatures <- get_spatial_features(features, ...)
+        shared <- intersect(common, rownames(spFeatures))
+        dropped_feat <- length(rownames(spFeatures)) - length(shared)
+        dropped_sme <- length(common) - length(shared)
+        if (dropped_feat > 0L || dropped_sme > 0L) {
+            warning(sprintf(
+                paste0("Spot mismatch: %d spots in expression/coords and ",
+                       "%d spots in features not shared. ",
+                       "Keeping %d common spots for features (NA-padded)."),
+                dropped_sme, dropped_feat, length(shared)
+            ))
+        }
+        feat_df <- S4Vectors::DataFrame(
+            spFeatures[shared, , drop = FALSE],
+            row.names = shared
+        )
+        # Pad unmatched spots with NA
+        for (col in colnames(feat_df)) {
+            cd[[col]] <- NA_real_
+            cd[shared, col] <- feat_df[shared, col]
+        }
+        pattern_names <- colnames(spFeatures)
+    }
+
+    # Pre-compute spatial parameters from the scalefactors JSON if available
+    spatial_par <- NULL
+    if (!is.null(pattern_names) && length(shared) > 0L) {
+        spCoords <- coords[shared, c("barcode", "y", "x"), drop = FALSE]
+        spPats <- as.data.frame(spFeatures[shared, , drop = FALSE])
+        spPatterns_combined <- cbind(spCoords, spPats)
+        tryCatch({
+            spatial_par <- get_spatial_parameters(
+                spatialPatterns = spPatterns_combined,
+                visiumDir = visiumDir,
+                resolution = resolution
+            )
+        }, error = function(e) {
+            warning(sprintf(
+                "Pre-computing spatial_params failed: %s", conditionMessage(e)
+            ))
+            NULL
+        })
+    }
+
+    sm <- as(list(
+        params = list(
+            pattern_names = pattern_names,
+            spatial_params = spatial_par,
+            visiumDir = visiumDir,
+            resolution = resolution
+        )
+    ), "SimpleList")
+
+    SpaceMarkersExperiment(
+        assays = list(logcounts = expr),
+        colData = cd,
+        spatialCoords = coord_mat,
+        spaceMarkers = sm
+    )
+}
+
+#===================
+#' @title Load an AnnData file as a SpaceMarkersExperiment
+#' @description Convenience wrapper that reads an `.h5ad` file and
+#'   coerces the resulting \code{SingleCellExperiment} directly into a
+#'   \code{\link{SpaceMarkersExperiment}}. If the AnnData stores spatial
+#'   coordinates under \code{obsm["spatial"]}, they are promoted to
+#'   \code{spatialCoords()}.
+#'
+#'   Two readers are supported:
+#'   \itemize{
+#'     \item \pkg{anndataR} — pure-R, no Python/conda dependency, faster
+#'       on first call. Recommended when available.
+#'     \item \pkg{zellkonverter} — Bioconductor-standard, uses a
+#'       \pkg{basilisk}-managed Python environment under the hood.
+#'   }
+#'   Both are \code{Suggests} dependencies. With \code{reader = "auto"}
+#'   (default), anndataR is preferred when installed; otherwise
+#'   zellkonverter is used. Pass \code{reader = "zellkonverter"} or
+#'   \code{reader = "anndataR"} to force a specific backend.
+#' @param file Path to an \code{.h5ad} file.
+#' @param reader One of \code{"auto"}, \code{"anndataR"},
+#'   \code{"zellkonverter"}.
+#' @param ... Additional arguments forwarded to the chosen reader's
+#'   read function.
+#' @return A \code{\link{SpaceMarkersExperiment}} object.
+#' @examples
+#' \donttest{
+#' # Requires anndataR or zellkonverter installed and a real .h5ad file:
+#' # sme <- load_anndata("path/to/visium.h5ad")
+#' }
+#' @export
+load_anndata <- function(file,
+                         reader = c("auto", "anndataR", "zellkonverter"),
+                         ...) {
+    reader <- match.arg(reader)
+    if (reader == "auto") {
+        reader <- if (requireNamespace("anndataR", quietly = TRUE)) {
+            "anndataR"
+        } else if (requireNamespace("zellkonverter", quietly = TRUE)) {
+            "zellkonverter"
+        } else {
+            stop(
+                "load_anndata() requires either 'anndataR' (pure R) or ",
+                "'zellkonverter' (Bioconductor). Install one of: ",
+                "install.packages('anndataR')  or  ",
+                "BiocManager::install('zellkonverter')."
+            )
+        }
+    } else if (!requireNamespace(reader, quietly = TRUE)) {
+        stop(sprintf("load_anndata(reader = '%s') requires the '%s' package.",
+                     reader, reader))
+    }
+    sce <- switch(reader,
+        anndataR      = anndataR::read_h5ad(file, ...)$as_SingleCellExperiment(),
+        zellkonverter = zellkonverter::readH5AD(file, ...)
+    )
+    sme <- methods::as(sce, "SpaceMarkersExperiment")
+    .unpack_spacemarkers_state(sme)
+}
+
+#===================
+#' @title Save a SpaceMarkersExperiment as an AnnData (.h5ad) file
+#' @description Writes a \code{\link{SpaceMarkersExperiment}} out to
+#'   an \code{.h5ad} file, preserving the full SpaceMarkers analysis
+#'   state (hotspots, overlap scores, interactions, influence map,
+#'   kernel parameters) under \code{uns["spacemarkers"]}. Reloading
+#'   with \code{load_anndata()} restores that state.
+#'
+#'   The reader selection logic is identical to
+#'   \code{\link{load_anndata}}: \pkg{anndataR} is preferred when
+#'   installed, \pkg{zellkonverter} is the fallback.
+#' @param sme A \code{\link{SpaceMarkersExperiment}} object.
+#' @param file Path to the \code{.h5ad} file to write.
+#' @param reader One of \code{"auto"}, \code{"anndataR"},
+#'   \code{"zellkonverter"}.
+#' @param ... Additional arguments forwarded to the chosen reader's
+#'   write function.
+#' @return The path \code{file}, returned invisibly.
+#' @examples
+#' \donttest{
+#' # Requires anndataR or zellkonverter installed:
+#' # sme <- SpaceMarkersExperiment(
+#' #     assays = list(logcounts = matrix(rpois(200, 2), 10, 20,
+#' #         dimnames = list(paste0("G", 1:10), paste0("s", 1:20)))),
+#' #     spatialCoords = matrix(runif(40), 20, 2,
+#' #         dimnames = list(NULL, c("y", "x"))))
+#' # save_anndata(sme, tempfile(fileext = ".h5ad"))
+#' }
+#' @export
+save_anndata <- function(sme, file,
+                         reader = c("auto", "anndataR", "zellkonverter"),
+                         ...) {
+    reader <- match.arg(reader)
+    if (reader == "auto") {
+        reader <- if (requireNamespace("anndataR", quietly = TRUE)) {
+            "anndataR"
+        } else if (requireNamespace("zellkonverter", quietly = TRUE)) {
+            "zellkonverter"
+        } else {
+            stop(
+                "save_anndata() requires either 'anndataR' (pure R) or ",
+                "'zellkonverter' (Bioconductor). Install one of: ",
+                "install.packages('anndataR')  or  ",
+                "BiocManager::install('zellkonverter')."
+            )
+        }
+    } else if (!requireNamespace(reader, quietly = TRUE)) {
+        stop(sprintf("save_anndata(reader = '%s') requires the '%s' package.",
+                     reader, reader))
+    }
+    state <- .pack_spacemarkers_state(sme)
+    # Coerce SME down to SCE, but carry the packed state in metadata so it
+    # round-trips as uns["spacemarkers"] when the reader writes it out.
+    sce <- methods::as(sme, "SingleCellExperiment")
+    md <- S4Vectors::metadata(sce)
+    md$spacemarkers <- state
+    S4Vectors::metadata(sce) <- md
+    switch(reader,
+        anndataR      = anndataR::write_h5ad(
+                            anndataR::as_AnnData(sce), file, ...),
+        zellkonverter = zellkonverter::writeH5AD(sce, file, ...)
+    )
+    invisible(file)
+}
+
+#===================
+# Pack / unpack SpaceMarkers analysis state as a plain nested list so it
+# survives AnnData serialization (uns accepts lists of atomic / matrix /
+# data.frame values but not arbitrary S4 objects).
+.pack_spacemarkers_state <- function(sme) {
+    sm <- sme@spacemarkers
+    md <- S4Vectors::metadata(sme)
+    as_plain_df <- function(x) {
+        if (is.null(x)) NULL
+        else if (methods::is(x, "DataFrame")) as.data.frame(x)
+        else x
+    }
+    list(
+        params = list(
+            pattern_names  = sm$params$pattern_names,
+            spatial_params = sm$params$spatial_params,
+            visiumDir      = sm$params$visiumDir,
+            resolution     = sm$params$resolution
+        ),
+        results = list(
+            undirected_scores = as_plain_df(sm$results$undirected_scores),
+            directed_scores   = as_plain_df(sm$results$directed_scores),
+            overlap_scores    = as_plain_df(sm$results$overlap_scores),
+            lr_scores         = as_plain_df(sm$results$lr_scores)
+        ),
+        analysis       = sm$analysis,
+        hotspots       = lapply(md$hotspots, as_plain_df),
+        interactions   = md$interactions,
+        influence_map  = as_plain_df(md$influence)
+    )
+}
+
+.unpack_spacemarkers_state <- function(sme) {
+    md <- S4Vectors::metadata(sme)
+    state <- md$spacemarkers
+    if (is.null(state)) return(sme)
+    sm <- sme@spacemarkers
+    if (is.null(sm)) sm <- S4Vectors::SimpleList()
+    if (!is.null(state$params))  sm$params  <- state$params
+    if (!is.null(state$results)) sm$results <- state$results
+    if (!is.null(state$analysis)) sm$analysis <- state$analysis
+    sme@spacemarkers <- sm
+    if (!is.null(state$hotspots))      md$hotspots      <- state$hotspots
+    if (!is.null(state$interactions))  md$interactions  <- state$interactions
+    if (!is.null(state$influence_map)) md$influence     <- state$influence_map
+    md$spacemarkers <- NULL  # scrub the sidecar so we don't re-pack on next save
+    S4Vectors::metadata(sme) <- md
+    sme
 }

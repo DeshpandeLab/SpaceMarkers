@@ -7,6 +7,9 @@ Load features from dataframe}
 \usage{
 .get_csv_features(obj)
 }
+\value{
+data.frame of features with barcodes as rownames.
+}
 \description{
 .get_csv_features
 Load features from dataframe

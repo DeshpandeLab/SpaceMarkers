@@ -4,8 +4,20 @@
 #' @param optParams A data frame with optimal parameters for the pattern
 #' @param ... Additional parameters for the Smooth function
 #' @return A data frame with the spatial influence of the specified pattern
-#' @export
-calculate_influence <- function(spPatterns, optParams,...) {
+#' @examples
+#' set.seed(1)
+#' spPatterns <- data.frame(
+#'     barcode = paste0("s", 1:50),
+#'     x = runif(50), y = runif(50),
+#'     Pattern_1 = runif(50), Pattern_2 = runif(50))
+#' optParams <- matrix(c(0.1, 4, 0.1, 4), nrow = 2,
+#'     dimnames = list(c("sigmaOpt", "threshOpt"),
+#'                     c("Pattern_1", "Pattern_2")))
+#' inf <- calculate_influence(spPatterns, optParams)
+#' head(inf)
+#' @rdname calculate_influence
+setMethod("calculate_influence", "data.frame",
+    function(spPatterns, optParams = NULL, ...) {
     patnames <- setdiff(colnames(spPatterns),
                        c("x", "y", "barcode"))
 
@@ -21,11 +33,15 @@ calculate_influence <- function(spPatterns, optParams,...) {
     X <- spatstat.geom::ppp(x = spPatterns$x, y = spPatterns$y,
                             window = allwin,
                             marks = spPatterns[,pat])
-    
+
     # Calculate the kernel for the specified pattern
-    Kact1 <- spatstat.explore::Smooth(
-      X, at = "points", sigma = optParams[1,pat],...)
-    
+    Kact1 <- if (is.null(optParams)) {
+      spatstat.explore::Smooth(X, at = "points", ...)
+    } else {
+      spatstat.explore::Smooth(
+        X, at = "points", sigma = optParams[1, pat], ...)
+    }
+
     # Plot the K-function
     return(Kact1)
     })
@@ -34,7 +50,7 @@ calculate_influence <- function(spPatterns, optParams,...) {
     spInfluence <- cbind(spPatterns[,c("barcode","x", "y")], spInfluence)
 
     return(spInfluence)
-}
+})
 
 #' @title Compute the threshold for identifying outlier values or hotspots
 #' @description This function computes the threshold for identifying outlier 
@@ -78,7 +94,14 @@ return(thresh)
 #' @param maxvals Maximum value for quantile threshold
 #' @param ... Additional parameters to pass to lower level functions
 #' @return A list containing the computed thresholds for each pattern
-#' @export 
+#' @examples
+#' set.seed(1)
+#' spPatterns <- data.frame(
+#'     barcode = paste0("s", 1:50),
+#'     x = runif(50), y = runif(50),
+#'     Pattern_1 = rnorm(50), Pattern_2 = rnorm(50))
+#' calculate_thresholds(spPatterns)
+#' @export
 calculate_thresholds <- function(df, minvals = 0.01, maxvals = 0.99,...) {
   
     patnames <- setdiff(colnames(df), c("x", "y", "barcode"))
@@ -103,14 +126,24 @@ calculate_thresholds <- function(df, minvals = 0.01, maxvals = 0.99,...) {
 
 
 #' @title Find hotspots for all patterns or influences based on values
-#' @description Convenience function to find hotspots for all spatial patterns 
+#' @description Convenience function to find hotspots for all spatial patterns
 #' or influence dataframes based on provided thresholds
 #' @inheritParams calculate_thresholds
 #' @param threshold a scalar or vector of thresholds for each column in the data frame.
 #'  Either user provided or the output of @calculate_thresholds
 #' @return a data frame with the same dimensions as the input data frame.
-#' @export 
-find_hotspots_gmm <- function(df, threshold = 0.1,...){
+#' @examples
+#' set.seed(1)
+#' spPatterns <- data.frame(
+#'     barcode = paste0("s", 1:50),
+#'     x = runif(50), y = runif(50),
+#'     Pattern_1 = rnorm(50), Pattern_2 = rnorm(50))
+#' thr <- calculate_thresholds(spPatterns)
+#' hs  <- find_hotspots_gmm(spPatterns, threshold = thr)
+#' head(hs)
+#' @rdname find_hotspots_gmm
+setMethod("find_hotspots_gmm", "data.frame",
+    function(df, threshold = 0.1, ...) {
     patnames <- setdiff(colnames(df),c("x","y","barcode"))
     if (length(threshold)==1){
         threshold <- rep(threshold,length(patnames))
@@ -119,7 +152,7 @@ find_hotspots_gmm <- function(df, threshold = 0.1,...){
         stop("Length of threshold must be 1 or equal to number of patterns.")
     }
     names(threshold) <- patnames
-    
+
     hotspots <- matrix(NA, nrow=nrow(df), ncol=length(patnames))
     colnames(hotspots) <- patnames
     for (pat in patnames){
@@ -130,7 +163,7 @@ find_hotspots_gmm <- function(df, threshold = 0.1,...){
     row.names(hotspots) <- hotspots$barcode
     hotspots <- as.data.frame(hotspots)
     return(hotspots)
-}
+})
 
 .classify_spots <- function(pat_hotspots, influence_hotspots, patternpair = NULL) {
     patnames <- setdiff(colnames(pat_hotspots), c("x", "y", "barcode"))
@@ -257,14 +290,42 @@ return(df)
 #' @param data A numeric matrix with genes as rows and barcodes as columns.
 #' @param pat_hotspots A data frame with pattern hotspots, containing columns for x, y, and barcode.
 #' @param influence_hotspots A data frame with influence hotspots, containing columns for x, y, and barcode.
-#' @param pattern_pairs A data frame with pattern pairs to calculate interaction scores for. If NULL, 
+#' @param pattern_pairs A data frame with pattern pairs to calculate interaction scores for. If NULL,
 #' all combinations of patterns in `pat_hotspots` will be used.
-#' If provided, it should have two columns with pattern names. 
+#' If provided, it should have two columns with pattern names.
 #' Each row should represent a pair of patterns for which interaction scores will be calculated.
 #' @param ... Additional parameters to pass to lower level functions.
 #' @return A data frame with interaction scores for all pattern pairs.
-#' @export
-calculate_gene_scores_directed <- function(data, pat_hotspots, influence_hotspots, pattern_pairs=NULL,...) {
+#' @examples
+#' set.seed(1)
+#' nb <- 30
+#' spHotspots <- data.frame(
+#'     barcode = paste0("s", seq_len(nb)),
+#'     x = runif(nb), y = runif(nb),
+#'     Pattern_1 = ifelse(seq_len(nb) <= 10, "Pattern_1", NA),
+#'     Pattern_2 = ifelse(seq_len(nb) > 10 & seq_len(nb) <= 20,
+#'                        "Pattern_2", NA),
+#'     Pattern_3 = ifelse(seq_len(nb) > 20, "Pattern_3", NA))
+#' spInfl <- spHotspots
+#' counts <- matrix(rpois(5 * nb, 3), nrow = 5,
+#'     dimnames = list(paste0("G", 1:5), spHotspots$barcode))
+#' pattern_pairs <- t(utils::combn(c("Pattern_1","Pattern_2","Pattern_3"), 2))
+#' calculate_gene_scores_directed(counts, spHotspots, spInfl,
+#'                                pattern_pairs = pattern_pairs)
+#' @rdname calculate_gene_scores_directed
+setMethod("calculate_gene_scores_directed", "ANY",
+    function(data, pat_hotspots = NULL, influence_hotspots = NULL,
+             pattern_pairs = NULL, ...) {
+    if (is.null(pat_hotspots)) {
+        stop("'pat_hotspots' must be provided to ",
+             "calculate_gene_scores_directed() for non-SpaceMarkersExperiment ",
+             "inputs. The NULL default is reserved for the SME method.")
+    }
+    if (is.null(influence_hotspots)) {
+        stop("'influence_hotspots' must be provided to ",
+             "calculate_gene_scores_directed() for non-SpaceMarkersExperiment ",
+             "inputs. The NULL default is reserved for the SME method.")
+    }
     if (is.null(pattern_pairs)) {
         pattern_pairs <- utils::combn(setdiff(colnames(pat_hotspots), c("x", "y", "barcode")), 2, simplify = FALSE)
     }
@@ -297,7 +358,7 @@ calculate_gene_scores_directed <- function(data, pat_hotspots, influence_hotspot
         }
     }
     return(IMscores)
-}
+})
 
 #' @title calculate_overlap_directed
 #' @description Calculate the overlap scores between patterns in hotspots
@@ -305,12 +366,11 @@ calculate_gene_scores_directed <- function(data, pat_hotspots, influence_hotspot
 #' @param influence_hotspots A data frame with columns x, y, barcode and pattern names
 #' @param method The method to calculate overlapping abundance scores. Options are
 #' "relative-abundance", "differential-abundance" and "absolute"
-#' @param patternList A character vector of pattern names to calculate overlap 
+#' @param patternList A character vector of pattern names to calculate overlap
 #' scores for. If NULL, all patterns in pat_hotspots and influence_hotspots will be used.
 #' @details The function calculates the overlap scores between patterns hotspots
 #' using the specified method. The default method is "relative-abundance"
 #' @return A data frame with columns pattern, influence and overlapping abundance
-#' @export
 #' @examples
 #' hotspots <- data.frame(x = c(1,2,3,4,5),
 #'                         y = c(1,2,3,4,5),
@@ -326,15 +386,22 @@ calculate_gene_scores_directed <- function(data, pat_hotspots, influence_hotspot
 #' @importFrom ggplot2 ggplot geom_tile geom_text theme_minimal
 #' @importFrom reshape2 melt
 #' @importFrom stats complete.cases
-calculate_overlap_directed <- function(pat_hotspots, influence_hotspots,
-                             patternList = NULL, method = c("relative-abundance",
-                                                            "differential-abundance",
-                                                             "absolute") ) {
-    
+#' @rdname calculate_overlap_directed
+setMethod("calculate_overlap_directed", "data.frame",
+    function(pat_hotspots, influence_hotspots = NULL,
+             patternList = NULL,
+             method = c("relative-abundance", "differential-abundance",
+                        "absolute")) {
     #warn if more than one method is supplied, do not warn by default
     if(length(method) > 1){
         method <- method[1]
         message("Only one method can be used at a time. Using ", method)
+    }
+
+    if (is.null(influence_hotspots)) {
+        stop("'influence_hotspots' must be provided to ",
+             "calculate_overlap_directed() for non-SpaceMarkersExperiment ",
+             "inputs. The NULL default is reserved for the SME method.")
     }
 
     if (is.null(patternList)) {
@@ -362,11 +429,11 @@ calculate_overlap_directed <- function(pat_hotspots, influence_hotspots,
     diag(overlapScore) <- NA
     colnames(overlapScore) <- paste0("near.",colnames(overlapScore))
     #overlapScore[upper.tri(overlapScore,diag = TRUE)] <- NA
-  
+
     # Melt normalized Jaccard for output
     dfOverlap <- reshape2::melt(overlapScore)
     dfOverlap <- dfOverlap[stats::complete.cases(dfOverlap),]
     # Due to melting in lower triangular orientation, the column names are flipped
     colnames(dfOverlap) <- c("pattern", "influence", "relAbundance")
     return(dfOverlap)
-}
+})

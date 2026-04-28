@@ -1,9 +1,10 @@
 Type: Package
 Package: SpaceMarkers
 Title: Spatial Interaction Markers
-Version: 2.1.0
+Version: 2.2.0
 Authors@R: c(
     person(given = "Atul", family = "Deshpande", email = "adeshpande@jhu.edu", role = c("aut", "cre"), comment = c(ORCID="0000-0001-5144-6924")),
+    person(given = "Orian", family = "Stapleton", email = "ostaple1@jh.edu", role = "aut"),
     person(given = "Ludmila", family = "Danilova", email = "ldanilo1@jhmi.edu", role = "ctb"),
     person(given = "Dmitrijs", family = "Lvovs", email = "dlvovs1@jh.edu", role = "ctb", comment = c(ORCID = "0009-0003-2152-6853"))
   )
@@ -15,10 +16,14 @@ Description: Spatial transcriptomic technologies have helped to resolve the conn
             important molecular interactions in these tissues. SpaceMarkers, R/Bioconductor software,
             can help to find molecular interactions, by identifying genes associated with latent space 
             interactions in spatial transcriptomics.
-Depends: 
+Depends:
     R (>= 4.4.0)
 biocViews: SingleCell, GeneExpression, Software, Spatial, Transcriptomics
 Imports:
+    SpatialExperiment,
+    SingleCellExperiment,
+    SummarizedExperiment,
+    S4Vectors,
     matrixStats,
     matrixTests,
     rstatix,
@@ -43,7 +48,7 @@ Imports:
     rlang,
     effsize,
     viridis
-Suggests: 
+Suggests:
     data.table,
     devtools,
     knitr,
@@ -51,13 +56,30 @@ Suggests:
     rjson,
     rmarkdown,
     BiocStyle,
+    BiocFileCache,
     testthat (>= 3.0.0),
     CoGAPS,
-    ComplexHeatmap
-Enhances: 
+    ComplexHeatmap,
+    zellkonverter,
+    anndataR
+Enhances:
     BiocParallel
 VignetteBuilder: 
     knitr
+Collate:
+    'AllClasses.R'
+    'AllGenerics.R'
+    'SpaceMarkers.R'
+    'SpaceMarkersExperiment-methods.R'
+    'data.R'
+    'findGenesOfInterest.R'
+    'getInteractingGenes.R'
+    'getSpatialParameters.R'
+    'hdutils.R'
+    'plotLRCircos.R'
+    'preprocessing.R'
+    'test-helper.R'
+    'utils.R'
 Config/testthat/edition: 3
 Encoding: UTF-8
 LazyData: false

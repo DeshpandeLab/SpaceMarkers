@@ -51,3 +51,6 @@ vignettes/.DS_Store
 
 # GH token
 pat.txt
+
+# Claude superpowers design docs — keep local, do not commit
+docs/superpowers/

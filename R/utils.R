@@ -2,7 +2,7 @@
 #' @title calculate_overlap_undirected
 #' @description Calculate the overlap scores between patterns in hotspots
 #' @param hotspots A data frame with columns x, y, barcode and pattern names
-#' @param patternList A character vector of pattern names to calculate overlap 
+#' @param patternList A character vector of pattern names to calculate overlap
 #' scores for
 #' @param method The method to calculate overlap scores. Options are
 #' "Szymkiewicz-Simpson", "Jaccard", "Sorensen-Dice", "Ochiai" and "absolute"
@@ -10,58 +10,62 @@
 #' using the specified method. The default method is "Szymkiewicz-Simpson"
 #' overlap coefficient.
 #' @return A data frame with columns pattern1, pattern2 and overlapScore
-#' @export
 #' @examples
 #' hotspots <- data.frame(x = c(1,2,3,4,5),
 #'                         y = c(1,2,3,4,5),
 #'                         barcode = c("A","B","C","D","E"),
 #'                         pattern1 = c("pattern1",NA,"pattern1",NA,"pattern1"),
 #'                         pattern2 = c("pattern2","pattern2",NA,NA,"pattern2"))
-#' calculate_overlap_undirected(hotspots)   
+#' calculate_overlap_undirected(hotspots)
 #' calculate_overlap_undirected(hotspots, c("pattern1","pattern2"))
 #' @importFrom ggplot2 ggplot geom_tile geom_text theme_minimal
 #' @importFrom reshape2 melt
 #' @importFrom stats complete.cases
-calculate_overlap_undirected <- function(hotspots,
-                             patternList = NULL, method = c("Szymkiewicz-Simpson",
-                                                            "Jaccard", "Sorensen-Dice",
-                                                            "Ochiai", "absolute") ) {
-    
-    #stop if more than one method is supplied, do not warn by default
-    if(length(method) > 1){
-        method <- method[1]
-        message("Only one method can be used at a time. Using ", method)}
+#' @rdname calculate_overlap_undirected
+setMethod("calculate_overlap_undirected", "data.frame",
+    function(hotspots, patternList = NULL,
+             method = c("Szymkiewicz-Simpson", "Jaccard", "Sorensen-Dice",
+                        "Ochiai", "absolute")) {
+        # SpaceMarkersExperiment inputs are routed by the SME-dispatched
+        # method; this data.frame method only sees a hotspots data.frame.
 
-    if (is.null(patternList)) {
-        patternList <- setdiff(colnames(hotspots),c("x","y","barcode"))
-    } else if (!all(patternList %in% colnames(hotspots))) {
-        stop("Pattern names not found in hotspots")
+        #stop if more than one method is supplied, do not warn by default
+        if (length(method) > 1) {
+            method <- method[1]
+            message("Only one method can be used at a time. Using ", method)
+        }
+
+        if (is.null(patternList)) {
+            patternList <- setdiff(colnames(hotspots), c("x", "y", "barcode"))
+        } else if (!all(patternList %in% colnames(hotspots))) {
+            stop("Pattern names not found in hotspots")
+        }
+
+        binarized <- (!is.na(hotspots[, patternList])) * 1
+        intersects <- t(binarized) %*% binarized
+        nHotspots <- colSums(binarized)
+        nHotsP1 <- t(t(nHotspots)) %*% array(1, length(patternList))
+        nHotsP2 <- t(nHotsP1)
+        overlapScore <- switch(method,
+            "Szymkiewicz-Simpson" = intersects / pmin(nHotsP1, nHotsP2),
+            "Jaccard" = intersects / (nHotsP1 + nHotsP2 - intersects),
+            "Sorensen-Dice" = 2 * intersects / (nHotsP1 + nHotsP2),
+            "Ochiai" = intersects / sqrt(nHotsP1 * nHotsP2),
+            "absolute" = intersects,
+            stop("Method not supported")
+        )
+
+        overlapScore[upper.tri(overlapScore, diag = TRUE)] <- NA
+
+        # Melt normalized Jaccard for output
+        dfOverlap <- reshape2::melt(overlapScore)
+        dfOverlap <- dfOverlap[stats::complete.cases(dfOverlap), ]
+        # Due to melting in lower triangular orientation, the column names are flipped
+        colnames(dfOverlap) <- c("pattern2", "pattern1", "overlapScore")
+        dfOverlap <- dfOverlap[, c(2, 1, 3)]
+        return(dfOverlap)
     }
-
-    binarized <- (!is.na(hotspots[,patternList]))*1
-    intersects <- t(binarized) %*% binarized
-    nHotspots <- colSums(binarized)
-    nHotsP1 <- t(t(nHotspots)) %*% array(1, length(patternList))
-    nHotsP2 <- t(nHotsP1)
-    overlapScore <- switch(method,
-        "Szymkiewicz-Simpson" = intersects/pmin(nHotsP1,nHotsP2),
-        "Jaccard" = intersects/(nHotsP1 + nHotsP2 - intersects),
-        "Sorensen-Dice" = 2*intersects/(nHotsP1 + nHotsP2),
-        "Ochiai" = intersects/sqrt(nHotsP1*nHotsP2),
-        "absolute" = intersects,
-        stop("Method not supported")
-    )
-
-    overlapScore[upper.tri(overlapScore,diag = TRUE)] <- NA
-  
-    # Melt normalized Jaccard for output
-    dfOverlap <- reshape2::melt(overlapScore)
-    dfOverlap <- dfOverlap[stats::complete.cases(dfOverlap),]
-    # Due to melting in lower triangular orientation, the column names are flipped
-    colnames(dfOverlap) <- c("pattern2", "pattern1", "overlapScore")
-    dfOverlap <- dfOverlap[,c(2,1,3)]
-    return(dfOverlap)
-}
+)
 
 #' @title plot_overlap_scores
 #' @description Plot the overlap scores between patterns in hotspots
@@ -79,41 +83,80 @@ calculate_overlap_undirected <- function(hotspots,
 #' plot_overlap_scores(df, "Overlap Scores", "overlapScores.png", 15)
 #' @import ggplot2
 #'
-plot_overlap_scores <- function(df, title = "Spatial Overlap Scores", out = NULL,fontsize = 15) {
-    p <- ggplot2::ggplot(data = df, aes(pattern1, pattern2, fill = overlapScore)) +
-        geom_tile(color = "black", size = 0.8) +
-        geom_text(aes(label = round(overlapScore, 2)), size = 6) +  # Display values on the plot
-        scale_fill_gradient2(low = "#FFF7EC", mid = "#FDBB84", high = "#D7301F", midpoint = 0.5) +
-        scale_y_discrete(limits = rev, guide = guide_axis(angle = 45)) +
-        theme_minimal() +
-        theme(
-            axis.text.x = element_text(angle = 45, vjust = 1, size = fontsize, hjust = 1),
-            axis.text.y = element_text(size = fontsize)
+plot_overlap_scores <- function(df, title = "Spatial Overlap Scores", out = NULL, fontsize = 15) {
+    # SME dispatch: use stored overlap_scores directly (no recomputation).
+    if (is(df, "SpaceMarkersExperiment")) {
+        ov <- overlap_scores(df)
+        if (is.null(ov)) {
+            stop("No overlap_scores stored. Run calculate_overlap_undirected(x) or calculate_overlap_directed(x) first.")
+        }
+        df <- ov
+    }
+
+    # Detect shape:
+    #   undirected: columns pattern1, pattern2, overlapScore  (symmetric heatmap)
+    #   directed:   columns pattern, influence, relAbundance   (source -> "near.<target>")
+    cn <- colnames(df)
+    if (all(c("pattern1", "pattern2", "overlapScore") %in% cn)) {
+        xcol <- "pattern1"; ycol <- "pattern2"; fill <- "overlapScore"
+    } else if (all(c("pattern", "influence", "relAbundance") %in% cn)) {
+        xcol <- "pattern"; ycol <- "influence"; fill <- "relAbundance"
+    } else {
+        stop("Unknown overlap_scores shape; expected undirected (pattern1/pattern2/overlapScore) or directed (pattern/influence/relAbundance) columns.")
+    }
+
+    p <- ggplot2::ggplot(data = df,
+            ggplot2::aes(x = .data[[xcol]], y = .data[[ycol]],
+                         fill = .data[[fill]])) +
+        ggplot2::geom_tile(color = "black", size = 0.8) +
+        ggplot2::geom_text(ggplot2::aes(label = round(.data[[fill]], 2)), size = 6) +
+        ggplot2::scale_fill_gradient2(low = "#FFF7EC", mid = "#FDBB84",
+                                      high = "#D7301F", midpoint = 0.5) +
+        ggplot2::scale_y_discrete(limits = rev,
+                                  guide = ggplot2::guide_axis(angle = 45)) +
+        ggplot2::theme_minimal() +
+        ggplot2::theme(
+            axis.text.x = ggplot2::element_text(angle = 45, vjust = 1,
+                                                size = fontsize, hjust = 1),
+            axis.text.y = ggplot2::element_text(size = fontsize)
         ) +
-        coord_fixed() +
-        labs(x = NULL, y = NULL, fill = "overlapScore", title = title) +
-        theme(
-            panel.background = element_blank(),
-            panel.grid.major = element_blank(),
-            panel.border = element_blank()
+        ggplot2::coord_fixed() +
+        ggplot2::labs(x = NULL, y = NULL, fill = fill, title = title) +
+        ggplot2::theme(
+            panel.background = ggplot2::element_blank(),
+            panel.grid.major = ggplot2::element_blank(),
+            panel.border = ggplot2::element_blank()
         )
-    if(!is.null(out)){
+    if (!is.null(out)) {
         ggplot2::ggsave(filename = out, plot = p)
     }
-    return(p)
+    p
 }
 
 #' @title get_im_scores
 #' @description Get the interaction scores for SpaceMarkers
-#' @param SpaceMarkers A list of SpaceMarkers objects
+#' @param SpaceMarkers A list returned by
+#'   \code{\link{get_pairwise_interacting_genes}} (or a
+#'   \code{SpaceMarkersExperiment} with interactions populated).
 #' @return A data frame with columns Gene and SpaceMarkersMetric
-#' @export
 #' @examples
-#' example(get_pairwise_interacting_genes)
-#' get_im_scores(SpaceMarkers)
+#' # Minimal mock of the list shape get_pairwise_interacting_genes returns:
+#' sm_result <- list(
+#'     list(patterns = c("A","B"),
+#'          interacting_genes = list(data.frame(
+#'              Gene = paste0("G", 1:5),
+#'              SpaceMarkersMetric = sort(runif(5), decreasing = TRUE)))),
+#'     list(patterns = c("A","C"),
+#'          interacting_genes = list(data.frame(
+#'              Gene = paste0("G", 1:5),
+#'              SpaceMarkersMetric = sort(runif(5), decreasing = TRUE)))))
+#' get_im_scores(sm_result)
 #' @importFrom stats setNames
-#' 
-get_im_scores <- function(SpaceMarkers){
+#' @rdname get_im_scores
+setMethod("get_im_scores", "list", function(SpaceMarkers) {
+    # SpaceMarkersExperiment inputs are routed by the SME-dispatched method;
+    # this list method only sees a list returned by
+    # get_pairwise_interacting_genes().
     smi <- SpaceMarkers[which(sapply(SpaceMarkers, function(x) length(x[['interacting_genes']]))>0)]
     fields <- c('Gene', 'SpaceMarkersMetric')
 
@@ -126,12 +169,12 @@ get_im_scores <- function(SpaceMarkers){
     imscores <- Reduce(function(x, y) {
                 merge(x, y, by="Gene", all=TRUE)
             }, x=imscores, right=FALSE)
-    
+
     if(is.null(imscores)) {
         imscores <- data.frame(Gene=character(0))
     }
     return(imscores)
-}
+})
 
 
 #' @title plot_im_scores
@@ -144,15 +187,24 @@ get_im_scores <- function(SpaceMarkers){
 #' @param metricText The font size for the metric text
 #' @param increments The increments for the y-axis
 #' @param out The output path for the plot
+#' @return A \code{ggplot} object showing the top genes ranked by
+#'   SpaceMarkersMetric for \code{interaction}.
 #' @export
-#' @examples 
-#' example(get_pairwise_interacting_genes)
-#' plot_im_scores(get_im_scores(SpaceMarkers), "Pattern_1_Pattern_3")
+#' @examples
+#' df <- data.frame(Gene = paste0("G", 1:20),
+#'                  Pattern_1_Pattern_2 = sort(runif(20), decreasing = TRUE))
+#' plot_im_scores(df, interaction = "Pattern_1_Pattern_2",
+#'                nGenes = 10)
 #' @import ggplot2
 #' @importFrom stats reorder
 #' @importFrom utils head
 plot_im_scores <- function(df, interaction, cutOff = 0, nGenes = 20,
     geneText = 12, metricText = 12, increments = 1, out = NULL) {
+    # SME dispatch: extract undirected scores from object
+    if (is(df, "SpaceMarkersExperiment")) {
+        df <- undirected_scores(df)
+        if (is.null(df)) stop("No undirected scores found in SpaceMarkersExperiment.")
+    }
     df$genes <- df$Gene
     df <- df[order(df[[interaction]], decreasing = TRUE),]
     df <- utils::head(df,nGenes)
@@ -185,11 +237,29 @@ plot_im_scores <- function(df, interaction, cutOff = 0, nGenes = 20,
 #' @param method Character; specifies the aggregation method for gene set scores. Options are "geometric_mean" or "arithmetic_mean"
 #' @details This function computes mean interaction scores for given gene sets across cell interactions.
 #' It supports both geometric and arithmetic means, and can weight gene contributions based on their presence in multiple gene sets.
-#' @return A matrix of mean interaction scores for genes in each gene set, with 
+#' @return A matrix of mean interaction scores for genes in each gene set, with
 #' attributes for log p-value sums and number of genes for later fisher combination
-#' @export
-calculate_gene_set_score <- function(IMscores, gene_sets, weighted = TRUE, method = c("geometric_mean", "arithmetic_mean")) {
+#' @examples
+#' set.seed(1)
+#' IMscores <- data.frame(
+#'     gene = rep(paste0("G", 1:6), 2),
+#'     effect_size = runif(12),
+#'     p.value = runif(12),
+#'     cell_interaction = rep(c("A_near_B", "B_near_A"), each = 6))
+#' gene_sets <- list(set1 = c("G1","G2","G3"), set2 = c("G4","G5","G6"))
+#' calculate_gene_set_score(IMscores, gene_sets = gene_sets,
+#'                          method = "arithmetic_mean")
+#' @rdname calculate_gene_set_score
+setMethod("calculate_gene_set_score", "ANY",
+    function(IMscores, gene_sets = NULL, weighted = TRUE,
+             method = c("geometric_mean", "arithmetic_mean")) {
     method <- match.arg(method[1], choices = c("geometric_mean", "arithmetic_mean"))
+
+    if (is.null(gene_sets)) {
+        stop("'gene_sets' must be provided for non-SpaceMarkersExperiment ",
+             "inputs. The NULL default is reserved for the SME method, ",
+             "which can derive gene sets from params(x).")
+    }
 
     IMS <- split(IMscores, IMscores$cell_interaction)
 
@@ -212,7 +282,7 @@ calculate_gene_set_score <- function(IMscores, gene_sets, weighted = TRUE, metho
             if (length(geneSet) == 0) return(NA)
 
             subset_data <- ims[ims$gene %in% geneSet,]
-            
+
                         # Calculate uniqueness weight for each gene
             # Weight = 1 / (number of complexes containing this gene)
             if (!weighted) {
@@ -236,15 +306,16 @@ calculate_gene_set_score <- function(IMscores, gene_sets, weighted = TRUE, metho
         })
         scores[,i] <- unlist(temp)
     }
-    
+
     scores <- .call(scores, 2, as.numeric)
     colnames(scores) <- names(IMS)
     rownames(scores) <- names(gene_sets)
         # Add gene overlap information as an attribute
     attr(scores, "gene_complex_count") <- gene_complex_count
-    
+
     return(scores)
-}
+    }
+)
 
 
 #' @title .pick_image
@@ -294,8 +365,16 @@ calculate_gene_set_score <- function(IMscores, gene_sets, weighted = TRUE, metho
 #' @param crop crop spatial plot to a zoomed in window, Default: TRUE
 #' @param text_size size of text on the plot, Default: 15
 #' @return a ggplot object
-#
-#' @export 
+#' @examples
+#' \donttest{
+#' # Requires a 10x Visium directory on disk and a per-spot data.frame
+#' # with at least `barcode` plus the column referenced by `feature_col`.
+#' # Sketch:
+#' # df <- data.frame(barcode = c("s1","s2"), Pattern_1 = c(0.2, 0.8))
+#' # plot_spatial_data_over_image(visiumDir = "path/to/visium",
+#' #                              df = df, feature_col = "Pattern_1")
+#' }
+#' @export
 #' @importFrom rlang sym
 #' @importFrom SpaceMarkers load10XCoords
 #' @importFrom readbitmap read.bitmap
@@ -360,6 +439,268 @@ plot_spatial_data_over_image <- function(
   return(p)
 }
 
+#' @title plot_spatial
+#' @description SME-native spatial plot. Extracts coordinates from the
+#'   \code{SpaceMarkersExperiment}, looks up \code{feature_col} in colData,
+#'   rownames (gene expression), or hotspot metadata, and overlays on the
+#'   tissue image if available. If no image is found, plots on a blank
+#'   background.
+#' @param sme A \code{SpaceMarkersExperiment} object.
+#' @param feature_col Character. Name of the feature to plot. Optional when
+#'   \code{source = "interaction"} (derived from \code{interaction_patterns}).
+#'   Otherwise searched according to \code{source}: \code{colData(sme)},
+#'   \code{rownames(sme)} (gene expression), hotspots metadata for the
+#'   specified \code{hotspot_type}, or the stored influence map.
+#' @param hotspot_type One of \code{"undirected"}, \code{"pattern"},
+#'   \code{"influence"}. Selects which hotspot slot \code{plot_spatial()}
+#'   reads when \code{source = "hotspots"} (or when \code{source = "auto"}
+#'   falls through to hotspots).
+#' @param source One of \code{"auto"}, \code{"colData"}, \code{"assay"},
+#'   \code{"hotspots"}, \code{"influence_map"}, or \code{"interaction"}.
+#'   Selects where \code{feature_col} is resolved.
+#'   \itemize{
+#'     \item \code{"auto"} (default): \code{colData} → \code{assay} →
+#'       \code{hotspots} fall-through.
+#'     \item \code{"colData"} / \code{"assay"} / \code{"hotspots"} /
+#'       \code{"influence_map"}: force the lookup to a single source.
+#'     \item \code{"interaction"}: synthesize a categorical overlay via
+#'       \code{\link{overlap_map}} — feature_col is ignored; supply
+#'       \code{interaction_patterns} instead.
+#'   }
+#' @param interaction_patterns Length-2 character vector
+#'   \code{c(pat1, pat2)}, required when \code{source = "interaction"}.
+#'   Passed to \code{\link{overlap_map}}.
+#' @param interaction_label Optional override for the middle label of the
+#'   undirected interaction overlay (default \code{"interacting"}); ignored
+#'   when directed mode is auto-picked.
+#' @param direction For \code{source = "interaction"} in directed mode,
+#'   one of \code{"forward"} (default; source = pat1, target = pat2) or
+#'   \code{"reverse"} (source = pat2, target = pat1). Ignored in undirected
+#'   mode.
+#' @param image Optional: a raster or matrix image to overlay. If NULL,
+#'   tries \code{imgRaster(sme)}, then the stored \code{visiumDir} from
+#'   \code{load10X()}, then falls back to no image.
+#' @param resolution Image resolution used when loading from
+#'   \code{visiumDir}. Default "lowres".
+#' @param point_size,stroke,alpha,title,bg_color,text_size,colors ggplot
+#'   aesthetics (see \code{plot_spatial_data_over_image}).
+#' @param crop Logical; crop the view to the spot bounding box. Default TRUE.
+#' @return A ggplot object.
+#' @examples
+#' set.seed(1)
+#' nb <- 40
+#' coord_mat <- matrix(runif(2 * nb), nb, 2,
+#'     dimnames = list(paste0("s", seq_len(nb)), c("y", "x")))
+#' sme <- SpaceMarkersExperiment(
+#'     assays        = list(logcounts = matrix(rpois(5 * nb, 3), nrow = 5,
+#'         dimnames = list(paste0("G", 1:5), rownames(coord_mat)))),
+#'     colData       = data.frame(Pattern_1 = runif(nb),
+#'                                row.names = rownames(coord_mat)),
+#'     spatialCoords = coord_mat)
+#' plot_spatial(sme, feature_col = "Pattern_1", source = "colData")
+#' @export
+#' @importFrom SummarizedExperiment assay
+#' @importFrom SpatialExperiment spatialCoords imgRaster
+plot_spatial <- function(sme, feature_col = NULL,
+                         hotspot_type = c("undirected", "pattern", "influence"),
+                         source = c("auto", "colData", "assay", "hotspots",
+                                    "influence_map", "interaction"),
+                         interaction_patterns = NULL,
+                         interaction_label = NULL,
+                         direction = c("forward", "reverse"),
+                         image = NULL,
+                         resolution = c("lowres", "hires", "fullres"),
+                         colors = NULL, point_size = 2.5, stroke = 0.05,
+                         alpha = 0.5, title = feature_col, bg_color = NULL,
+                         crop = TRUE, text_size = 15) {
+    if (!is(sme, "SpaceMarkersExperiment")) {
+        stop("sme must be a SpaceMarkersExperiment.")
+    }
+    hotspot_type <- match.arg(hotspot_type)
+    source <- match.arg(source)
+    direction <- match.arg(direction)
+    resolution <- match.arg(resolution)
+
+    # When plotting a three-level interaction overlay, feature_col is synthetic
+    if (source == "interaction") {
+        if (is.null(interaction_patterns) || length(interaction_patterns) != 2L) {
+            stop("source='interaction' requires interaction_patterns = c('<pattern1>','<pattern2>').")
+        }
+        if (is.null(feature_col)) {
+            feature_col <- paste(interaction_patterns, collapse = "_vs_")
+        }
+        if (identical(title, NULL) || identical(title, feature_col)) {
+            title <- sprintf("%s interaction", paste(interaction_patterns, collapse = " x "))
+        }
+    } else if (is.null(feature_col)) {
+        stop("feature_col is required for source='", source, "'.")
+    }
+
+    # --- Extract feature values keyed by barcode ----------------------------
+    # When `source` is "auto" we fall through colData -> assay -> hotspots.
+    # Otherwise we look in exactly one place so the caller can force, e.g.,
+    # hotspot labels for a feature name that also exists as a colData column.
+    barcodes <- colnames(sme)
+    feature_vals <- NULL
+    lookup_colData <- function() {
+        cd <- SummarizedExperiment::colData(sme)
+        if (feature_col %in% colnames(cd)) {
+            v <- cd[[feature_col]]; names(v) <- barcodes; v
+        }
+    }
+    lookup_assay <- function() {
+        if (feature_col %in% rownames(sme)) {
+            v <- as.numeric(SummarizedExperiment::assay(sme, "logcounts")[feature_col, ])
+            names(v) <- barcodes; v
+        }
+    }
+    lookup_hotspots <- function() {
+        hs <- S4Vectors::metadata(sme)$hotspots[[hotspot_type]]
+        if (!is.null(hs) && feature_col %in% colnames(hs)) {
+            v <- hs[[feature_col]]; names(v) <- hs$barcode; v
+        }
+    }
+    lookup_influence <- function() {
+        im <- S4Vectors::metadata(sme)$influence
+        if (!is.null(im) && feature_col %in% colnames(im)) {
+            v <- im[[feature_col]]; names(v) <- im$barcode; v
+        }
+    }
+    lookup_interaction <- function() {
+        # Delegate to the public overlap_map() helper so the plot renders
+        # the exact same classification a user would get by calling
+        # overlap_map() directly. overlap_map auto-picks directed mode when
+        # both pattern and influence hotspots are populated; the direction
+        # arg selects which t-test perspective (pat1 near pat2 vs pat1, or
+        # pat2 near pat1 vs pat2) to visualize.
+        overlap_map(sme,
+                    interaction_patterns = interaction_patterns,
+                    direction = direction,
+                    interaction_label = interaction_label)
+    }
+
+    feature_vals <- switch(source,
+        auto          = lookup_colData() %||% lookup_assay() %||% lookup_hotspots(),
+        colData       = lookup_colData(),
+        assay         = lookup_assay(),
+        hotspots      = lookup_hotspots(),
+        influence_map = lookup_influence(),
+        interaction   = lookup_interaction()
+    )
+    if (is.null(feature_vals)) {
+        stop(sprintf(
+            "feature_col '%s' not found in source='%s'%s.",
+            feature_col, source,
+            if (source == "hotspots") sprintf(" (hotspot_type='%s')", hotspot_type) else ""
+        ))
+    }
+
+    # --- Coordinates --------------------------------------------------------
+    # If we have a visiumDir, load coords at the plot-time resolution so that
+    # coord scaling matches the image. Otherwise use spatialCoords(sme) as-is.
+    vdir <- sme@spacemarkers$params$visiumDir
+    if (!is.null(vdir) && dir.exists(file.path(vdir, "spatial"))) {
+        coords <- load10XCoords(vdir, resolution)
+        names(coords) <- c("barcode", "y", "x")
+    } else {
+        coords <- as.data.frame(SpatialExperiment::spatialCoords(sme))
+        if (ncol(coords) < 2) stop("spatialCoords has fewer than 2 columns.")
+        names(coords)[seq_len(2)] <- c("y", "x")
+        coords$barcode <- rownames(coords)
+        if (is.null(coords$barcode)) coords$barcode <- barcodes
+    }
+
+    df <- data.frame(barcode = names(feature_vals),
+                     feature = unname(feature_vals),
+                     stringsAsFactors = FALSE)
+    names(df)[2] <- feature_col
+    df <- merge(df, coords, by = "barcode")
+
+    # --- Resolve image ------------------------------------------------------
+    img <- NULL
+    if (!is.null(image)) {
+        img <- image
+    } else {
+        # Try imgRaster from SpatialExperiment
+        img <- tryCatch(SpatialExperiment::imgRaster(sme),
+                        error = function(e) NULL)
+        if (is.null(img) || length(img) == 0) {
+            vdir <- sme@spacemarkers$params$visiumDir
+            if (!is.null(vdir) && dir.exists(file.path(vdir, "spatial"))) {
+                img <- tryCatch(
+                    readbitmap::read.bitmap(.pick_image(
+                        file.path(vdir, "spatial"), resolution)),
+                    error = function(e) NULL)
+            }
+        }
+    }
+
+    # --- Crop and build plot ------------------------------------------------
+    if (!is.null(img)) {
+        img_mat <- if (is.matrix(img) || length(dim(img)) == 3) img else as.matrix(img)
+        nc <- if (length(dim(img_mat)) >= 2) ncol(img_mat) else length(img_mat)
+        nr <- if (length(dim(img_mat)) >= 2) nrow(img_mat) else 1L
+        if (crop) {
+            xr <- range(df$x, na.rm = TRUE); yr <- range(df$y, na.rm = TRUE)
+            xmin <- max(1L, floor(xr[1])); xmax <- min(nc, ceiling(xr[2]))
+            ymin <- max(1L, floor(yr[1])); ymax <- min(nr, ceiling(yr[2]))
+            img_mat <- if (length(dim(img_mat)) == 2L) {
+                img_mat[ymin:ymax, xmin:xmax, drop = FALSE]
+            } else {
+                img_mat[ymin:ymax, xmin:xmax, , drop = FALSE]
+            }
+            df <- dplyr::mutate(df, x_c = x - xmin + 1L, y_c = y - ymin + 1L)
+            xl <- c(0, xmax - xmin + 1L); yl <- c(0, ymax - ymin + 1L)
+        } else {
+            df <- dplyr::mutate(df, x_c = x, y_c = y)
+            xl <- c(0, nc); yl <- c(0, nr)
+        }
+        p <- ggplot2::ggplot() +
+            ggplot2::annotation_raster(as.raster(img_mat), 0, diff(xl), 0, diff(yl))
+    } else {
+        # No image: use data extents. Shift x/y to start at 0 so the
+        # `yl[2] - y_c` flip used in the geom_point aes() lands inside
+        # ylim instead of being clipped (Copilot review, R/utils.R:623).
+        df <- dplyr::mutate(df,
+                            x_c = x - min(x, na.rm = TRUE),
+                            y_c = y - min(y, na.rm = TRUE))
+        xl <- c(0, max(df$x_c, na.rm = TRUE))
+        yl <- c(0, max(df$y_c, na.rm = TRUE))
+        p <- ggplot2::ggplot()
+    }
+
+    p <- p +
+        ggplot2::geom_point(
+            data = df,
+            ggplot2::aes(x_c, yl[2] - y_c, fill = .data[[feature_col]]),
+            shape = 21, color = "black", size = point_size,
+            stroke = stroke, alpha = alpha) +
+        ggplot2::coord_fixed(xlim = xl, ylim = yl, expand = FALSE) +
+        ggplot2::labs(fill = feature_col, x = NULL, y = NULL, title = title) +
+        ggplot2::theme_bw(text_size) +
+        ggplot2::theme(
+            plot.background = if (!is.null(bg_color))
+                ggplot2::element_rect(fill = bg_color, color = NA)
+            else ggplot2::element_blank()
+        )
+
+    if (is.numeric(df[[feature_col]])) {
+        p <- p + (if (!is.null(colors))
+                    ggplot2::scale_fill_gradientn(colours = colors)
+                  else viridis::scale_fill_viridis())
+    } else {
+        vals <- unique(stats::na.omit(df[[feature_col]]))
+        p <- p + if (!is.null(colors))
+                    ggplot2::scale_fill_manual(values = colors)
+                 else if (length(vals) > 1)
+                    ggplot2::scale_fill_manual(values = stats::setNames(
+                        RColorBrewer::brewer.pal(max(3, min(length(vals), 9)),
+                                                 "Set1")[seq_along(vals)], vals))
+                 else ggplot2::scale_fill_manual(values = "red")
+    }
+    return(p)
+}
+
 
 
 #' @title calculate_lr_scores
@@ -377,10 +718,26 @@ plot_spatial_data_over_image <- function(
 #' weight L-R pairs based on their presence in multiple pairs to reduce bias from
 #' promiscuous ligands or receptors.
 #' @return Data frame with L-R scores and p-values
-#' @export
-calculate_lr_scores <- function(ligand_scores, receptor_scores, lr_pairs,
-                              ligand_test = c("greater", "two.sided"), method = c("geometric_mean", "arithmetic_mean"),
-                              weighted = TRUE) {
+#' @examples
+#' set.seed(1)
+#' lr_pairs <- data.frame(
+#'     ligand          = c("L1", "L2"),
+#'     receptor        = c("R1", "R2"),
+#'     ligand.symbol   = c("L1", "L2"),
+#'     receptor.symbol = c("R1", "R2"),
+#'     row.names       = c("L1_R1", "L2_R2"))
+#' ls <- matrix(runif(4), 2, 2,
+#'              dimnames = list(rownames(lr_pairs),
+#'                              c("A_near_B", "B_near_A")))
+#' rs <- matrix(runif(4), 2, 2,
+#'              dimnames = list(rownames(lr_pairs), c("A", "B")))
+#' calculate_lr_scores(ls, rs, lr_pairs = lr_pairs,
+#'                     method = "arithmetic_mean", weighted = FALSE)
+#' @rdname calculate_lr_scores
+setMethod("calculate_lr_scores", "ANY",
+    function(ligand_scores, receptor_scores = NULL, lr_pairs = NULL,
+             ligand_test = NULL, method = "geometric_mean",
+             weighted = TRUE) {
 
     method <- match.arg(method[1], choices = c("geometric_mean", "arithmetic_mean"))
        # parameter checks
@@ -440,7 +797,8 @@ calculate_lr_scores <- function(ligand_scores, receptor_scores, lr_pairs,
         stop("Receptor scores have been calculated using calculate_gene_set_score (overexpression) of receptors near source cell; use calculate_gene_set_specificity for receptors instead.")
     }
 
-}
+    }
+)
 
 #' Calculate Gene Set Specificity Scores
 #' @title calculate_gene_set_specificity
@@ -464,12 +822,32 @@ calculate_lr_scores <- function(ligand_scores, receptor_scores, lr_pairs,
 #' - For each gene set, scores are aggregated using the specified method and gene weights.
 #'
 #' @examples
-#' # Example usage:
-#' # gene_set_scores <- calculate_gene_set_specificity(expr_matrix, spPatterns, gene_sets)
-#'
-#' @export
-calculate_gene_set_specificity <- function(data, spPatterns, gene_sets, weighted = TRUE, method = c("geometric_mean", "arithmetic_mean")) {
+#' set.seed(1)
+#' nb <- 30
+#' counts <- matrix(rpois(6 * nb, 3), nrow = 6,
+#'     dimnames = list(paste0("G", 1:6), paste0("s", seq_len(nb))))
+#' spPatterns <- data.frame(
+#'     barcode = paste0("s", seq_len(nb)),
+#'     x = runif(nb), y = runif(nb),
+#'     A = runif(nb), B = runif(nb))
+#' gene_sets <- list(set1 = c("G1","G2"), set2 = c("G4","G5"))
+#' calculate_gene_set_specificity(counts, spPatterns, gene_sets,
+#'                                method = "arithmetic_mean")
+#' @rdname calculate_gene_set_specificity
+setMethod("calculate_gene_set_specificity", "ANY",
+    function(data, spPatterns = NULL, gene_sets = NULL, weighted = TRUE,
+             method = c("geometric_mean", "arithmetic_mean")) {
     method <- match.arg(method[1], choices = c("geometric_mean", "arithmetic_mean"))
+    if (is.null(gene_sets)) {
+        stop("'gene_sets' must be provided for non-SpaceMarkersExperiment ",
+             "inputs. The NULL default is reserved for the SME method, ",
+             "which can derive gene sets from params(x).")
+    }
+    if (is.null(spPatterns)) {
+        stop("'spPatterns' must be provided for non-SpaceMarkersExperiment ",
+             "inputs (cell-type fractions per spot are required to bin ",
+             "high vs low expressors).")
+    }
     genes <- unique(unlist(gene_sets))
     genes <- intersect(genes, rownames(data))
     if (length(genes) == 0) {
@@ -530,7 +908,8 @@ calculate_gene_set_specificity <- function(data, spPatterns, gene_sets, weighted
     }
 
     return(gene_set_scores)
-}
+    }
+)
 
 .calculate_fc_score <- function(expr, spPatterns, gene, ct,
                               low_thr = 0.2, high_thr = 0.8) {
