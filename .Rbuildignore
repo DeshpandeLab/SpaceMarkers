@@ -1,9 +1,38 @@
-Dockerfile
-.gitignore
-.github
-.dockerignore
-nextflow
-/vignettes/test-args.Rmd
+## Repository / tooling files that don't ship in the source tarball
+^Dockerfile$
+^\.gitignore$
+^\.github$
+^\.dockerignore$
+^nextflow$
+^/vignettes/test-args\.Rmd$
 ^docs$
 ^docs/superpowers$
 ^SpaceMarkers\.BiocCheck$
+^\.claude$
+^\.\.Rcheck$
+^\.Rcheck$
+^\.Rproj\.user$
+^.*\.Rproj$
+^Brewfile$
+^README\.Rmd$
+
+## Catch-all for analysis artifacts that accumulate at the top level.
+## These patterns are anchored to the top level (^[^/]+) so they don't
+## affect data/, inst/extdata/, vignettes/, etc.
+^[^/]+\.rds$
+^[^/]+\.Rda$
+^[^/]+\.csv$
+^[^/]+\.csvFALSE$
+^[^/]+_heatmap.*\.png$
+^circos_.*\.png$
+^heatmap_.*\.png$
+^new_heatmap.*\.png$
+^LR_scores_.*\.png$
+^Fibroblast_.*\.png$
+^PDAC_.*\.png$
+^\.LR_scores.*
+
+## R session detritus
+^\.RData$
+^\.Rhistory$
+^\.DS_Store$

@@ -43,11 +43,25 @@ tests/testthat/.DS_Store
 tests/testthat/testdata/.DS_Store
 vignettes/.DS_Store
 
-# GitHub directories
-.github/
-
-# Images
-*.png
+# Top-level analysis artifacts that pile up during interactive runs.
+# Anchored with leading "/" so vignette/README/inst figures stay tracked.
+/circos_*.png
+/heatmap_*.png
+/new_heatmap*.png
+/LR_scores_*.png
+/Fibroblast_*.png
+/PDAC_*.png
+/F2P*.csv
+/PDAC_*.csv
+/FIBROBLASTS_*.csv
+/IMscores.rds
+/LRscores.rds
+/LRtemp.Rda
+/lr_*.rds
+/lr_dfs.rds
+/top_*.csv
+/top_*.csvFALSE
+/Brewfile
 
 # GH token
 pat.txt
