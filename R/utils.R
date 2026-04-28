@@ -255,6 +255,12 @@ setMethod("calculate_gene_set_score", "ANY",
              method = c("geometric_mean", "arithmetic_mean")) {
     method <- match.arg(method[1], choices = c("geometric_mean", "arithmetic_mean"))
 
+    if (is.null(gene_sets)) {
+        stop("'gene_sets' must be provided for non-SpaceMarkersExperiment ",
+             "inputs. The NULL default is reserved for the SME method, ",
+             "which can derive gene sets from params(x).")
+    }
+
     IMS <- split(IMscores, IMscores$cell_interaction)
 
     # Pre-calculate gene overlap counts
@@ -652,10 +658,14 @@ plot_spatial <- function(sme, feature_col = NULL,
         p <- ggplot2::ggplot() +
             ggplot2::annotation_raster(as.raster(img_mat), 0, diff(xl), 0, diff(yl))
     } else {
-        # No image: use data extents
-        df <- dplyr::mutate(df, x_c = x, y_c = y)
-        xl <- range(df$x_c, na.rm = TRUE)
-        yl <- range(df$y_c, na.rm = TRUE)
+        # No image: use data extents. Shift x/y to start at 0 so the
+        # `yl[2] - y_c` flip used in the geom_point aes() lands inside
+        # ylim instead of being clipped (Copilot review, R/utils.R:623).
+        df <- dplyr::mutate(df,
+                            x_c = x - min(x, na.rm = TRUE),
+                            y_c = y - min(y, na.rm = TRUE))
+        xl <- c(0, max(df$x_c, na.rm = TRUE))
+        yl <- c(0, max(df$y_c, na.rm = TRUE))
         p <- ggplot2::ggplot()
     }
 
@@ -828,6 +838,16 @@ setMethod("calculate_gene_set_specificity", "ANY",
     function(data, spPatterns = NULL, gene_sets = NULL, weighted = TRUE,
              method = c("geometric_mean", "arithmetic_mean")) {
     method <- match.arg(method[1], choices = c("geometric_mean", "arithmetic_mean"))
+    if (is.null(gene_sets)) {
+        stop("'gene_sets' must be provided for non-SpaceMarkersExperiment ",
+             "inputs. The NULL default is reserved for the SME method, ",
+             "which can derive gene sets from params(x).")
+    }
+    if (is.null(spPatterns)) {
+        stop("'spPatterns' must be provided for non-SpaceMarkersExperiment ",
+             "inputs (cell-type fractions per spot are required to bin ",
+             "high vs low expressors).")
+    }
     genes <- unique(unlist(gene_sets))
     genes <- intersect(genes, rownames(data))
     if (length(genes) == 0) {

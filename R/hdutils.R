@@ -316,6 +316,16 @@ return(df)
 setMethod("calculate_gene_scores_directed", "ANY",
     function(data, pat_hotspots = NULL, influence_hotspots = NULL,
              pattern_pairs = NULL, ...) {
+    if (is.null(pat_hotspots)) {
+        stop("'pat_hotspots' must be provided to ",
+             "calculate_gene_scores_directed() for non-SpaceMarkersExperiment ",
+             "inputs. The NULL default is reserved for the SME method.")
+    }
+    if (is.null(influence_hotspots)) {
+        stop("'influence_hotspots' must be provided to ",
+             "calculate_gene_scores_directed() for non-SpaceMarkersExperiment ",
+             "inputs. The NULL default is reserved for the SME method.")
+    }
     if (is.null(pattern_pairs)) {
         pattern_pairs <- utils::combn(setdiff(colnames(pat_hotspots), c("x", "y", "barcode")), 2, simplify = FALSE)
     }
@@ -386,6 +396,12 @@ setMethod("calculate_overlap_directed", "data.frame",
     if(length(method) > 1){
         method <- method[1]
         message("Only one method can be used at a time. Using ", method)
+    }
+
+    if (is.null(influence_hotspots)) {
+        stop("'influence_hotspots' must be provided to ",
+             "calculate_overlap_directed() for non-SpaceMarkersExperiment ",
+             "inputs. The NULL default is reserved for the SME method.")
     }
 
     if (is.null(patternList)) {

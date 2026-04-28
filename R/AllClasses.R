@@ -173,7 +173,9 @@ setAs("SingleCellExperiment", "SpaceMarkersExperiment", function(from) {
             SingleCellExperiment::reducedDim(from, spatial_rd[1L])
         )
         if (ncol(spatial_coords) >= 2L) {
-            colnames(spatial_coords)[seq_len(2L)] <- c("x", "y")
+            # Match the convention used by load10XCoords() and the rest of
+            # the package: spatialCoords columns are y, x in that order.
+            colnames(spatial_coords)[seq_len(2L)] <- c("y", "x")
         }
         rownames(spatial_coords) <- colnames(from)
     }
