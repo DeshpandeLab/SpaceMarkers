@@ -1,6 +1,6 @@
 # SpaceMarkers - unreleased
 
-# SpaceMarkers 2.1.1
+# SpaceMarkers 2.3.1
 
 ## New SpaceMarkersExperiment class
 * Added `SpaceMarkersExperiment` (SME), an S4 class extending `SpatialExperiment` that carries hotspots, influence maps, and pattern metadata alongside expression and spatial coordinates.
