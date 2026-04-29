@@ -22,7 +22,17 @@ knitr::opts_knit$set(
 knitr::opts_chunk$set(
     out.extra = 'style="display:block; margin:auto;"',
     warning = FALSE,
-    message = FALSE
+    message = FALSE,
+    # Compact, HTML-friendly rendering. JPEG (rather than PNG) is the
+    # right choice for the H&E histology overlays — photographic raster
+    # compresses ~5x better as JPEG at quality 80, keeping the rendered
+    # vignette under Bioconductor's 5 MB per-file size guideline.
+    dev = "jpeg",
+    dev.args = list(quality = 80),
+    dpi = 72,
+    fig.width = 5,
+    fig.height = 4,
+    fig.retina = 1
 )
 ```
 
