@@ -371,23 +371,35 @@ SpaceMarkers <- function(x = NULL,
 
     # Spatial params fallback
     if (is.null(spatial_params(sme))) {
-        message("Computing optimal parameters...")
         stored_visiumDir <- sme@spacemarkers$params$visiumDir
         if (is.null(stored_visiumDir)) {
-            stop(
-                "spatial_params(sme) is NULL and no visiumDir is stored in ",
-                "sme@spacemarkers$params$visiumDir. For manually created ",
-                "SpaceMarkersExperiment objects, set spatial_params(sme) ",
-                "explicitly before running SpaceMarkers()."
-            )
+            # No visiumDir to read scalefactors from. Fall back to the
+            # same defaults find_pattern_hotspots() uses when params is
+            # NULL: sigmaOpt = sigma (or 10), threshOpt = threshold.
+            patternList <- setdiff(colnames(.sme_spPatterns(sme)),
+                                   c("x", "y", "barcode"))
+            sigma_default <- if (is.null(sigma)) 10 else as.numeric(sigma[1])
+            op <- matrix(c(sigma_default, threshold),
+                         nrow = 2, ncol = length(patternList),
+                         dimnames = list(c("sigmaOpt", "threshOpt"),
+                                         patternList))
+            message("spatial_params(sme) is NULL and no visiumDir is ",
+                    "stored. Using sigma = ", sigma_default,
+                    ", threshold = ", threshold,
+                    " for all patterns. Set spatial_params(sme) ",
+                    "explicitly before running SpaceMarkers() if you ",
+                    "want tuned values per pattern.")
+            spatial_params(sme) <- op
+        } else {
+            message("Computing optimal parameters...")
+            stored_res <- sme@spacemarkers$params$resolution %||% resolution
+            op <- get_spatial_parameters(
+                spatialPatterns = .sme_spPatterns(sme),
+                visiumDir = stored_visiumDir,
+                spatialDir = spatialDir, pattern = pattern,
+                sigma = sigma, threshold = threshold, resolution = stored_res)
+            spatial_params(sme) <- op
         }
-        stored_res <- sme@spacemarkers$params$resolution %||% resolution
-        op <- get_spatial_parameters(
-            spatialPatterns = .sme_spPatterns(sme),
-            visiumDir = stored_visiumDir,
-            spatialDir = spatialDir, pattern = pattern,
-            sigma = sigma, threshold = threshold, resolution = stored_res)
-        spatial_params(sme) <- op
     }
 
     sme
