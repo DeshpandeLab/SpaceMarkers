@@ -494,6 +494,7 @@ load10X <- function(visiumDir,
 #' @export
 load_anndata <- function(file,
                          reader = c("auto", "anndataR", "zellkonverter"),
+                         patterns_meta_table = "cell_type_composition",
                          ...) {
     reader <- match.arg(reader)
     if (reader == "auto") {
@@ -518,6 +519,41 @@ load_anndata <- function(file,
         zellkonverter = zellkonverter::readH5AD(file, ...)
     )
     sme <- methods::as(sce, "SpaceMarkersExperiment")
+
+    # add spatial patterns from anndata
+    if(patterns_meta_table %in% names(sce@metadata)) {
+        tryCatch({
+            message(sprintf("Adding '%s' to SpaceMarkersExperiment.",
+                            patterns_meta_table))
+            cell_compositions <- eval(parse(text = patterns_meta_table),
+                                envir = sce@metadata)
+            sme <- sme[, rownames(cell_compositions), drop = FALSE]
+            spatial_patterns(sme) <- as.matrix(cell_compositions)}
+            , error = function(e) {
+        warning(sprintf("Failed to add '%s' from AnnData metadata: %s",
+                        patterns_meta_table, conditionMessage(e)))
+    })
+    }
+
+    # add spatial parameters from anndata
+    if ('spatial' %in% names(sce@metadata)){
+        tryCatch({
+        message("Adding spatial parameters from AnnData metadata.")
+        sigma <- sce@metadata[['spatial']][[1]][['scalefactors']][['spot_diameter_fullres']]
+        spatial_params(sme) <- get_spatial_parameters(
+            spatialPatterns = cbind(
+                as.data.frame(spatial_patterns(sme)),
+                barcode = colnames(sme),
+                x = spatialCoords(sme)[, "x"],
+                y = spatialCoords(sme)[, "y"]
+            ),
+            sigma = sigma)
+        },error = function(e) {
+        warning(sprintf("Failed to add '%s' from AnnData metadata: %s",
+                        "spot_diameter_fullres", conditionMessage(e)))
+    })
+    }
+
     .unpack_spacemarkers_state(sme)
 }
 
