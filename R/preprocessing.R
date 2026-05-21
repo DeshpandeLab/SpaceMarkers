@@ -483,6 +483,9 @@ load10X <- function(visiumDir,
 #' @param file Path to an \code{.h5ad} file.
 #' @param reader One of \code{"auto"}, \code{"anndataR"},
 #'   \code{"zellkonverter"}.
+#' @param patterns_meta_table Optional: name of the \code{@metadata} table in the
+#'   AnnData object that contains spatial pattern information to be added to the SME. 
+#' Default "cell_type_composition".
 #' @param ... Additional arguments forwarded to the chosen reader's
 #'   read function.
 #' @return A \code{\link{SpaceMarkersExperiment}} object.
