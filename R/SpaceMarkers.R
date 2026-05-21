@@ -378,7 +378,7 @@ SpaceMarkers <- function(x = NULL,
             # NULL: sigmaOpt = sigma (or 10), threshOpt = threshold.
             patternList <- setdiff(colnames(.sme_spPatterns(sme)),
                                    c("x", "y", "barcode"))
-            sigma_default <- if (is.null(sigma)) 10 else as.numeric(sigma[1])
+            sigma_default <- if (is.null(sigma)) 20 else as.numeric(sigma[1])
             op <- matrix(c(sigma_default, threshold),
                          nrow = 2, ncol = length(patternList),
                          dimnames = list(c("sigmaOpt", "threshOpt"),
