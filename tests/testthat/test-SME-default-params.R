@@ -30,6 +30,6 @@ test_that("SpaceMarkers() on a manually-built SME without visiumDir uses default
     sp <- spatial_params(sme_filt)
     expect_false(is.null(sp))
     expect_equal(rownames(sp), c("sigmaOpt", "threshOpt"))
-    expect_equal(unname(sp["sigmaOpt", ]), c(10, 10))
+    expect_equal(unname(sp["sigmaOpt", ]), c(20, 20))
     expect_equal(unname(sp["threshOpt", ]), c(4, 4))
 })
