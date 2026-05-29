@@ -4,13 +4,22 @@
 \alias{load_anndata}
 \title{Load an AnnData file as a SpaceMarkersExperiment}
 \usage{
-load_anndata(file, reader = c("auto", "anndataR", "zellkonverter"), ...)
+load_anndata(
+  file,
+  reader = c("auto", "anndataR", "zellkonverter"),
+  patterns_meta_table = "cell_type_composition",
+  ...
+)
 }
 \arguments{
 \item{file}{Path to an \code{.h5ad} file.}
 
 \item{reader}{One of \code{"auto"}, \code{"anndataR"},
 \code{"zellkonverter"}.}
+
+\item{patterns_meta_table}{Optional: name of the \code{@metadata} table in the
+AnnData object that contains spatial pattern information to be added to the SME.
+Default "cell_type_composition".}
 
 \item{...}{Additional arguments forwarded to the chosen reader's
 read function.}
