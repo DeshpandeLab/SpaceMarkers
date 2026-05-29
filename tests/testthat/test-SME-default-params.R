@@ -1,4 +1,4 @@
-test_that("SpaceMarkers() on a manually-built SME without visiumDir uses default params with a message", {
+test_that(".apply_sme_filters() on a manually-built SME without visiumDir uses default params with a message", {
     set.seed(2)
     nb <- 30; ng <- 8
     counts <- matrix(rpois(ng * nb, 3), nrow = ng,
