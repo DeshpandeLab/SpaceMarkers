@@ -20,7 +20,8 @@ setMethod("calculate_influence", "data.frame",
     function(spPatterns, optParams = NULL, ...) {
     patnames <- setdiff(colnames(spPatterns),
                        c("x", "y", "barcode"))
-
+    keep_cols <- c("barcode", "x", "y", patnames)
+    spPatterns <- spPatterns[stats::complete.cases(spPatterns[, keep_cols]),]
     allwin <- spatstat.geom::owin(
     range(spPatterns$x),
     range(spPatterns$y))
