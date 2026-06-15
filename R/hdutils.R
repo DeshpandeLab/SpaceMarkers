@@ -18,40 +18,42 @@
 #' @rdname calculate_influence
 setMethod("calculate_influence", "data.frame",
     function(spPatterns, optParams = NULL, ...) {
-    patnames <- setdiff(colnames(spPatterns),
-                       c("x", "y", "barcode"))
-    keep_cols <- c("barcode", "x", "y", patnames)
-    spPatterns <- spPatterns[stats::complete.cases(spPatterns[, keep_cols]),]
+    patnames <- setdiff(colnames(spPatterns), c("x", "y", "barcode"))
+
+    # Filter out spots with any NA in pattern columns or coordinates
+    keep_cols <- c("x", "y", patnames)
+    complete_idx <- stats::complete.cases(spPatterns[, keep_cols])
+    spPatterns_complete <- spPatterns[complete_idx, ]
+
     allwin <- spatstat.geom::owin(
-    range(spPatterns$x),
-    range(spPatterns$y))
-    X <- spatstat.geom::ppp(x = spPatterns$x, y = spPatterns$y,
-                            window = allwin,
-                            marks = spPatterns[,patnames[1]])
+        range(spPatterns_complete$x),
+        range(spPatterns_complete$y))
 
     spInfluence <- sapply(patnames, function(pat) {
-    # Create a point pattern object for each pattern
-    X <- spatstat.geom::ppp(x = spPatterns$x, y = spPatterns$y,
-                            window = allwin,
-                            marks = spPatterns[,pat])
-
-    # Calculate the kernel for the specified pattern
-    Kact1 <- if (is.null(optParams)) {
-      spatstat.explore::Smooth(X, at = "points", ...)
-    } else {
-      spatstat.explore::Smooth(
-        X, at = "points", sigma = optParams[1, pat], ...)
-    }
-
-    # Plot the K-function
-    return(Kact1)
+        X <- spatstat.geom::ppp(x = spPatterns_complete$x,
+                                y = spPatterns_complete$y,
+                                window = allwin,
+                                marks = spPatterns_complete[, pat])
+        if (is.null(optParams)) {
+            spatstat.explore::Smooth(X, at = "points", ...)
+        } else {
+            spatstat.explore::Smooth(X, at = "points",
+                                     sigma = optParams[1, pat], ...)
+        }
     })
+
     spInfluence <- as.data.frame(spInfluence)
     colnames(spInfluence) <- patnames
-    spInfluence <- cbind(spPatterns[,c("barcode","x", "y")], spInfluence)
 
-    return(spInfluence)
+    # Re-join to the FULL spot list, filling NA for dropped spots
+    out <- spPatterns[, c("barcode", "x", "y")]
+    out[, patnames] <- NA_real_
+    out[complete_idx, patnames] <- spInfluence
+
+    return(out)
 })
+
+
 
 #' @title Compute the threshold for identifying outlier values or hotspots
 #' @description This function computes the threshold for identifying outlier 
@@ -63,27 +65,28 @@ setMethod("calculate_influence", "data.frame",
 #' @return A list containing the computed thresholds
 #' @importFrom mixtools normalmixEM
 .calc_threshold <- function(df, minval = 0.01, maxval = 0.99, method=c("abs","pct")) {
-if (method[1]=="pct"){
-    minthresh <- quantile(df,minval)
-    maxthresh <- quantile(df,maxval)
-} else {
-   minthresh <- minval
-   maxthresh <- maxval
-}
-#Calculate the two compmonents of the normal mixture model
-res <- try(mixtools::normalmixEM(df, k = 2, maxit = 1000, epsilon = 1e-8), silent = TRUE)
-if (inherits(res, "try-error") || is.null(res) || !all(c("mu", "sigma") %in% names(res)) || res$ft == 1000) {
-    warning("mixtools::normalmixEM failed or reached maxit; using minval as threshold")
-    return(minthresh)
-}
-comps <- res
-
-# Identify smaller component
-small <- which.min(comps$mu)
-
-thresh <- min(max(comps$mu[small] + (comps$sigma[small] * 4), minthresh),maxthresh)
-
-return(thresh)
+  df <- df[!is.na(df)]
+  if (method[1]=="pct"){
+      minthresh <- quantile(df,minval)
+      maxthresh <- quantile(df,maxval)
+  } else {
+     minthresh <- minval
+     maxthresh <- maxval
+  }
+  #Calculate the two compmonents of the normal mixture model
+  res <- try(mixtools::normalmixEM(df, k = 2, maxit = 1000, epsilon = 1e-8), silent = TRUE)
+  if (inherits(res, "try-error") || is.null(res) || !all(c("mu", "sigma") %in% names(res)) || res$ft == 1000) {
+      warning("mixtools::normalmixEM failed or reached maxit; using minval as threshold")
+      return(minthresh)
+  }
+  comps <- res
+  
+  # Identify smaller component
+  small <- which.min(comps$mu)
+  
+  thresh <- min(max(comps$mu[small] + (comps$sigma[small] * 4), minthresh),maxthresh)
+  
+  return(thresh)
 }
 #' @title Compute the thresholds for all columns in a data frame
 #' @description This function computes the thresholds for all columns in a 
