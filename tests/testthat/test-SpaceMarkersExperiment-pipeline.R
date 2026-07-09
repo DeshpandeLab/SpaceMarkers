@@ -436,6 +436,18 @@ test_that("get_pairwise_interacting_genes(SME) errors without hotspots", {
     )
 })
 
+test_that("get_pairwise_interacting_genes(SME) also populates undirected_scores", {
+    # Mirrors the directed workflow, where calculate_gene_scores_directed()
+    # alone leaves directed_scores(sme) populated: a single call here should
+    # leave undirected_scores(sme) populated too, without a separate
+    # get_im_scores(sme) call.
+    sme <- make_fixture_sme() |> find_all_hotspots()
+    sme2 <- get_pairwise_interacting_genes(
+        sme, mode = "DE", analysis = "enrichment", minOverlap = 1, workers = 1)
+    expect_false(is.null(undirected_scores(sme2)))
+    expect_equal(undirected_scores(sme2), get_im_scores(interactions(sme2)))
+})
+
 # ---- Task 4: get_im_scores as S4 generic with SME method ----
 
 test_that("get_im_scores(SME) stores undirected_scores", {

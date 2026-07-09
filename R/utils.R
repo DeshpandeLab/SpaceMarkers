@@ -95,14 +95,14 @@ plot_overlap_scores <- function(df, title = "Spatial Overlap Scores", out = NULL
 
     # Detect shape:
     #   undirected: columns pattern1, pattern2, overlapScore  (symmetric heatmap)
-    #   directed:   columns pattern, influence, relAbundance   (source -> "near.<target>")
+    #   directed:   columns target, source, relAbundance   (source's influence -> "near.<target>")
     cn <- colnames(df)
     if (all(c("pattern1", "pattern2", "overlapScore") %in% cn)) {
         xcol <- "pattern1"; ycol <- "pattern2"; fill <- "overlapScore"
-    } else if (all(c("pattern", "influence", "relAbundance") %in% cn)) {
-        xcol <- "pattern"; ycol <- "influence"; fill <- "relAbundance"
+    } else if (all(c("target", "source", "relAbundance") %in% cn)) {
+        xcol <- "target"; ycol <- "source"; fill <- "relAbundance"
     } else {
-        stop("Unknown overlap_scores shape; expected undirected (pattern1/pattern2/overlapScore) or directed (pattern/influence/relAbundance) columns.")
+        stop("Unknown overlap_scores shape; expected undirected (pattern1/pattern2/overlapScore) or directed (target/source/relAbundance) columns.")
     }
 
     p <- ggplot2::ggplot(data = df,
