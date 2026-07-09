@@ -275,8 +275,11 @@ make_fixture_sme <- function() {
                      dimnames = list(
                          paste0("G", seq_len(n_genes)),
                          paste0("spot", seq_len(n_spots))))
-    coords <- matrix(runif(n_spots * 2, 0, 10), ncol = 2,
-                     dimnames = list(NULL, c("y", "x")))
+    coords <- matrix(
+      runif(n_spots * 2, 0, 10),
+      ncol = 2,
+      dimnames = list(paste0("spot", seq_len(n_spots)), c("y", "x"))
+    )
     patterns <- S4Vectors::DataFrame(
         Pattern_1 = runif(n_spots), Pattern_2 = runif(n_spots),
         row.names = paste0("spot", seq_len(n_spots)))

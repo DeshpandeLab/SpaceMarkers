@@ -634,106 +634,101 @@ load_anndata <- function(file,
 #' @param threshold Numeric outlier threshold applied to every pattern's
 #'   \code{threshOpt}. Default 4.
 #' @return A \code{\link{SpaceMarkersExperiment}} object.
-#' @examples
-#' \donttest{
-#' # Requires the Seurat package and a real Seurat .rds file:
-#' # sme <- load_seurat("path/to/seurat_object.rds", deconv_assay = "deconv")
-#' }
 #' @export
 load_seurat <- function(file, deconv_assay = "deconv",
                         layer = c("data", "counts", "scale.data"),
                         image = NULL, threshold = 4) {
-    layer <- match.arg(layer)
-    if (!requireNamespace("Seurat", quietly = TRUE)) {
-        stop(
-            "load_seurat() requires the 'Seurat' package. Install with: ",
-            "install.packages('Seurat')."
-        )
+  layer <- match.arg(layer)
+  if (!requireNamespace("Seurat", quietly = TRUE)) {
+    stop(
+      "load_seurat() requires the 'Seurat' package. Install with: ",
+      "install.packages('Seurat')."
+    )
+  }
+  
+  if (methods::is(file, "Seurat")) {
+    seurat_object <- file
+  } else if (is.character(file)) {
+    seurat_object <- readRDS(file)
+    if (!methods::is(seurat_object, "Seurat")) {
+      stop(sprintf(
+        "File '%s' did not contain a Seurat object (found class '%s').",
+        file, paste(class(seurat_object), collapse = "/")
+      ))
     }
-
-    if (methods::is(file, "Seurat")) {
-        seurat_object <- file
-    } else if (is.character(file)) {
-        seurat_object <- readRDS(file)
-        if (!methods::is(seurat_object, "Seurat")) {
-            stop(sprintf(
-                "File '%s' did not contain a Seurat object (found class '%s').",
-                file, paste(class(seurat_object), collapse = "/")
-            ))
-        }
+  } else {
+    stop("'file' must be a path to an .rds file or an already-loaded ",
+         "Seurat object.")
+  }
+  
+  sce <- Seurat::as.SingleCellExperiment(seurat_object)
+  sme <- methods::as(sce, "SpaceMarkersExperiment")
+  
+  if (is.null(deconv_assay)) {
+    message(
+      "deconv_assay is NULL; no spatial patterns were added to the ",
+      "SpaceMarkersExperiment. Use get_spatial_features() (e.g. ",
+      "get_spatial_features(seurat_object, method = \"Seurat\")) to ",
+      "obtain spatial patterns, then attach them with ",
+      "spatial_patterns(sme) <- ... or add_features(sme, ...)."
+    )
+    return(sme)
+  }
+  if (!is.character(deconv_assay) || length(deconv_assay) != 1L) {
+    stop("'deconv_assay' must be a single assay name string, or NULL.")
+  }
+  
+  avail_assays <- names(methods::slot(seurat_object, "assays"))
+  if (!deconv_assay %in% avail_assays) {
+    stop(sprintf(
+      "deconv_assay = '%s' not found in the Seurat object. Available assays: %s",
+      deconv_assay, paste(avail_assays, collapse = ", ")
+    ))
+  }
+  deconv_data <- .get_seurat_assay_data(seurat_object, deconv_assay, layer)
+  spatial_patterns(sme) <- t(as.matrix(deconv_data))
+  
+  pattern_names <- sme@spacemarkers$params$pattern_names
+  if (!is.null(pattern_names) && length(pattern_names) > 0L) {
+    avail_images <- tryCatch(Seurat::Images(seurat_object),
+                             error = function(e) character())
+    if (length(avail_images) == 0L) {
+      warning("Seurat object has no images; spatial_params(sme) was ",
+              "not set. Set it manually (a matrix with rows ",
+              "'sigmaOpt'/'threshOpt', one column per pattern) before ",
+              "running the SpaceMarkers pipeline.")
     } else {
-        stop("'file' must be a path to an .rds file or an already-loaded ",
-             "Seurat object.")
-    }
-
-    sce <- Seurat::as.SingleCellExperiment(seurat_object)
-    sme <- methods::as(sce, "SpaceMarkersExperiment")
-
-    if (is.null(deconv_assay)) {
-        message(
-            "deconv_assay is NULL; no spatial patterns were added to the ",
-            "SpaceMarkersExperiment. Use get_spatial_features() (e.g. ",
-            "get_spatial_features(seurat_object, method = \"Seurat\")) to ",
-            "obtain spatial patterns, then attach them with ",
-            "spatial_patterns(sme) <- ... or add_features(sme, ...)."
-        )
-        return(sme)
-    }
-    if (!is.character(deconv_assay) || length(deconv_assay) != 1L) {
-        stop("'deconv_assay' must be a single assay name string, or NULL.")
-    }
-
-    avail_assays <- names(methods::slot(seurat_object, "assays"))
-    if (!deconv_assay %in% avail_assays) {
+      if (is.null(image)) {
+        image <- avail_images[1]
+      } else if (!image %in% avail_images) {
         stop(sprintf(
-            "deconv_assay = '%s' not found in the Seurat object. Available assays: %s",
-            deconv_assay, paste(avail_assays, collapse = ", ")
+          "image = '%s' not found in the Seurat object. Available images: %s",
+          image, paste(avail_images, collapse = ", ")
         ))
+      }
+      scale_factors <- methods::slot(
+        methods::slot(seurat_object, "images")[[image]], "scale.factors")
+      if (!all(c("spot", "lowres") %in% names(scale_factors))) {
+        warning(sprintf(
+          "Image '%s' scale.factors is missing 'spot' and/or 'lowres'; spatial_params(sme) was not set.",
+          image
+        ))
+      } else {
+        radius <- scale_factors[["spot"]]
+        resolution <- scale_factors[["lowres"]]
+        sigma <- radius * resolution
+        optParams <- matrix(
+          0, nrow = 2, ncol = length(pattern_names),
+          dimnames = list(c("sigmaOpt", "threshOpt"), pattern_names)
+        )
+        optParams["sigmaOpt", ] <- sigma
+        optParams["threshOpt", ] <- threshold
+        spatial_params(sme) <- optParams
+      }
     }
-    deconv_data <- .get_seurat_assay_data(seurat_object, deconv_assay, layer)
-    spatial_patterns(sme) <- t(as.matrix(deconv_data))
-
-    pattern_names <- sme@spacemarkers$params$pattern_names
-    if (!is.null(pattern_names) && length(pattern_names) > 0L) {
-        avail_images <- tryCatch(Seurat::Images(seurat_object),
-                                 error = function(e) character())
-        if (length(avail_images) == 0L) {
-            warning("Seurat object has no images; spatial_params(sme) was ",
-                    "not set. Set it manually (a matrix with rows ",
-                    "'sigmaOpt'/'threshOpt', one column per pattern) before ",
-                    "running the SpaceMarkers pipeline.")
-        } else {
-            if (is.null(image)) {
-                image <- avail_images[1]
-            } else if (!image %in% avail_images) {
-                stop(sprintf(
-                    "image = '%s' not found in the Seurat object. Available images: %s",
-                    image, paste(avail_images, collapse = ", ")
-                ))
-            }
-            scale_factors <- methods::slot(
-                methods::slot(seurat_object, "images")[[image]], "scale.factors")
-            if (!all(c("spot", "lowres") %in% names(scale_factors))) {
-                warning(sprintf(
-                    "Image '%s' scale.factors is missing 'spot' and/or 'lowres'; spatial_params(sme) was not set.",
-                    image
-                ))
-            } else {
-                radius <- scale_factors[["spot"]]
-                resolution <- scale_factors[["lowres"]]
-                sigma <- radius * resolution
-                optParams <- matrix(
-                    0, nrow = 2, ncol = length(pattern_names),
-                    dimnames = list(c("sigmaOpt", "threshOpt"), pattern_names)
-                )
-                optParams["sigmaOpt", ] <- sigma
-                optParams["threshOpt", ] <- threshold
-                spatial_params(sme) <- optParams
-            }
-        }
-    }
-
-    sme
+  }
+  
+  sme
 }
 
 #' .get_seurat_assay_data
@@ -743,27 +738,27 @@ load_seurat <- function(file, deconv_assay = "deconv",
 #' @return A matrix (or matrix-like object) of assay values.
 #' @keywords internal
 .get_seurat_assay_data <- function(seurat_object, assay, layer = "data") {
+  out <- tryCatch(
+    Seurat::GetAssayData(seurat_object, assay = assay, layer = layer),
+    error = function(e) NULL
+  )
+  if (is.null(out)) {
     out <- tryCatch(
-        Seurat::GetAssayData(seurat_object, assay = assay, layer = layer),
-        error = function(e) NULL
+      Seurat::GetAssayData(seurat_object, assay = assay, slot = layer),
+      error = function(e) NULL
     )
-    if (is.null(out)) {
-        out <- tryCatch(
-            Seurat::GetAssayData(seurat_object, assay = assay, slot = layer),
-            error = function(e) NULL
-        )
-    }
-    if (is.null(out)) {
-        assay_obj <- methods::slot(seurat_object, "assays")[[assay]]
-        out <- tryCatch(methods::slot(assay_obj, layer), error = function(e) NULL)
-    }
-    if (is.null(out)) {
-        stop(sprintf(
-            "Could not extract layer/slot '%s' from assay '%s'.",
-            layer, assay
-        ))
-    }
-    out
+  }
+  if (is.null(out)) {
+    assay_obj <- methods::slot(seurat_object, "assays")[[assay]]
+    out <- tryCatch(methods::slot(assay_obj, layer), error = function(e) NULL)
+  }
+  if (is.null(out)) {
+    stop(sprintf(
+      "Could not extract layer/slot '%s' from assay '%s'.",
+      layer, assay
+    ))
+  }
+  out
 }
 
 #===================
