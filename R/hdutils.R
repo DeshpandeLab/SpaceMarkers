@@ -370,7 +370,10 @@ setMethod("calculate_gene_scores_directed", "ANY",
 #' scores for. If NULL, all patterns in pat_hotspots and influence_hotspots will be used.
 #' @details The function calculates the overlap scores between patterns hotspots
 #' using the specified method. The default method is "relative-abundance"
-#' @return A data frame with columns pattern, influence and overlapping abundance
+#' @return A data frame with columns target, source and overlapping abundance
+#' (relAbundance). \code{target} is the pattern whose own GMM hotspot is
+#' being examined; \code{source} (prefixed \code{"near."}) is the pattern
+#' whose influence zone overlaps into that hotspot.
 #' @examples
 #' hotspots <- data.frame(x = c(1,2,3,4,5),
 #'                         y = c(1,2,3,4,5),
@@ -433,7 +436,9 @@ setMethod("calculate_overlap_directed", "data.frame",
     # Melt normalized Jaccard for output
     dfOverlap <- reshape2::melt(overlapScore)
     dfOverlap <- dfOverlap[stats::complete.cases(dfOverlap),]
-    # Due to melting in lower triangular orientation, the column names are flipped
-    colnames(dfOverlap) <- c("pattern", "influence", "relAbundance")
+    # Due to melting in lower triangular orientation, the column names are flipped.
+    # "target" is the pattern's own hotspot (rows); "source" is the other
+    # pattern's influence zone (columns, prefixed "near.") overlapping into it.
+    colnames(dfOverlap) <- c("target", "source", "relAbundance")
     return(dfOverlap)
 })

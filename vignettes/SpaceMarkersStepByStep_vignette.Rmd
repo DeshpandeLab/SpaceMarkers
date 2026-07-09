@@ -473,7 +473,7 @@ analysis_type(sme_dir)
 
 `plot_overlap_scores()` auto-detects whether the stored scores are
 undirected (columns `pattern1`, `pattern2`, `overlapScore`) or directed
-(columns `pattern`, `influence`, `relAbundance`) and picks the right
+(columns `target`, `source`, `relAbundance`) and picks the right
 axes and fill scale accordingly.
 
 ```{r, message=FALSE, warning=FALSE, dpi=60, fig.width=6}
