@@ -30,7 +30,7 @@ both the Seurat v4 (\code{slot=}) and v5 (\code{layer=}) accessor APIs.}
 \item{image}{Name of the entry in \code{seurat_object@images} used to
 derive the spot radius / lowres scale factors for
 \code{spatial_params(sme)} (\code{sigma = scale.factors[["spot"]] *
-scale.factors[["lowres"]]}). Defaults to the first available image. If
+  scale.factors[["lowres"]]}). Defaults to the first available image. If
 no images are present, \code{spatial_params(sme)} is left unset (with a
 warning) rather than failing, since it is only relevant when spatial
 patterns were added.}
@@ -47,10 +47,10 @@ accepts an already-loaded \code{Seurat} object) and coerces it, via
 \code{as.SingleCellExperiment()}, into a
 \code{\link{SpaceMarkersExperiment}}. Equivalent to running:
 \preformatted{
-seurat_object <- readRDS(file)
-sme <- as(as.SingleCellExperiment(seurat_object), "SpaceMarkersExperiment")
-spatial_patterns(sme) <- t(seurat_object@assays[[deconv_assay]]@data)
-}
+  seurat_object <- readRDS(file)
+  sme <- as(as.SingleCellExperiment(seurat_object), "SpaceMarkersExperiment")
+  spatial_patterns(sme) <- t(seurat_object@assays[[deconv_assay]]@data)
+  }
 plus deriving \code{spatial_params(sme)} (\code{sigmaOpt}/\code{threshOpt})
 from the named image's scale factors.
 
@@ -59,10 +59,4 @@ composition, dimensionality reduction, etc.) are commonly stored in an
 assay rather than in \code{meta.data}; \code{deconv_assay} names that
 assay. This differs from object to object, so it is a parameter rather
 than a fixed default.
-}
-\examples{
-\donttest{
-# Requires the Seurat package and a real Seurat .rds file:
-# sme <- load_seurat("path/to/seurat_object.rds", deconv_assay = "deconv")
-}
 }

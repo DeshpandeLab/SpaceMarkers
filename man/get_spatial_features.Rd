@@ -20,7 +20,10 @@ all metadata columns with "_Feature" suffix are selected.}
 }
 \value{
 a matrix of spatial features with barcodes associated
-with individual coordinates
+with individual coordinates. Rows (barcodes) with an NA in any selected
+feature column are dropped, with a message reporting how many were
+removed (some deconvolution methods, e.g. RCTD, leave NAs for barcodes
+they could not estimate fractions for instead of omitting the row).
 }
 \description{
 This function loads spatial features from a file containing
