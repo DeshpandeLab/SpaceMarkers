@@ -314,7 +314,12 @@ NULL
 #' (\code{spatial_patterns(x) <- value}) the per-spot spatial-pattern values
 #' stored in the columns of \code{colData(x)} named by
 #' \code{x@spacemarkers$params$pattern_names}. The setter also updates
-#' \code{pattern_names} to the column names of \code{value}.
+#' \code{pattern_names} to the column names of \code{value}. Spots (rows of
+#' \code{value}) containing an NA in any pattern column are dropped from
+#' both \code{value} and \code{x} before assignment, with a message
+#' reporting how many were removed; some deconvolution methods (e.g. RCTD)
+#' leave NAs for barcodes they could not estimate fractions for instead of
+#' omitting the row, which would otherwise error downstream.
 #'
 #' @name spatial_patterns
 #' @aliases spatial_patterns spatial_patterns<-
@@ -374,6 +379,15 @@ setMethod("spatial_patterns<-", "SpaceMarkersExperiment", function(x, value) {
              "colnames(x) (same set of spot barcodes).")
     } else {
         value <- value[colnames(x), , drop = FALSE]
+    }
+    # Some deconvolution methods (e.g. RCTD) leave NAs for barcodes they
+    # could not estimate fractions for. Drop those spots from both the
+    # incoming patterns and the SME so downstream mixture-model tests never
+    # see them, instead of erroring later.
+    keep <- .complete_pattern_rows(value)
+    if (!all(keep)) {
+        value <- value[keep, , drop = FALSE]
+        x <- x[, keep, drop = FALSE]
     }
     cd <- SummarizedExperiment::colData(x)
     for (col in colnames(value)) {
@@ -885,6 +899,12 @@ setMethod("get_pairwise_interacting_genes", "SpaceMarkersExperiment",
             ...
         )
         interactions(sme) <- res
+        # Also fold the interactions straight into undirected_scores (the
+        # same thing get_im_scores(sme) would do) so a single call here
+        # leaves the SME in the same "final result populated" state that
+        # calculate_gene_scores_directed() gives the directed workflow,
+        # instead of silently requiring a separate get_im_scores(sme) call.
+        undirected_scores(sme) <- get_im_scores(res)
         sm <- sme@spacemarkers
         if (is.null(sm$params)) sm$params <- list()
         sm$params$mode <- mode

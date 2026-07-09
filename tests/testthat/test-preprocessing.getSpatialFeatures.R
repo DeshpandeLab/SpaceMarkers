@@ -63,3 +63,28 @@ test_that("get_spatial_features works in infer mode with Cogaps object", {
     sf <- get_spatial_features("assets/btme.h5ad")
     expect_equal(ncol(sf), 3)
 })
+
+test_that(".complete_pattern_rows flags and reports incomplete rows", {
+    df <- data.frame(P1 = c(1, NA, 3), P2 = c(1, 2, NA))
+    expect_message(keep <- .complete_pattern_rows(df),
+                   "2 NA rows out of 3 total rows removed")
+    expect_equal(keep, c(TRUE, FALSE, FALSE))
+})
+
+test_that(".complete_pattern_rows is silent when there are no NAs", {
+    df <- data.frame(P1 = c(1, 2, 3), P2 = c(1, 2, 3))
+    expect_no_message(keep <- .complete_pattern_rows(df))
+    expect_true(all(keep))
+})
+
+test_that("get_spatial_features drops NA rows (e.g. RCTD-unestimated barcodes)
+    and messages the count", {
+    temp <- tempfile(fileext = ".csv")
+    on.exit(unlink(temp))
+    write.csv(data.frame(barcode = c("A1", "B2", "C3"),
+                         P1 = c(1, NA, 3), P2 = c(1, 2, 3)),
+             temp, row.names = FALSE)
+    expect_message(sf <- get_spatial_features(temp, method = "CSV"),
+                   "1 NA row out of 3 total rows removed")
+    expect_equal(rownames(sf), c("A1", "C3"))
+})
