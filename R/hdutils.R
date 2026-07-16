@@ -18,38 +18,55 @@
 #' @rdname calculate_influence
 setMethod("calculate_influence", "data.frame",
     function(spPatterns, optParams = NULL, ...) {
-    patnames <- setdiff(colnames(spPatterns),
-                       c("x", "y", "barcode"))
-
-    allwin <- spatstat.geom::owin(
-    range(spPatterns$x),
-    range(spPatterns$y))
-    X <- spatstat.geom::ppp(x = spPatterns$x, y = spPatterns$y,
-                            window = allwin,
-                            marks = spPatterns[,patnames[1]])
-
-    spInfluence <- sapply(patnames, function(pat) {
-    # Create a point pattern object for each pattern
-    X <- spatstat.geom::ppp(x = spPatterns$x, y = spPatterns$y,
-                            window = allwin,
-                            marks = spPatterns[,pat])
-
-    # Calculate the kernel for the specified pattern
-    Kact1 <- if (is.null(optParams)) {
-      spatstat.explore::Smooth(X, at = "points", ...)
-    } else {
-      spatstat.explore::Smooth(
-        X, at = "points", sigma = optParams[1, pat], ...)
-    }
-
-    # Plot the K-function
-    return(Kact1)
-    })
-    spInfluence <- as.data.frame(spInfluence)
-    colnames(spInfluence) <- patnames
-    spInfluence <- cbind(spPatterns[,c("barcode","x", "y")], spInfluence)
-
-    return(spInfluence)
+      if (!"barcode" %in% colnames(spPatterns)) {
+        rn <- rownames(spPatterns)
+        if (!is.null(rn) && !all(rn == as.character(seq_len(nrow(spPatterns))))) {
+          spPatterns$barcode <- rn
+        }
+      }
+      if (!all(c("barcode", "x", "y") %in% colnames(spPatterns))) {
+        stop("calculate_influence() requires 'barcode', 'x', and 'y' ",
+             "columns in spPatterns (barcode can be recovered from ",
+             "rownames, but x/y cannot). get_spatial_features() returns ",
+             "pattern columns only, with no coordinates -- merge them in ",
+             "first, e.g.:\n  coords <- load10XCoords(visiumDir)\n",
+             "  spPatterns <- merge(coords, patterns, by = 'barcode')\n",
+             "or build a SpaceMarkersExperiment via load10X()/add_features(), ",
+             "which handles this merge for you.")
+      }
+      
+      patnames <- setdiff(colnames(spPatterns),
+                          c("x", "y", "barcode"))
+      
+      allwin <- spatstat.geom::owin(
+        range(spPatterns$x),
+        range(spPatterns$y))
+      X <- spatstat.geom::ppp(x = spPatterns$x, y = spPatterns$y,
+                              window = allwin,
+                              marks = spPatterns[,patnames[1]])
+      
+      spInfluence <- sapply(patnames, function(pat) {
+        # Create a point pattern object for each pattern
+        X <- spatstat.geom::ppp(x = spPatterns$x, y = spPatterns$y,
+                                window = allwin,
+                                marks = spPatterns[,pat])
+        
+        # Calculate the kernel for the specified pattern
+        Kact1 <- if (is.null(optParams)) {
+          spatstat.explore::Smooth(X, at = "points", ...)
+        } else {
+          spatstat.explore::Smooth(
+            X, at = "points", sigma = optParams[1, pat], ...)
+        }
+        
+        # Plot the K-function
+        return(Kact1)
+      })
+      spInfluence <- as.data.frame(spInfluence)
+      colnames(spInfluence) <- patnames
+      spInfluence <- cbind(spPatterns[,c("barcode","x", "y")], spInfluence)
+      
+      return(spInfluence)
 })
 
 #' @title Compute the threshold for identifying outlier values or hotspots
@@ -144,25 +161,47 @@ calculate_thresholds <- function(df, minvals = 0.01, maxvals = 0.99,...) {
 #' @rdname find_hotspots_gmm
 setMethod("find_hotspots_gmm", "data.frame",
     function(df, threshold = 0.1, ...) {
-    patnames <- setdiff(colnames(df),c("x","y","barcode"))
-    if (length(threshold)==1){
+      # Recover 'barcode' from rownames if missing -- get_spatial_features()
+      # returns pattern columns only, carrying barcode in rownames instead of
+      # as a column. 'x'/'y' can't be recovered the same way (a patterns file
+      # has no coordinates), so fail clearly if they're still missing rather
+      # than letting the plain column subset below throw an opaque error.
+      if (!"barcode" %in% colnames(df)) {
+        rn <- rownames(df)
+        if (!is.null(rn) && !all(rn == as.character(seq_len(nrow(df))))) {
+          df$barcode <- rn
+        }
+      }
+      if (!all(c("barcode", "x", "y") %in% colnames(df))) {
+        stop("find_hotspots_gmm() requires 'barcode', 'x', and 'y' ",
+             "columns in df (barcode can be recovered from rownames, but ",
+             "x/y cannot). get_spatial_features() returns pattern columns ",
+             "only, with no coordinates -- merge them in first, e.g.:\n",
+             "  coords <- load10XCoords(visiumDir)\n",
+             "  spPatterns <- merge(coords, patterns, by = 'barcode')\n",
+             "or build a SpaceMarkersExperiment via load10X()/add_features(), ",
+             "which handles this merge for you.")
+      }
+      
+      patnames <- setdiff(colnames(df),c("x","y","barcode"))
+      if (length(threshold)==1){
         threshold <- rep(threshold,length(patnames))
-    }
-    if (length(threshold)!=length(patnames)){
+      }
+      if (length(threshold)!=length(patnames)){
         stop("Length of threshold must be 1 or equal to number of patterns.")
-    }
-    names(threshold) <- patnames
-
-    hotspots <- matrix(NA, nrow=nrow(df), ncol=length(patnames))
-    colnames(hotspots) <- patnames
-    for (pat in patnames){
+      }
+      names(threshold) <- patnames
+      
+      hotspots <- matrix(NA, nrow=nrow(df), ncol=length(patnames))
+      colnames(hotspots) <- patnames
+      for (pat in patnames){
         hotspots[,pat] <- ifelse(
-            df[,pat]>threshold[pat],pat,NA)
-    }
-    hotspots <- cbind(df[c("barcode","y","x")],hotspots)
-    row.names(hotspots) <- hotspots$barcode
-    hotspots <- as.data.frame(hotspots)
-    return(hotspots)
+          df[,pat]>threshold[pat],pat,NA)
+      }
+      hotspots <- cbind(df[c("barcode","y","x")],hotspots)
+      row.names(hotspots) <- hotspots$barcode
+      hotspots <- as.data.frame(hotspots)
+      return(hotspots)
 })
 
 .classify_spots <- function(pat_hotspots, influence_hotspots, patternpair = NULL) {
