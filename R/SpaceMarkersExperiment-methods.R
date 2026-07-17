@@ -687,50 +687,64 @@ overlap_map <- function(x, interaction_patterns,
 #' spatial_patterns(sme)[1:3, ]
 #' @export
 add_features <- function(sme, features, ...) {
-    if (!is(sme, "SpaceMarkersExperiment")) {
-        stop("'sme' must be a SpaceMarkersExperiment object.")
-    }
-
-    # Load features if needed
-    if (is.character(features) ||
-        (!is.data.frame(features) && !is.matrix(features))) {
-        features <- get_spatial_features(features, ...)
-    }
-    features <- as.data.frame(features)
-
-    # Spot alignment: intersect + warn
-    sme_spots <- colnames(sme)
-    feat_spots <- rownames(features)
-    common <- intersect(sme_spots, feat_spots)
-
-    if (length(common) == 0L) {
-        stop("No common spots between SME and features.")
-    }
-
-    dropped_sme <- length(sme_spots) - length(common)
-    dropped_feat <- length(feat_spots) - length(common)
-    if (dropped_sme > 0L || dropped_feat > 0L) {
-        warning(sprintf(
-            paste0("Spot mismatch: %d spots in SME and %d spots in features ",
-                   "not shared. Keeping %d common spots."),
-            dropped_sme, dropped_feat, length(common)
-        ))
-        sme <- sme[, common]
-        features <- features[common, , drop = FALSE]
-    }
-
-    # Add to colData
-    for (col in colnames(features)) {
-        SummarizedExperiment::colData(sme)[[col]] <- features[[col]]
-    }
-
-    # Update pattern_names in spacemarkers slot
-    sm <- sme@spacemarkers
-    if (is.null(sm$params)) sm$params <- list()
-    sm$params$pattern_names <- colnames(features)
-    sme@spacemarkers <- sm
-
-    sme
+  if (!is(sme, "SpaceMarkersExperiment")) {
+    stop("'sme' must be a SpaceMarkersExperiment object.")
+  }
+  
+  # Load features if needed
+  if (is.character(features) ||
+      (!is.data.frame(features) && !is.matrix(features))) {
+    features <- get_spatial_features(features, ...)
+  }
+  features <- as.data.frame(features)
+  
+  # Spot alignment: intersect + warn
+  sme_spots <- colnames(sme)
+  feat_spots <- rownames(features)
+  common <- intersect(sme_spots, feat_spots)
+  
+  if (length(common) == 0L) {
+    stop("No common spots between SME and features.")
+  }
+  
+  dropped_sme <- length(sme_spots) - length(common)
+  dropped_feat <- length(feat_spots) - length(common)
+  if (dropped_sme > 0L || dropped_feat > 0L) {
+    warning(sprintf(
+      paste0("Spot mismatch: %d spots in SME and %d spots in features ",
+             "not shared. Keeping %d common spots."),
+      dropped_sme, dropped_feat, length(common)
+    ))
+    sme <- sme[, common]
+    features <- features[common, , drop = FALSE]
+  }
+  
+  # Some deconvolution methods (e.g. RCTD) leave NAs for barcodes they
+  # could not estimate fractions for. Drop those spots here too --
+  # otherwise they'd reach spatstat's ppp() downstream (e.g. inside
+  # calculate_influence()), which hard-errors on NA marks.
+  keep <- stats::complete.cases(features)
+  if (!all(keep)) {
+    message(sprintf(
+      "add_features(): %d of %d spots have NA feature values and will be dropped.",
+      sum(!keep), length(keep)
+    ))
+    sme <- sme[, keep]
+    features <- features[keep, , drop = FALSE]
+  }
+  
+  # Add to colData
+  for (col in colnames(features)) {
+    SummarizedExperiment::colData(sme)[[col]] <- features[[col]]
+  }
+  
+  # Update pattern_names in spacemarkers slot
+  sm <- sme@spacemarkers
+  if (is.null(sm$params)) sm$params <- list()
+  sm$params$pattern_names <- colnames(features)
+  sme@spacemarkers <- sm
+  
+  sme
 }
 
 # NULL-coalescing helper (used by SME pipeline methods for optional-arg fallbacks)
