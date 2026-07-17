@@ -403,96 +403,106 @@ get_spatial_features <- function(filePath, method = NULL, featureNames = "."){
 #' }
 #' @export
 load10X <- function(visiumDir,
-                         features = NULL,
-                         h5filename = "filtered_feature_bc_matrix.h5",
-                         resolution = c("fullres", "lowres", "hires"),
-                         version = NULL,
-                         ...) {
-    resolution <- match.arg(resolution)
-    expr <- load10XExpr(visiumDir = visiumDir, h5filename = h5filename)
-    coords <- load10XCoords(visiumDir = visiumDir,
-                            resolution = resolution, version = version)
-    rownames(coords) <- coords$barcode
-
-    all_expr <- colnames(expr)
-    all_coords <- coords$barcode
-    common <- intersect(all_expr, all_coords)
-    dropped <- length(all_expr) + length(all_coords) - 2L * length(common)
-    if (dropped > 0L) {
-        warning(sprintf(
-            "Dropped %d spots not present in both expression and coordinates. Keeping %d common spots.",
-            dropped, length(common)
-        ))
+                    features = NULL,
+                    h5filename = "filtered_feature_bc_matrix.h5",
+                    resolution = c("fullres", "lowres", "hires"),
+                    version = NULL,
+                    ...) {
+  resolution <- match.arg(resolution)
+  expr <- load10XExpr(visiumDir = visiumDir, h5filename = h5filename)
+  coords <- load10XCoords(visiumDir = visiumDir,
+                          resolution = resolution, version = version)
+  rownames(coords) <- coords$barcode
+  
+  all_expr <- colnames(expr)
+  all_coords <- coords$barcode
+  common <- intersect(all_expr, all_coords)
+  dropped <- length(all_expr) + length(all_coords) - 2L * length(common)
+  if (dropped > 0L) {
+    warning(sprintf(
+      "Dropped %d spots not present in both expression and coordinates. Keeping %d common spots.",
+      dropped, length(common)
+    ))
+  }
+  
+  pattern_names <- NULL
+  spFeatures <- NULL
+  
+  if (!is.null(features)) {
+    spFeatures <- get_spatial_features(features, ...)
+    shared <- intersect(common, rownames(spFeatures))
+    dropped_feat <- length(rownames(spFeatures)) - length(shared)
+    dropped_sme <- length(common) - length(shared)
+    if (dropped_feat > 0L || dropped_sme > 0L) {
+      # Spots present in expression/coords but missing a features row
+      # have no pattern values at all; keeping them would leave NA
+      # spatial_patterns downstream, which spatstat's ppp() hard-errors
+      # on (e.g. inside calculate_influence()). Drop them here instead,
+      # consistent with how spatial_patterns<- handles NA patterns
+      # elsewhere in the package.
+      warning(sprintf(
+        paste0("Spot mismatch: %d spots in expression/coords and ",
+               "%d spots in features not shared. ",
+               "Dropping to %d common spots."),
+        dropped_sme, dropped_feat, length(shared)
+      ))
     }
-    expr <- expr[, common, drop = FALSE]
-    coords <- coords[common, , drop = FALSE]
-
-    coord_mat <- as.matrix(coords[, c("y", "x")])
-    rownames(coord_mat) <- common
-
-    cd <- S4Vectors::DataFrame(row.names = common)
-    pattern_names <- NULL
-
-    if (!is.null(features)) {
-        spFeatures <- get_spatial_features(features, ...)
-        shared <- intersect(common, rownames(spFeatures))
-        dropped_feat <- length(rownames(spFeatures)) - length(shared)
-        dropped_sme <- length(common) - length(shared)
-        if (dropped_feat > 0L || dropped_sme > 0L) {
-            warning(sprintf(
-                paste0("Spot mismatch: %d spots in expression/coords and ",
-                       "%d spots in features not shared. ",
-                       "Keeping %d common spots for features (NA-padded)."),
-                dropped_sme, dropped_feat, length(shared)
-            ))
-        }
-        feat_df <- S4Vectors::DataFrame(
-            spFeatures[shared, , drop = FALSE],
-            row.names = shared
-        )
-        # Pad unmatched spots with NA
-        for (col in colnames(feat_df)) {
-            cd[[col]] <- NA_real_
-            cd[shared, col] <- feat_df[shared, col]
-        }
-        pattern_names <- colnames(spFeatures)
-    }
-
-    # Pre-compute spatial parameters from the scalefactors JSON if available
-    spatial_par <- NULL
-    if (!is.null(pattern_names) && length(shared) > 0L) {
-        spCoords <- coords[shared, c("barcode", "y", "x"), drop = FALSE]
-        spPats <- as.data.frame(spFeatures[shared, , drop = FALSE])
-        spPatterns_combined <- cbind(spCoords, spPats)
-        tryCatch({
-            spatial_par <- get_spatial_parameters(
-                spatialPatterns = spPatterns_combined,
-                visiumDir = visiumDir,
-                resolution = resolution
-            )
-        }, error = function(e) {
-            warning(sprintf(
-                "Pre-computing spatial_params failed: %s", conditionMessage(e)
-            ))
-            NULL
-        })
-    }
-
-    sm <- as(list(
-        params = list(
-            pattern_names = pattern_names,
-            spatial_params = spatial_par,
-            visiumDir = visiumDir,
-            resolution = resolution
-        )
-    ), "SimpleList")
-
-    SpaceMarkersExperiment(
-        assays = list(logcounts = expr),
-        colData = cd,
-        spatialCoords = coord_mat,
-        spaceMarkers = sm
+    common <- shared
+    pattern_names <- colnames(spFeatures)
+  }
+  
+  expr <- expr[, common, drop = FALSE]
+  coords <- coords[common, , drop = FALSE]
+  
+  coord_mat <- as.matrix(coords[, c("y", "x")])
+  rownames(coord_mat) <- common
+  
+  cd <- S4Vectors::DataFrame(row.names = common)
+  if (!is.null(spFeatures)) {
+    feat_df <- S4Vectors::DataFrame(
+      spFeatures[common, , drop = FALSE],
+      row.names = common
     )
+    for (col in colnames(feat_df)) {
+      cd[[col]] <- feat_df[[col]]
+    }
+  }
+  
+  # Pre-compute spatial parameters from the scalefactors JSON if available
+  spatial_par <- NULL
+  if (!is.null(pattern_names) && length(common) > 0L) {
+    spCoords <- coords[common, c("barcode", "y", "x"), drop = FALSE]
+    spPats <- as.data.frame(spFeatures[common, , drop = FALSE])
+    spPatterns_combined <- cbind(spCoords, spPats)
+    tryCatch({
+      spatial_par <- get_spatial_parameters(
+        spatialPatterns = spPatterns_combined,
+        visiumDir = visiumDir,
+        resolution = resolution
+      )
+    }, error = function(e) {
+      warning(sprintf(
+        "Pre-computing spatial_params failed: %s", conditionMessage(e)
+      ))
+      NULL
+    })
+  }
+  
+  sm <- as(list(
+    params = list(
+      pattern_names = pattern_names,
+      spatial_params = spatial_par,
+      visiumDir = visiumDir,
+      resolution = resolution
+    )
+  ), "SimpleList")
+  
+  SpaceMarkersExperiment(
+    assays = list(logcounts = expr),
+    colData = cd,
+    spatialCoords = coord_mat,
+    spaceMarkers = sm
+  )
 }
 
 #===================
