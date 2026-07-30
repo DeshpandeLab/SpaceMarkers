@@ -54,3 +54,20 @@ test_that("getOverlapScores works correctly", {
     expect_message(calculate_overlap_undirected(hotspots, method = c("Jaccard", "absolute")),"Only one method")
 
 })
+
+test_that("calculate_overlap_directed reports target/source (not pattern/influence) columns", {
+    hotspots <- data.frame(x = c(1,2,3,4,5), y = c(1,2,3,4,5),
+                           barcode = c("A","B","C","D","E"),
+                           pattern1 = c(1,0,1,0,1),
+                           pattern2 = c(1,1,0,0,1))
+    influence_hotspots <- data.frame(x = c(1,2,3,4,5), y = c(1,2,3,4,5),
+                                     barcode = c("A","B","C","D","E"),
+                                     pattern1 = c(0,1,1,0,0),
+                                     pattern2 = c(0,1,0,1,1))
+    result <- calculate_overlap_directed(pat_hotspots = hotspots,
+                                         influence_hotspots = influence_hotspots)
+    expect_equal(colnames(result), c("target", "source", "relAbundance"))
+    expect_false("pattern" %in% colnames(result))
+    expect_false("influence" %in% colnames(result))
+    expect_true(all(startsWith(as.character(result$source), "near.")))
+})
