@@ -338,23 +338,44 @@ get_spatial_features <- function(filePath, method = NULL, featureNames = "."){
 
 #' .get_csv_features
 #' Load features from dataframe
-#' @return data.frame of features with barcodes as rownames.
+#' @return data.frame of numeric features with barcodes as rownames.
 #' @keywords internal
 .get_csv_features <- function(obj){
-    spFeatures <- obj
-    if ("barcode" %in% colnames(spFeatures)){
-        rownames(spFeatures) <- spFeatures$barcode
-    } else {
-        if(!colnames(spFeatures)[1]=="X"){
-            stop("No barcode column found and first colname is not blank.
-                    Stopping.")
-        } else {
-            rownames(spFeatures) <- spFeatures[,"X"]
-        }
+  spFeatures <- obj
+  barcode_col <- grep("barcode", colnames(spFeatures),
+                      ignore.case = TRUE, value = TRUE)
+  if (length(barcode_col) > 0) {
+    if (length(barcode_col) > 1) {
+      message(sprintf(
+        "Multiple barcode-like columns found (%s); using '%s'.",
+        paste(barcode_col, collapse = ", "), barcode_col[1]
+      ))
     }
-    removeCols <- c("NA","barcode","in_tissue","array_row","array_col","pxl_col_in_fullres","pxl_row_in_fullres")
-    spFeatures <- spFeatures[,-which(startsWith(colnames(spFeatures),"X") | colnames(spFeatures) %in% removeCols)]
-    return(spFeatures)
+    barcode_col <- barcode_col[1]
+  } else if (colnames(spFeatures)[1] %in% c("X", "")) {
+    barcode_col <- colnames(spFeatures)[1]
+  } else {
+    stop("No barcode column found and first colname is not blank.
+                    Stopping.")
+  }
+  has_barcode <- !is.na(spFeatures[[barcode_col]])
+  if (!all(has_barcode)) {
+    message(sprintf(
+      "%d row(s) with a missing barcode value were dropped.",
+      sum(!has_barcode)
+    ))
+    spFeatures <- spFeatures[has_barcode, , drop = FALSE]
+  }
+  rownames(spFeatures) <- spFeatures[[barcode_col]]
+  spFeatures[[barcode_col]] <- NULL
+  removeCols <- c("NA", "in_tissue", "array_row", "array_col",
+                  "pxl_col_in_fullres", "pxl_row_in_fullres")
+  is_num <- vapply(spFeatures, is.numeric, logical(1))
+  keep <- !(colnames(spFeatures) %in% removeCols) &
+    !startsWith(colnames(spFeatures), "X") &
+    is_num
+  spFeatures <- spFeatures[, keep, drop = FALSE]
+  return(spFeatures)
 }
 
 #' .get_spe_features
