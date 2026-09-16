@@ -6,10 +6,10 @@ process SPACEMARKERS {
   input:
     tuple val(meta), path(features), path(data)
   output:
+    tuple val(meta), path("${prefix}/sme.rds"),                 val(source),   emit: sme
     tuple val(meta), path("${prefix}/spPatterns.rds"),         val(source),   emit: spPatterns
     tuple val(meta), path("${prefix}/optParams.rds"),          val(source),   emit: optParams
     tuple val(meta), path("${prefix}/spaceMarkersObject.rds"), val(source),   emit: spaceMarkers
-    tuple val(meta), path("${prefix}/spaceMarkers.rds"),       val(source),   emit: spaceMarkersScores
     tuple val(meta), path("${prefix}/hotspots.rds"),           val(source),   emit: hotspots
     tuple val(meta), path("${prefix}/overlapScores.csv"),      val(source),   emit: overlapScores
     path  "versions.yml",                                                     emit: versions
@@ -23,43 +23,61 @@ process SPACEMARKERS {
     dir.create("${prefix}", showWarnings = FALSE, recursive = TRUE)
     library("SpaceMarkers")
     set.seed(${params.seed})
-    
-    #load spatial coords from tissue positions, deconvolved patterns, and expression
-    coords <- load10XCoords("$data")
-    features <- get_spatial_features("$features")
-    dataMatrix <- load10XExpr("$data")
 
-    #add spatial coordinates to deconvolved data, only use barcodes present in data
-    spPatterns <- merge(coords, features, by.x = "barcode", by.y = "row.names")
-    spPatterns <- spPatterns[which(spPatterns[,"barcode"] %in% colnames(dataMatrix)),]
+    # ---- Setup: build the SpaceMarkersExperiment in one call ----
+    sme <- load10X(
+      visiumDir  = "$data",
+      features   = "$features",
+      method     = "CSV",
+      resolution = "lowres"
+    )
+
+    # ---- Undirected SpaceMarkers (one line) ----
+    sme <- SpaceMarkers(sme, directed = FALSE, cpus = $task.cpus, minOverlap = 10)
+
+    # ---- Directed SpaceMarkers (one line), only if a ligand-receptor
+    # reference CSV is configured via params.lr_reference (empty string by
+    # default -- see nextflow.config). Runs that never set it keep
+    # producing exactly the same outputs as before this change.
+    lr_reference_path <- "${params.lr_reference}"
+    run_directed <- nzchar(lr_reference_path) && file.exists(lr_reference_path)
+
+    if (run_directed) {
+      message("Running directed SpaceMarkers using lr_reference: ", lr_reference_path)
+      LR_df <- read.csv(lr_reference_path, row.names = 1)
+      LR_df[["ligand.symbol"]]   <- LR_df[["ligand"]]
+      LR_df[["receptor.symbol"]] <- LR_df[["receptor"]]
+      sme <- SpaceMarkers(sme, directed = TRUE, lr_pairs = LR_df)
+    } else if (nzchar(lr_reference_path)) {
+      warning("params.lr_reference was set to '", lr_reference_path,
+              "' but that file does not exist; skipping directed SpaceMarkers.")
+    }
+
+    # ---- New output: the full SpaceMarkersExperiment (both analyses, if run) ----
+    saveRDS(sme, file = "${prefix}/sme.rds")
+
+    # ---- Backward-compatible legacy outputs (same file names/shapes as before) ----
+    spPatterns <- data.frame(
+      barcode = colnames(sme),
+      y       = SpatialExperiment::spatialCoords(sme)[, "y"],
+      x       = SpatialExperiment::spatialCoords(sme)[, "x"],
+      as.data.frame(spatial_patterns(sme)),
+      row.names = NULL,
+      check.names = FALSE
+    )
     saveRDS(spPatterns, file = "${prefix}/spPatterns.rds")
 
-    #remove genes with low expression, only barcodes present in spatial data
-    keepGenes <- which(apply(dataMatrix, 1, sum) > 10)
-    keepBarcodes <- which(colnames(dataMatrix) %in% spPatterns[,"barcode"])
-    dataMatrix <- dataMatrix[keepGenes, keepBarcodes]
-
-    #compute optimal parameters for spatial patterns
-    optParams <- get_spatial_parameters(spPatterns, visiumDir="$data");
+    optParams <- spatial_params(sme)
     saveRDS(optParams, file = "${prefix}/optParams.rds")
 
-    #find hotspots in spatial patterns
-    hotspots <- find_all_hotspots(spPatterns);
-    saveRDS(hotspots, file = "${prefix}/hotspots.rds");
+    hotspots_undirected <- hotspots(sme, "undirected")
+    saveRDS(hotspots_undirected, file = "${prefix}/hotspots.rds")
 
-    #find regions of overlapping spatial patterns
-    overlaps <- calculate_overlap_undirected(hotspots);
-    write.csv(overlaps, file = "${prefix}/overlapScores.csv", row.names = FALSE);
+    overlaps <- overlap_scores(sme)
+    write.csv(overlaps, file = "${prefix}/overlapScores.csv", row.names = FALSE)
 
     #find genes that are differentially expressed in spatial patterns
-    spaceMarkers <- get_pairwise_interacting_genes(data = dataMatrix,
-                                                  optParams = optParams,
-                                                  spPatterns = spPatterns,
-                                                  hotspots = hotspots,
-                                                  mode = "DE",
-                                                  analysis = "enrichment",
-                                                  minOverlap = 10,
-					                                        workers=$task.cpus)
+    spaceMarkers <- interactions(sme)
     saveRDS(spaceMarkers, file = "${prefix}/spaceMarkersObject.rds")
 
     #save SpaceMarkers Interaction Scores
@@ -71,8 +89,8 @@ process SPACEMARKERS {
     # Get the versions of the packages
     spaceMarkersVersion <- packageVersion("SpaceMarkers")
     rVersion <- packageVersion("base")
-    cat(sprintf('"%s":\n  SpaceMarkers: %s\n  R: %s\n', 
-            "${task.process}", spaceMarkersVersion, rVersion), 
+    cat(sprintf('"%s":\n  SpaceMarkers: %s\n  R: %s\n',
+            "${task.process}", spaceMarkersVersion, rVersion),
         file = "versions.yml")
     """
     stub:
@@ -81,9 +99,9 @@ process SPACEMARKERS {
     prefix = task.ext.prefix ?: "${meta.id}/${source}"
     """
     mkdir -p "${prefix}"
+    touch "${prefix}/sme.rds"
     touch "${prefix}/spPatterns.rds"
     touch "${prefix}/optParams.rds"
-    touch "${prefix}/spaceMarkers.rds"
     touch "${prefix}/spaceMarkersObject.rds"
     touch "${prefix}/hotspots.rds"
     touch "${prefix}/overlapScores.csv"
