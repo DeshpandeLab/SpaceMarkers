@@ -95,14 +95,14 @@ plot_overlap_scores <- function(df, title = "Spatial Overlap Scores", out = NULL
 
     # Detect shape:
     #   undirected: columns pattern1, pattern2, overlapScore  (symmetric heatmap)
-    #   directed:   columns pattern, influence, relAbundance   (source -> "near.<target>")
+    #   directed:   columns target, source, relAbundance   (source's influence -> "near.<target>")
     cn <- colnames(df)
     if (all(c("pattern1", "pattern2", "overlapScore") %in% cn)) {
         xcol <- "pattern1"; ycol <- "pattern2"; fill <- "overlapScore"
-    } else if (all(c("pattern", "influence", "relAbundance") %in% cn)) {
-        xcol <- "pattern"; ycol <- "influence"; fill <- "relAbundance"
+    } else if (all(c("target", "source", "relAbundance") %in% cn)) {
+        xcol <- "target"; ycol <- "source"; fill <- "relAbundance"
     } else {
-        stop("Unknown overlap_scores shape; expected undirected (pattern1/pattern2/overlapScore) or directed (pattern/influence/relAbundance) columns.")
+        stop("Unknown overlap_scores shape; expected undirected (pattern1/pattern2/overlapScore) or directed (target/source/relAbundance) columns.")
     }
 
     p <- ggplot2::ggplot(data = df,
@@ -735,71 +735,82 @@ plot_spatial <- function(sme, feature_col = NULL,
 #'                     method = "arithmetic_mean", weighted = FALSE)
 #' @rdname calculate_lr_scores
 setMethod("calculate_lr_scores", "ANY",
-    function(ligand_scores, receptor_scores = NULL, lr_pairs = NULL,
-             ligand_test = NULL, method = "geometric_mean",
-             weighted = TRUE) {
-
+  function(ligand_scores, receptor_scores = NULL, lr_pairs = NULL,
+           ligand_test = NULL, method = "geometric_mean",
+           weighted = TRUE) {
+    
     method <- match.arg(method[1], choices = c("geometric_mean", "arithmetic_mean"))
-       # parameter checks
+    # parameter checks
     ligand_test <- match.arg(ligand_test[1], choices = c("greater", "two.sided"))
     
-    ## Scoring ligand overexpression near target cell type and receptor overexpression in target cell type
+    ## Scoring ligand overexpression near target cell type and receptor
+    ## overexpression in target cell type
     if (!all(grepl("near",colnames(receptor_scores)))) {
-        target_cells <- gsub("^.*_","",colnames(ligand_scores))
-        if (!any(target_cells %in% colnames(receptor_scores))) {
-            stop("Receptor scores do not have expected cell type names in column names.")
-        }
-        ligand_cols <- colnames(ligand_scores)[grepl(paste0("near_(", paste(target_cells, collapse="|"), ")"), colnames(ligand_scores))]
-        names(ligand_cols) <- ligand_cols
-        # Map ligand columns to receptor columns
-        mapped_receptor_cols <- sapply(ligand_cols, function(lc) gsub("^.*_","",lc))
-        names(mapped_receptor_cols) <- ligand_cols
-        lr_scores <- matrix(0, nrow=nrow(lr_pairs), ncol=length(ligand_cols))
-        if (weighted) {
-            ligand_counts <- table(lr_pairs$ligand.symbol)
-            receptor_counts <- table(lr_pairs$receptor.symbol)
-            ligand_weights <- 1 / ligand_counts[lr_pairs$ligand.symbol]
-            receptor_weights <- 1 / receptor_counts[lr_pairs$receptor.symbol]
-            ligand_weights <- matrix(ligand_weights * length(ligand_weights) / sum(ligand_weights), nrow=nrow(lr_pairs), ncol=1)
-            receptor_weights <- matrix(receptor_weights * length(receptor_weights) / sum(receptor_weights), nrow=nrow(lr_pairs), ncol=1)
-            rownames(ligand_weights) <- rownames(receptor_weights) <- rownames(lr_pairs)
-            weights <- cbind(ligand_weights, receptor_weights)
-            colnames(weights) <- c("ligand_weights", "receptor_weights")
-            rownames(weights) <- rownames(lr_pairs)
-        } else {
-            weights <- matrix(1, nrow=nrow(lr_pairs), ncol=2)
-            colnames(weights) <- c("ligand_weights", "receptor_weights")
-            rownames(weights) <- rownames(lr_pairs)
-        }
-
-        lr_scores <- matrix(NA, nrow=nrow(lr_pairs), ncol=length(ligand_cols))
-        rownames(lr_scores) <- rownames(lr_pairs)
-        mapped_lr_cols <- gsub("near_","to_",ligand_cols)
-        names(mapped_lr_cols) <- ligand_cols
-        colnames(lr_scores) <- mapped_lr_cols
-            
-        for (i in seq_along(ligand_cols)) {
-            lc <- ligand_cols[i]
-            rc <- mapped_receptor_cols[i]
-            scores <- cbind(ligand_scores[,lc], receptor_scores[,rc])
-            colnames(scores) <- c("ligand_score", "receptor_score")
-            rownames(scores) <- rownames(lr_pairs)
-            lr_scores[,i] <- switch(method,
-                "geometric_mean" = exp(sapply(rownames(scores), function(r) {weighted.mean(log(scores[r, ]), w=weights[r,])})),
-                "arithmetic_mean" = sapply(rownames(scores), function(r) {weighted.mean(scores[r, ], w=weights[r,])}),
-                stop("Unknown method for L-R score calculation")
-            )
-        }
-        colnames(lr_scores) <- mapped_lr_cols
-        rownames(lr_scores) <- rownames(lr_pairs)
-        return(lr_scores)
+      # Split on the literal "_near_" delimiter rather than the last
+      # underscore -- pattern/cell-type names can themselves contain
+      # underscores (e.g. "FIBROBLASTS_myCAF"),which the last-underscore
+      # approach mangles (yielding "myCAF" instead of
+      # "FIBROBLASTS_myCAF"), causing a downstream "subscript out of
+      # bounds" when indexing receptor_scores by the mangled name.
+      target_cells <- sub("^.*_near_", "", colnames(ligand_scores))
+      if (!any(target_cells %in% colnames(receptor_scores))) {
+        stop("Receptor scores do not have expected cell type names 
+             in column names.")
+      }
+      ligand_cols <- colnames(ligand_scores)[
+        grepl(paste0("near_(", paste(target_cells, collapse="|"), ")"),
+              colnames(ligand_scores))]
+      names(ligand_cols) <- ligand_cols
+      # Map ligand columns to receptor columns
+      mapped_receptor_cols <- sapply(
+        ligand_cols, function(lc) sub("^.*_near_", "", lc))
+      names(mapped_receptor_cols) <- ligand_cols
+      lr_scores <- matrix(0, nrow=nrow(lr_pairs),
+                          ncol=length(ligand_cols))
+      if (weighted) {
+        ligand_counts <- table(lr_pairs$ligand.symbol)
+        receptor_counts <- table(lr_pairs$receptor.symbol)
+        ligand_weights <- 1 / ligand_counts[lr_pairs$ligand.symbol]
+        receptor_weights <- 1 / receptor_counts[lr_pairs$receptor.symbol]
+        ligand_weights <- matrix(ligand_weights * length(ligand_weights) / sum(ligand_weights), nrow=nrow(lr_pairs), ncol=1)
+        receptor_weights <- matrix(receptor_weights * length(receptor_weights) / sum(receptor_weights), nrow=nrow(lr_pairs), ncol=1)
+        rownames(ligand_weights) <- rownames(receptor_weights) <- rownames(lr_pairs)
+        weights <- cbind(ligand_weights, receptor_weights)
+        colnames(weights) <- c("ligand_weights", "receptor_weights")
+        rownames(weights) <- rownames(lr_pairs)
+      } else {
+        weights <- matrix(1, nrow=nrow(lr_pairs), ncol=2)
+        colnames(weights) <- c("ligand_weights", "receptor_weights")
+        rownames(weights) <- rownames(lr_pairs)
+      }
+      
+      lr_scores <- matrix(NA, nrow=nrow(lr_pairs), ncol=length(ligand_cols))
+      rownames(lr_scores) <- rownames(lr_pairs)
+      mapped_lr_cols <- gsub("near_","to_",ligand_cols)
+      names(mapped_lr_cols) <- ligand_cols
+      colnames(lr_scores) <- mapped_lr_cols
+      
+      for (i in seq_along(ligand_cols)) {
+        lc <- ligand_cols[i]
+        rc <- mapped_receptor_cols[i]
+        scores <- cbind(ligand_scores[,lc], receptor_scores[,rc])
+        colnames(scores) <- c("ligand_score", "receptor_score")
+        rownames(scores) <- rownames(lr_pairs)
+        lr_scores[,i] <- switch(method,
+                                "geometric_mean" = exp(sapply(rownames(scores), function(r) {weighted.mean(log(scores[r, ]), w=weights[r,])})),
+                                "arithmetic_mean" = sapply(rownames(scores), function(r) {weighted.mean(scores[r, ], w=weights[r,])}),
+                                stop("Unknown method for L-R score calculation")
+        )
+      }
+      colnames(lr_scores) <- mapped_lr_cols
+      rownames(lr_scores) <- rownames(lr_pairs)
+      return(lr_scores)
     } else {
-        stop("Receptor scores have been calculated using calculate_gene_set_score (overexpression) of receptors near source cell; use calculate_gene_set_specificity for receptors instead.")
+      stop("Receptor scores have been calculated using calculate_gene_set_score (overexpression) of receptors near source cell; use calculate_gene_set_specificity for receptors instead.")
     }
-
-    }
+    
+  }
 )
-
 #' Calculate Gene Set Specificity Scores
 #' @title calculate_gene_set_specificity
 #' @description
@@ -912,15 +923,26 @@ setMethod("calculate_gene_set_specificity", "ANY",
 )
 
 .calculate_fc_score <- function(expr, spPatterns, gene, ct,
-                              low_thr = 0.2, high_thr = 0.8) {
-
+                                low_thr = 0.2, high_thr = 0.8) {
+  
   # Get thresholds
   low_thr <- quantile(spPatterns[, ct], probs = low_thr, na.rm = TRUE)
   high_thr <- quantile(spPatterns[, ct], probs = high_thr, na.rm = TRUE)
-
+  
   # Get high and low bins
   high_bins <- which(spPatterns[, ct] > high_thr)
   low_bins <- which(spPatterns[, ct] < low_thr)
+  
+  # wilcox.test() requires at least one observation in each group.
+  # Sparse/ties-heavy pattern columns (e.g. many spots tied exactly at the
+  # low/high quantile value, common with RCTD-style fraction data) can leave
+  # one side empty -- skip the test for this gene/cell-type combination
+  # instead of erroring, same as the "all zero" case below.
+  if (length(high_bins) < 1 || length(low_bins) < 1) {
+    score <- NA
+    attr(score, "p_value") <- 1
+    return(score)
+  }
   
   # Calculate means
   mean_high <- mean(expr[gene, high_bins])
@@ -936,17 +958,16 @@ setMethod("calculate_gene_set_specificity", "ANY",
     return(score)
   }
   w_test <- wilcox.test(as.matrix(expr[gene, high_bins]), as.matrix(expr[gene, low_bins]))
-
+  
   score <- lfc
   attr(score, "p_value") <- w_test$p.value
   return(score)
 }
 
 # Wrapper for all genes and cell types
-# importFrom BiocParallel bplapply
 .calculate_all_fc_scores <- function(expr, spPatterns, 
-                                    low_thr = 0.2, high_thr = 0.9, ..., workers = NULL) {
-
+                                     low_thr = 0.2, high_thr = 0.9, ..., workers = NULL) {
+  
   genes <- rownames(expr)
   cell_types <- setdiff(colnames(spPatterns), c("x", "y", "barcode"))
   
@@ -956,51 +977,83 @@ setMethod("calculate_gene_set_specificity", "ANY",
   colnames(score_matrix) <- cell_types
   
   gene_scores <- lfc_matrix <- p_values <- score_matrix
-  use_biocparallel <- requireNamespace("BiocParallel", quietly = TRUE)
-  # Calculate for each combination
-  if (!use_biocparallel) {
-    for (i in seq_along(genes)) {
-        for (ct in cell_types) {
-            result <- .calculate_fc_score(expr, spPatterns, 
-                                    genes[i], ct,
-                                    low_thr, high_thr)
-            lfc_matrix[i, ct] <- result
-            p_values[i, ct] <- attr(result, "p_value")
-        }
+  
+  if (is.null(workers) || workers < 1) {
+    workers <- if (requireNamespace("BiocParallel", quietly = TRUE)) {
+      tryCatch(BiocParallel::bpworkers(BiocParallel::bpparam()), error = function(e) 1L)
+    } else if (requireNamespace("parallel", quietly = TRUE)) {
+      max(1L, parallel::detectCores() - 1L)
+    } else {
+      1L
     }
-  } else {
-    if (is.null(workers) || workers < 1) {
-        workers <- BiocParallel::bpworkers(BiocParallel::bpparam())
-    }
-    BiocParallel::register(BiocParallel::MulticoreParam(workers))
-    lfc <- BiocParallel::bplapply(cell_types, function(ct) {
+  }
+  can_parallel <- .Platform$OS.type != "windows" &&
+    requireNamespace("parallel", quietly = TRUE) &&
+    workers > 1 && length(cell_types) > 1
+  
+  lfc <- NULL
+  if (can_parallel) {
+    # BiocParallel::bplapply() has a reproducible bug in its own internal
+    # result-collection code ("wrong args for environment subassignment")
+    # that can fire even after every task completed successfully -- see
+    # calculate_gene_scores_directed() for the fuller writeup. Use base R's
+    # parallel::mclapply() instead, which doesn't go through that code path,
+    # and don't mutate the global BiocParallel registry as a side effect.
+    lfc <- tryCatch(
+      parallel::mclapply(cell_types, function(ct) {
         lfc_col <- p_val_col <- numeric(length(genes))
         names(lfc_col) <- names(p_val_col) <- genes
         for (i in seq_along(genes)) {
-            result <- .calculate_fc_score(expr, spPatterns, 
-                                genes[i], ct,
-                                low_thr, high_thr)
-            lfc_col[i] <- result
-            p_val_col[i] <- attr(result, "p_value")
+          result <- .calculate_fc_score(expr, spPatterns, 
+                                        genes[i], ct,
+                                        low_thr, high_thr)
+          lfc_col[i] <- result
+          p_val_col[i] <- attr(result, "p_value")
         }
         return(list(lfc = lfc_col, p_value = p_val_col))
-    })
-    for (i in seq_along(cell_types)) {
-        ct <- cell_types[i]
-        lfc_matrix[, ct] <- lfc[[i]]$lfc
-        p_values[, ct] <- lfc[[i]]$p_value
+      }, mc.cores = workers),
+      error = function(e) {
+        warning(sprintf(
+          "Parallel execution via parallel::mclapply() failed (%s); falling back to sequential processing.",
+          conditionMessage(e)
+        ))
+        NULL
+      }
+    )
+    if (!is.null(lfc) &&
+        any(vapply(lfc, function(x) inherits(x, "try-error"), logical(1)))) {
+      warning("One or more cell types failed under parallel::mclapply(); falling back to sequential processing.")
+      lfc <- NULL
     }
   }
-    p_adj <- apply(p_values,2,p.adjust,method="BH")
-    p_weights <- 1 / (1 + exp(2 * (log10(p_adj) - log10(0.05))))
-
-    norm_scores <- 1/(1 + exp(-40 * (lfc_matrix-median(lfc_matrix[lfc_matrix>0], na.rm = TRUE))))
-    gene_scores <- norm_scores * p_weights
-    gene_scores[is.na(gene_scores)] <- 0
-    attr(gene_scores,"p_values") <- p_values
-    attr(gene_scores,"p_adj") <- p_adj
-    attr(gene_scores,"p_weights") <- p_weights
-    attr(gene_scores,"lfc") <- lfc_matrix
+  
+  if (!is.null(lfc)) {
+    for (i in seq_along(cell_types)) {
+      ct <- cell_types[i]
+      lfc_matrix[, ct] <- lfc[[i]]$lfc
+      p_values[, ct] <- lfc[[i]]$p_value
+    }
+  } else {
+    for (i in seq_along(genes)) {
+      for (ct in cell_types) {
+        result <- .calculate_fc_score(expr, spPatterns, 
+                                      genes[i], ct,
+                                      low_thr, high_thr)
+        lfc_matrix[i, ct] <- result
+        p_values[i, ct] <- attr(result, "p_value")
+      }
+    }
+  }
+  p_adj <- apply(p_values,2,p.adjust,method="BH")
+  p_weights <- 1 / (1 + exp(2 * (log10(p_adj) - log10(0.05))))
+  
+  norm_scores <- 1/(1 + exp(-40 * (lfc_matrix-median(lfc_matrix[lfc_matrix>0], na.rm = TRUE))))
+  gene_scores <- norm_scores * p_weights
+  gene_scores[is.na(gene_scores)] <- 0
+  attr(gene_scores,"p_values") <- p_values
+  attr(gene_scores,"p_adj") <- p_adj
+  attr(gene_scores,"p_weights") <- p_weights
+  attr(gene_scores,"lfc") <- lfc_matrix
   return(gene_scores)
 }
 

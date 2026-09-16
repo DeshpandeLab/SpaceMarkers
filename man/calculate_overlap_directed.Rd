@@ -40,7 +40,10 @@ scores for. If NULL, all patterns in pat_hotspots and influence_hotspots will be
 "relative-abundance", "differential-abundance" and "absolute"}
 }
 \value{
-A data frame with columns pattern, influence and overlapping abundance
+A data frame with columns target, source and overlapping abundance
+(relAbundance). \code{target} is the pattern whose own GMM hotspot is
+being examined; \code{source} (prefixed \code{"near."}) is the pattern
+whose influence zone overlaps into that hotspot.
 }
 \description{
 Calculate the overlap scores between patterns in hotspots
