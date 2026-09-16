@@ -33,7 +33,11 @@ process SPACEMARKERS {
     )
 
     # ---- Undirected SpaceMarkers (one line) ----
-    sme <- SpaceMarkers(sme, directed = FALSE, cpus = $task.cpus, minOverlap = 10)
+    # minOverlap is not passed here: .undirected_SpaceMarkers_sme() already
+    # hardcodes minOverlap = 10 internally (matching what the old script
+    # passed explicitly), and re-passing it via ... causes R's "formal
+    # argument matched by multiple actual arguments" error.
+    sme <- SpaceMarkers(sme, directed = FALSE, cpus = $task.cpus)
 
     # ---- Directed SpaceMarkers (one line), only if a ligand-receptor
     # reference CSV is configured via params.lr_reference (empty string by
