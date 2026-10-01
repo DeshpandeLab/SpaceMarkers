@@ -3,7 +3,7 @@
 # btc-spatial-pipelines while it is in dev and until it is added
 # to the SpaceMarkers package
 # run example:
-# nextflow run nextflow/visiumhd.nf --input nextflow/hd-samplesheet.csv -profile docker -c nextflow/nextflow.config -resume
+# nextflow run nextflow/main_hd.nf --input nextflow/hd-samplesheet.csv -profile docker -c nextflow/nextflow.config -resume
 
 
 # script start
@@ -26,7 +26,9 @@ figure_dir <- file.path(output_dir, "figures")
 set.seed(${params.seed})
 useLigandReceptorGenes <- as.logical("${params.use_ligand_receptor_genes}") # limit to ligand-receptor genes
 goodgeneThreshold <- ${params.good_gene_threshold} # limit to genes with high expression
+workers <- min(as.numeric("${task.cpus}"), parallel::detectCores())
 
+BiocParallel::register(BiocParallel::MulticoreParam(workers = workers)) #register backend
 
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(figure_dir, showWarnings = FALSE)
