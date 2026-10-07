@@ -7,6 +7,10 @@ Load features Seurat object}
 \usage{
 .get_seurat_features(obj)
 }
+\value{
+data.frame of \code{_Feature}-suffixed metadata columns extracted
+from \code{slot(obj, "meta.data")}.
+}
 \description{
 .get_seurat_features
 Load features Seurat object

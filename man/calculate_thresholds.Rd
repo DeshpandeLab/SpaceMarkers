@@ -24,3 +24,11 @@ This function computes the thresholds for all columns in a
 data frame. The data frame could be an spPatterns object or an spInfluence
 object.
 }
+\examples{
+set.seed(1)
+spPatterns <- data.frame(
+    barcode = paste0("s", 1:50),
+    x = runif(50), y = runif(50),
+    Pattern_1 = rnorm(50), Pattern_2 = rnorm(50))
+calculate_thresholds(spPatterns)
+}

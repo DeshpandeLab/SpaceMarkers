@@ -163,50 +163,41 @@ get_spatial_params_morans_i <- function(spatialPatterns,...){
 #' optParams <- get_spatial_parameters(spPatterns, sigma = 10)
 #'
 
-get_spatial_parameters <- function(spatialPatterns,visiumDir = ".",
-                                         spatialDir ="spatial",
-                                         pattern = "scalefactors_json.json",
-                                         sigma = NULL,threshold = 4,
-                                         resolution = 
-                                           c("fullres","lowres","hires"), ...) {
+get_spatial_parameters <- function(spatialPatterns, visiumDir = ".",
+                                   spatialDir = "spatial",
+                                   pattern = "scalefactors_json.json",
+                                   sigma = NULL, threshold = 4,
+                                   resolution =
+                                     c("fullres", "lowres", "hires"), ...) {
     #resolve resolution parameter
     resolution <- match.arg(resolution, several.ok = FALSE)
     message("resolution: ", resolution)
-    patternList <- setdiff(colnames(spatialPatterns),c("barcode","x","y"))
+    patternList <- setdiff(colnames(spatialPatterns), c("barcode", "x", "y"))
+    scafactorsPath <- file.path(visiumDir, spatialDir, pattern)
+
     if (!is.null(sigma)) {
+      # happy case - user provided all
       sigmaOpt <- sigma
       threshOpt <- threshold
-    } else if (is.null(sigma) & 
-               file.exists(file.path(visiumDir,spatialDir,pattern))) {
+
+    } else if (is.null(sigma) && file.exists(scafactorsPath)) {
         message("Reading spot diameter from specified .json file")
-        scale_values <- jsonlite::read_json(file.path(visiumDir,spatialDir,
-                                                    pattern))
-      if ("lowres" %in% resolution){
-        resolution <- "lowres"
-      } else if ("hires" %in% resolution){
-        resolution <- "hires"
-      } else if ("fullres" %in% resolution){
-        resolution <- "fullres"
-      } else {
-        stop("Resolution argument not recognized.
-             Please supply either lowres, hires or fullres.")
-      }
-      
-      threshOpt <- threshold
-      sigmaOpt <- as.numeric(scale_values$spot_diameter_fullres)
-      if (resolution != "fullres") {
-        scale_factor <- scale_values[grepl(resolution,
-                                           names(scale_values))][[1]]
-        sigmaOpt <- sigmaOpt * as.numeric(scale_factor)
-      } 
-      
-      
+        scale_values <- jsonlite::read_json(scafactorsPath)
+        threshOpt <- threshold
+        sigmaOpt <- as.numeric(scale_values$spot_diameter_fullres)
+
+        if (resolution != "fullres") {
+          scale_factor <- scale_values[grepl(resolution,
+                                            names(scale_values))][[1]]
+          sigmaOpt <- sigmaOpt * as.numeric(scale_factor)
+        }
     } else  {
       stop("Please specify the sigma or correct path to .json")
     }
-    optParams <-matrix(c(sigmaOpt,threshOpt),nrow = 2,
-                       ncol = length(patternList))
+    optParams <- matrix(c(sigmaOpt, threshOpt), nrow = 2,
+                        ncol = length(patternList))
     colnames(optParams) <- patternList
-    rownames(optParams) <- c("sigmaOpt","threshOpt")
-  return(optParams)
+    rownames(optParams) <- c("sigmaOpt", "threshOpt")
+
+  optParams
 }

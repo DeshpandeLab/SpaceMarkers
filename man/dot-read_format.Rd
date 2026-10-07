@@ -7,6 +7,10 @@ Reads a format into an R object}
 \usage{
 .read_format(path)
 }
+\value{
+The deserialized R object: result of \code{readRDS} for .rds,
+an open \code{H5File} for .h5ad, a \code{data.frame} for .csv.
+}
 \description{
 readFormat
 Reads a format into an R object

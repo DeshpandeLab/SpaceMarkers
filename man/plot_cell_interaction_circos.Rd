@@ -100,7 +100,7 @@ selection of cell types, customization of segment and link appearance,
 and different modes of representing interactions.
 }
 \examples{
-\dontrun{
+\donttest{
 if (requireNamespace("circlize", quietly = TRUE) &&
     requireNamespace("RColorBrewer", quietly = TRUE)) {
   lr_data <- data.frame(

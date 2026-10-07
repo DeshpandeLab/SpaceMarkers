@@ -102,7 +102,7 @@ and its outgoing interactions to a specified set of target cell types. Only
 ligands from the source and relevant receptors on the targets are shown.
 }
 \examples{
-\dontrun{
+\donttest{
 if (requireNamespace("circlize", quietly = TRUE) &&
     requireNamespace("RColorBrewer", quietly = TRUE)) {
   lr_data <- data.frame(

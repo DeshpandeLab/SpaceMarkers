@@ -77,7 +77,9 @@ and genes with less than 3 counts are removed from the dataset.This can be
 achieved with the load10XExpr function.
 
 ```{r}
-download.file(counts_url,file.path(data_dir,basename(counts_url)), mode = "wb")
+bfc <- BiocFileCache::BiocFileCache(ask = FALSE)
+counts_cache <- BiocFileCache::bfcrpath(bfc, counts_url)
+file.copy(counts_cache, file.path(data_dir, counts_file), overwrite = TRUE)
 counts_matrix <- load10XExpr(visiumDir = data_dir, h5filename = counts_file)
 good_gene_threshold <- 3
 goodGenes <- rownames(counts_matrix)[
@@ -114,8 +116,8 @@ pattern interact in 2D space. The data can be extracted with the
 **load10XCoords()** function
 
 ```{r}
-download.file(sp_url, file.path(data_dir,basename(sp_url)), mode = "wb")
-untar(file.path(data_dir,basename(sp_url)), exdir = file.path(data_dir))
+sp_cache <- BiocFileCache::bfcrpath(bfc, sp_url)
+untar(sp_cache, exdir = data_dir)
 spCoords <- load10XCoords(visiumDir = data_dir, 
                           resolution="lowres", version = "1.0")
 rownames(spCoords) <- spCoords$barcode

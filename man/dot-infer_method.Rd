@@ -7,6 +7,10 @@ Infer the method used to obtain spatial features}
 \usage{
 .infer_method(spObject, method)
 }
+\value{
+Character of length one: one of \code{"SpatialExperiment"},
+\code{"BayesTME"}, \code{"CoGAPS"}, \code{"Seurat"}, or \code{"CSV"}.
+}
 \description{
 inferMethod
 Infer the method used to obtain spatial features

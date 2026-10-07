@@ -7,6 +7,10 @@ Load features BayesTME object}
 \usage{
 .get_BTME_features(hf)
 }
+\value{
+Numeric matrix of BayesTME cell-type counts (rows = barcodes,
+cols = cell types).
+}
 \description{
 .get_BTME_features
 Load features BayesTME object
