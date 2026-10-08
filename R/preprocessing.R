@@ -149,6 +149,31 @@ load10XCoords <- function(visiumDir, resolution = c("fullres","lowres","hires"),
     return(coord_values)
 }
 
+#' .complete_pattern_rows
+#' Identify complete-case rows (spots) across spatial pattern columns and
+#' message a summary of any incomplete rows found. Some deconvolution
+#' methods (e.g. RCTD) do not estimate fractions for every barcode and
+#' leave NAs in place instead of dropping the row, which otherwise
+#' propagates into the mixture-model tests downstream. Shared by
+#' \code{get_spatial_features()} and the \code{spatial_patterns<-} setter so
+#' every path that supplies spatial patterns is covered.
+#' @return A logical vector, one element per row of \code{df}, TRUE for
+#'   complete-case rows.
+#' @keywords internal
+.complete_pattern_rows <- function(df) {
+    keep <- stats::complete.cases(as.data.frame(df))
+    n_total <- length(keep)
+    n_na <- sum(!keep)
+    if (n_na > 0L) {
+        message(sprintf(
+            "NAs detected in spatial patterns and will be removed: %d NA row%s out of %d total row%s removed.",
+            n_na, if (n_na == 1L) "" else "s",
+            n_total, if (n_total == 1L) "" else "s"
+        ))
+    }
+    keep
+}
+
 #===================
 #' @title Load spatial features
 #' @description This function loads spatial features from a file containing
@@ -159,11 +184,14 @@ load10XCoords <- function(visiumDir, resolution = c("fullres","lowres","hires"),
 #' @param method A string specifying the type of object to obtain spatial
 #' feature from. Default NULL, where the method is inferred based on object
 #' type. Other methods are: "CoGAPS", "Seurat", or "BayesTME".
-#' @param featureNames An array of strings specifying the column names 
+#' @param featureNames An array of strings specifying the column names
 #' corresponding to the feature names or a regex string. In the case of Seurat,
 #' all metadata columns with "_Feature" suffix are selected.
-#' @return a matrix of spatial features with barcodes associated 
-#' with individual coordinates
+#' @return a matrix of spatial features with barcodes associated
+#' with individual coordinates. Rows (barcodes) with an NA in any selected
+#' feature column are dropped, with a message reporting how many were
+#' removed (some deconvolution methods, e.g. RCTD, leave NAs for barcodes
+#' they could not estimate fractions for instead of omitting the row).
 #' @examples
 #' library(SpaceMarkers)
 #' #CoGAPS data filePath
@@ -212,6 +240,12 @@ get_spatial_features <- function(filePath, method = NULL, featureNames = "."){
 
     featureNames <- intersect(featureNames, dataNames)
     spFeatures <- spFeatures[,featureNames, drop = FALSE]
+
+    # Some deconvolution methods (e.g. RCTD) leave NAs for barcodes they
+    # could not estimate fractions for rather than dropping the row; strip
+    # those out here so callers never have to special-case them downstream.
+    keep <- .complete_pattern_rows(spFeatures)
+    spFeatures <- spFeatures[keep, , drop = FALSE]
 
     return(spFeatures)
 }
@@ -304,23 +338,44 @@ get_spatial_features <- function(filePath, method = NULL, featureNames = "."){
 
 #' .get_csv_features
 #' Load features from dataframe
-#' @return data.frame of features with barcodes as rownames.
+#' @return data.frame of numeric features with barcodes as rownames.
 #' @keywords internal
 .get_csv_features <- function(obj){
-    spFeatures <- obj
-    if ("barcode" %in% colnames(spFeatures)){
-        rownames(spFeatures) <- spFeatures$barcode
-    } else {
-        if(!colnames(spFeatures)[1]=="X"){
-            stop("No barcode column found and first colname is not blank.
-                    Stopping.")
-        } else {
-            rownames(spFeatures) <- spFeatures[,"X"]
-        }
+  spFeatures <- obj
+  barcode_col <- grep("barcode", colnames(spFeatures),
+                      ignore.case = TRUE, value = TRUE)
+  if (length(barcode_col) > 0) {
+    if (length(barcode_col) > 1) {
+      message(sprintf(
+        "Multiple barcode-like columns found (%s); using '%s'.",
+        paste(barcode_col, collapse = ", "), barcode_col[1]
+      ))
     }
-    removeCols <- c("NA","barcode","in_tissue","array_row","array_col","pxl_col_in_fullres","pxl_row_in_fullres")
-    spFeatures <- spFeatures[,-which(startsWith(colnames(spFeatures),"X") | colnames(spFeatures) %in% removeCols)]
-    return(spFeatures)
+    barcode_col <- barcode_col[1]
+  } else if (colnames(spFeatures)[1] %in% c("X", "")) {
+    barcode_col <- colnames(spFeatures)[1]
+  } else {
+    stop("No barcode column found and first colname is not blank.
+                    Stopping.")
+  }
+  has_barcode <- !is.na(spFeatures[[barcode_col]])
+  if (!all(has_barcode)) {
+    message(sprintf(
+      "%d row(s) with a missing barcode value were dropped.",
+      sum(!has_barcode)
+    ))
+    spFeatures <- spFeatures[has_barcode, , drop = FALSE]
+  }
+  rownames(spFeatures) <- spFeatures[[barcode_col]]
+  spFeatures[[barcode_col]] <- NULL
+  removeCols <- c("NA", "in_tissue", "array_row", "array_col",
+                  "pxl_col_in_fullres", "pxl_row_in_fullres")
+  is_num <- vapply(spFeatures, is.numeric, logical(1))
+  keep <- !(colnames(spFeatures) %in% removeCols) &
+    !startsWith(colnames(spFeatures), "X") &
+    is_num
+  spFeatures <- spFeatures[, keep, drop = FALSE]
+  return(spFeatures)
 }
 
 #' .get_spe_features
@@ -369,96 +424,106 @@ get_spatial_features <- function(filePath, method = NULL, featureNames = "."){
 #' }
 #' @export
 load10X <- function(visiumDir,
-                         features = NULL,
-                         h5filename = "filtered_feature_bc_matrix.h5",
-                         resolution = c("fullres", "lowres", "hires"),
-                         version = NULL,
-                         ...) {
-    resolution <- match.arg(resolution)
-    expr <- load10XExpr(visiumDir = visiumDir, h5filename = h5filename)
-    coords <- load10XCoords(visiumDir = visiumDir,
-                            resolution = resolution, version = version)
-    rownames(coords) <- coords$barcode
-
-    all_expr <- colnames(expr)
-    all_coords <- coords$barcode
-    common <- intersect(all_expr, all_coords)
-    dropped <- length(all_expr) + length(all_coords) - 2L * length(common)
-    if (dropped > 0L) {
-        warning(sprintf(
-            "Dropped %d spots not present in both expression and coordinates. Keeping %d common spots.",
-            dropped, length(common)
-        ))
+                    features = NULL,
+                    h5filename = "filtered_feature_bc_matrix.h5",
+                    resolution = c("fullres", "lowres", "hires"),
+                    version = NULL,
+                    ...) {
+  resolution <- match.arg(resolution)
+  expr <- load10XExpr(visiumDir = visiumDir, h5filename = h5filename)
+  coords <- load10XCoords(visiumDir = visiumDir,
+                          resolution = resolution, version = version)
+  rownames(coords) <- coords$barcode
+  
+  all_expr <- colnames(expr)
+  all_coords <- coords$barcode
+  common <- intersect(all_expr, all_coords)
+  dropped <- length(all_expr) + length(all_coords) - 2L * length(common)
+  if (dropped > 0L) {
+    warning(sprintf(
+      "Dropped %d spots not present in both expression and coordinates. Keeping %d common spots.",
+      dropped, length(common)
+    ))
+  }
+  
+  pattern_names <- NULL
+  spFeatures <- NULL
+  
+  if (!is.null(features)) {
+    spFeatures <- get_spatial_features(features, ...)
+    shared <- intersect(common, rownames(spFeatures))
+    dropped_feat <- length(rownames(spFeatures)) - length(shared)
+    dropped_sme <- length(common) - length(shared)
+    if (dropped_feat > 0L || dropped_sme > 0L) {
+      # Spots present in expression/coords but missing a features row
+      # have no pattern values at all; keeping them would leave NA
+      # spatial_patterns downstream, which spatstat's ppp() hard-errors
+      # on (e.g. inside calculate_influence()). Drop them here instead,
+      # consistent with how spatial_patterns<- handles NA patterns
+      # elsewhere in the package.
+      warning(sprintf(
+        paste0("Spot mismatch: %d spots in expression/coords and ",
+               "%d spots in features not shared. ",
+               "Dropping to %d common spots."),
+        dropped_sme, dropped_feat, length(shared)
+      ))
     }
-    expr <- expr[, common, drop = FALSE]
-    coords <- coords[common, , drop = FALSE]
-
-    coord_mat <- as.matrix(coords[, c("y", "x")])
-    rownames(coord_mat) <- common
-
-    cd <- S4Vectors::DataFrame(row.names = common)
-    pattern_names <- NULL
-
-    if (!is.null(features)) {
-        spFeatures <- get_spatial_features(features, ...)
-        shared <- intersect(common, rownames(spFeatures))
-        dropped_feat <- length(rownames(spFeatures)) - length(shared)
-        dropped_sme <- length(common) - length(shared)
-        if (dropped_feat > 0L || dropped_sme > 0L) {
-            warning(sprintf(
-                paste0("Spot mismatch: %d spots in expression/coords and ",
-                       "%d spots in features not shared. ",
-                       "Keeping %d common spots for features (NA-padded)."),
-                dropped_sme, dropped_feat, length(shared)
-            ))
-        }
-        feat_df <- S4Vectors::DataFrame(
-            spFeatures[shared, , drop = FALSE],
-            row.names = shared
-        )
-        # Pad unmatched spots with NA
-        for (col in colnames(feat_df)) {
-            cd[[col]] <- NA_real_
-            cd[shared, col] <- feat_df[shared, col]
-        }
-        pattern_names <- colnames(spFeatures)
-    }
-
-    # Pre-compute spatial parameters from the scalefactors JSON if available
-    spatial_par <- NULL
-    if (!is.null(pattern_names) && length(shared) > 0L) {
-        spCoords <- coords[shared, c("barcode", "y", "x"), drop = FALSE]
-        spPats <- as.data.frame(spFeatures[shared, , drop = FALSE])
-        spPatterns_combined <- cbind(spCoords, spPats)
-        tryCatch({
-            spatial_par <- get_spatial_parameters(
-                spatialPatterns = spPatterns_combined,
-                visiumDir = visiumDir,
-                resolution = resolution
-            )
-        }, error = function(e) {
-            warning(sprintf(
-                "Pre-computing spatial_params failed: %s", conditionMessage(e)
-            ))
-            NULL
-        })
-    }
-
-    sm <- as(list(
-        params = list(
-            pattern_names = pattern_names,
-            spatial_params = spatial_par,
-            visiumDir = visiumDir,
-            resolution = resolution
-        )
-    ), "SimpleList")
-
-    SpaceMarkersExperiment(
-        assays = list(logcounts = expr),
-        colData = cd,
-        spatialCoords = coord_mat,
-        spaceMarkers = sm
+    common <- shared
+    pattern_names <- colnames(spFeatures)
+  }
+  
+  expr <- expr[, common, drop = FALSE]
+  coords <- coords[common, , drop = FALSE]
+  
+  coord_mat <- as.matrix(coords[, c("y", "x")])
+  rownames(coord_mat) <- common
+  
+  cd <- S4Vectors::DataFrame(row.names = common)
+  if (!is.null(spFeatures)) {
+    feat_df <- S4Vectors::DataFrame(
+      spFeatures[common, , drop = FALSE],
+      row.names = common
     )
+    for (col in colnames(feat_df)) {
+      cd[[col]] <- feat_df[[col]]
+    }
+  }
+  
+  # Pre-compute spatial parameters from the scalefactors JSON if available
+  spatial_par <- NULL
+  if (!is.null(pattern_names) && length(common) > 0L) {
+    spCoords <- coords[common, c("barcode", "y", "x"), drop = FALSE]
+    spPats <- as.data.frame(spFeatures[common, , drop = FALSE])
+    spPatterns_combined <- cbind(spCoords, spPats)
+    tryCatch({
+      spatial_par <- get_spatial_parameters(
+        spatialPatterns = spPatterns_combined,
+        visiumDir = visiumDir,
+        resolution = resolution
+      )
+    }, error = function(e) {
+      warning(sprintf(
+        "Pre-computing spatial_params failed: %s", conditionMessage(e)
+      ))
+      NULL
+    })
+  }
+  
+  sm <- as(list(
+    params = list(
+      pattern_names = pattern_names,
+      spatial_params = spatial_par,
+      visiumDir = visiumDir,
+      resolution = resolution
+    )
+  ), "SimpleList")
+  
+  SpaceMarkersExperiment(
+    assays = list(logcounts = expr),
+    colData = cd,
+    spatialCoords = coord_mat,
+    spaceMarkers = sm
+  )
 }
 
 #===================
@@ -558,6 +623,173 @@ load_anndata <- function(file,
     }
 
     .unpack_spacemarkers_state(sme)
+}
+
+#===================
+#' @title Load a Seurat object as a SpaceMarkersExperiment
+#' @description Convenience wrapper that reads a Seurat \code{.rds} file (or
+#'   accepts an already-loaded \code{Seurat} object) and coerces it, via
+#'   \code{as.SingleCellExperiment()}, into a
+#'   \code{\link{SpaceMarkersExperiment}}. Equivalent to running:
+#'   \preformatted{
+#'   seurat_object <- readRDS(file)
+#'   sme <- as(as.SingleCellExperiment(seurat_object), "SpaceMarkersExperiment")
+#'   spatial_patterns(sme) <- t(seurat_object@assays[[deconv_assay]]@data)
+#'   }
+#'   plus deriving \code{spatial_params(sme)} (\code{sigmaOpt}/\code{threshOpt})
+#'   from the named image's scale factors.
+#'
+#'   Spatial patterns for Seurat objects (spot deconvolution / cell-type
+#'   composition, dimensionality reduction, etc.) are commonly stored in an
+#'   assay rather than in \code{meta.data}; \code{deconv_assay} names that
+#'   assay. This differs from object to object, so it is a parameter rather
+#'   than a fixed default.
+#' @param file Path to an \code{.rds} file containing a Seurat object, or an
+#'   already-loaded \code{Seurat} object.
+#' @param deconv_assay Name of the assay holding spot deconvolution /
+#'   cell-type composition values (spots x patterns after transposition).
+#'   Default \code{"deconv"}. If \code{NULL}, no spatial patterns are added
+#'   and a message points to \code{\link{get_spatial_features}} (e.g.
+#'   \code{get_spatial_features(seurat_object, method = "Seurat")}) for
+#'   obtaining them afterwards; this does not raise an error.
+#' @param layer Which layer/slot of \code{deconv_assay} to read. One of
+#'   \code{"data"} (default), \code{"counts"}, \code{"scale.data"}. Handles
+#'   both the Seurat v4 (\code{slot=}) and v5 (\code{layer=}) accessor APIs.
+#' @param image Name of the entry in \code{seurat_object@images} used to
+#'   derive the spot radius / lowres scale factors for
+#'   \code{spatial_params(sme)} (\code{sigma = scale.factors[["spot"]] *
+#'   scale.factors[["lowres"]]}). Defaults to the first available image. If
+#'   no images are present, \code{spatial_params(sme)} is left unset (with a
+#'   warning) rather than failing, since it is only relevant when spatial
+#'   patterns were added.
+#' @param threshold Numeric outlier threshold applied to every pattern's
+#'   \code{threshOpt}. Default 4.
+#' @return A \code{\link{SpaceMarkersExperiment}} object.
+#' @export
+load_seurat <- function(file, deconv_assay = "deconv",
+                        layer = c("data", "counts", "scale.data"),
+                        image = NULL, threshold = 4) {
+  layer <- match.arg(layer)
+  if (!requireNamespace("Seurat", quietly = TRUE)) {
+    stop(
+      "load_seurat() requires the 'Seurat' package. Install with: ",
+      "install.packages('Seurat')."
+    )
+  }
+  
+  if (methods::is(file, "Seurat")) {
+    seurat_object <- file
+  } else if (is.character(file)) {
+    seurat_object <- readRDS(file)
+    if (!methods::is(seurat_object, "Seurat")) {
+      stop(sprintf(
+        "File '%s' did not contain a Seurat object (found class '%s').",
+        file, paste(class(seurat_object), collapse = "/")
+      ))
+    }
+  } else {
+    stop("'file' must be a path to an .rds file or an already-loaded ",
+         "Seurat object.")
+  }
+  
+  sce <- Seurat::as.SingleCellExperiment(seurat_object)
+  sme <- methods::as(sce, "SpaceMarkersExperiment")
+  
+  if (is.null(deconv_assay)) {
+    message(
+      "deconv_assay is NULL; no spatial patterns were added to the ",
+      "SpaceMarkersExperiment. Use get_spatial_features() (e.g. ",
+      "get_spatial_features(seurat_object, method = \"Seurat\")) to ",
+      "obtain spatial patterns, then attach them with ",
+      "spatial_patterns(sme) <- ... or add_features(sme, ...)."
+    )
+    return(sme)
+  }
+  if (!is.character(deconv_assay) || length(deconv_assay) != 1L) {
+    stop("'deconv_assay' must be a single assay name string, or NULL.")
+  }
+  
+  avail_assays <- names(methods::slot(seurat_object, "assays"))
+  if (!deconv_assay %in% avail_assays) {
+    stop(sprintf(
+      "deconv_assay = '%s' not found in the Seurat object. Available assays: %s",
+      deconv_assay, paste(avail_assays, collapse = ", ")
+    ))
+  }
+  deconv_data <- .get_seurat_assay_data(seurat_object, deconv_assay, layer)
+  spatial_patterns(sme) <- t(as.matrix(deconv_data))
+  
+  pattern_names <- sme@spacemarkers$params$pattern_names
+  if (!is.null(pattern_names) && length(pattern_names) > 0L) {
+    avail_images <- tryCatch(Seurat::Images(seurat_object),
+                             error = function(e) character())
+    if (length(avail_images) == 0L) {
+      warning("Seurat object has no images; spatial_params(sme) was ",
+              "not set. Set it manually (a matrix with rows ",
+              "'sigmaOpt'/'threshOpt', one column per pattern) before ",
+              "running the SpaceMarkers pipeline.")
+    } else {
+      if (is.null(image)) {
+        image <- avail_images[1]
+      } else if (!image %in% avail_images) {
+        stop(sprintf(
+          "image = '%s' not found in the Seurat object. Available images: %s",
+          image, paste(avail_images, collapse = ", ")
+        ))
+      }
+      scale_factors <- methods::slot(
+        methods::slot(seurat_object, "images")[[image]], "scale.factors")
+      if (!all(c("spot", "lowres") %in% names(scale_factors))) {
+        warning(sprintf(
+          "Image '%s' scale.factors is missing 'spot' and/or 'lowres'; spatial_params(sme) was not set.",
+          image
+        ))
+      } else {
+        radius <- scale_factors[["spot"]]
+        resolution <- scale_factors[["lowres"]]
+        sigma <- radius * resolution
+        optParams <- matrix(
+          0, nrow = 2, ncol = length(pattern_names),
+          dimnames = list(c("sigmaOpt", "threshOpt"), pattern_names)
+        )
+        optParams["sigmaOpt", ] <- sigma
+        optParams["threshOpt", ] <- threshold
+        spatial_params(sme) <- optParams
+      }
+    }
+  }
+  
+  sme
+}
+
+#' .get_seurat_assay_data
+#' Extract an assay's data matrix from a Seurat object, handling both the
+#' Seurat v5 (\code{layer=}) and v4 (\code{slot=}) accessor APIs via
+#' \code{Seurat::GetAssayData()}, with a direct-slot-access fallback.
+#' @return A matrix (or matrix-like object) of assay values.
+#' @keywords internal
+.get_seurat_assay_data <- function(seurat_object, assay, layer = "data") {
+  out <- tryCatch(
+    Seurat::GetAssayData(seurat_object, assay = assay, layer = layer),
+    error = function(e) NULL
+  )
+  if (is.null(out)) {
+    out <- tryCatch(
+      Seurat::GetAssayData(seurat_object, assay = assay, slot = layer),
+      error = function(e) NULL
+    )
+  }
+  if (is.null(out)) {
+    assay_obj <- methods::slot(seurat_object, "assays")[[assay]]
+    out <- tryCatch(methods::slot(assay_obj, layer), error = function(e) NULL)
+  }
+  if (is.null(out)) {
+    stop(sprintf(
+      "Could not extract layer/slot '%s' from assay '%s'.",
+      layer, assay
+    ))
+  }
+  out
 }
 
 #===================
