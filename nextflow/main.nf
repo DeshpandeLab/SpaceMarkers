@@ -1,3 +1,5 @@
+nextflow.enable.dsl = 2
+
 process SPACEMARKERS {
   tag "$meta.id"
   label 'process_medium'
@@ -31,4 +33,16 @@ process SPACEMARKERS {
           R: \$(Rscript -e 'print(packageVersion("base"))' | awk '{print \$2}')
     END_VERSIONS
     """
+}
+
+// unnamed worklow to run on a samplesheet with anndata files
+// example usage
+// nextflow run SpaceMarkers/nextflow/main.nf -with-docker -resume -params-file params.yaml
+workflow {
+  samplesheet_ch = channel.fromPath(params.input)
+  samplesheet_ch
+    .splitCsv(header: true)
+    .map { row -> tuple([id: row.sample], file(row.anndata)) }
+    .set { adata_ch }
+  SPACEMARKERS(adata_ch)
 }
