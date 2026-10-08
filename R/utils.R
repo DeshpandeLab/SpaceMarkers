@@ -972,7 +972,6 @@ setMethod("calculate_gene_set_specificity", "ANY",
     if (is.null(workers) || workers < 1) {
         workers <- BiocParallel::bpworkers(BiocParallel::bpparam())
     }
-    BiocParallel::register(BiocParallel::MulticoreParam(workers))
     lfc <- BiocParallel::bplapply(cell_types, function(ct) {
         lfc_col <- p_val_col <- numeric(length(genes))
         names(lfc_col) <- names(p_val_col) <- genes
