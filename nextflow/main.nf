@@ -39,25 +39,7 @@ process SPACEMARKERS {
     # argument matched by multiple actual arguments" error.
     sme <- SpaceMarkers(sme, directed = FALSE, cpus = $task.cpus)
 
-    # ---- Directed SpaceMarkers (one line), only if a ligand-receptor
-    # reference CSV is configured via params.lr_reference (empty string by
-    # default -- see nextflow.config). Runs that never set it keep
-    # producing exactly the same outputs as before this change.
-    lr_reference_path <- "${params.lr_reference}"
-    run_directed <- nzchar(lr_reference_path) && file.exists(lr_reference_path)
-
-    if (run_directed) {
-      message("Running directed SpaceMarkers using lr_reference: ", lr_reference_path)
-      LR_df <- read.csv(lr_reference_path, row.names = 1)
-      LR_df[["ligand.symbol"]]   <- LR_df[["ligand"]]
-      LR_df[["receptor.symbol"]] <- LR_df[["receptor"]]
-      sme <- SpaceMarkers(sme, directed = TRUE, lr_pairs = LR_df)
-    } else if (nzchar(lr_reference_path)) {
-      warning("params.lr_reference was set to '", lr_reference_path,
-              "' but that file does not exist; skipping directed SpaceMarkers.")
-    }
-
-    # ---- New output: the full SpaceMarkersExperiment (both analyses, if run) ----
+    # ---- New output: the full SpaceMarkersExperiment ----
     saveRDS(sme, file = "${prefix}/sme.rds")
 
     # ---- Backward-compatible legacy outputs (same file names/shapes as before) ----

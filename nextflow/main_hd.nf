@@ -6,6 +6,7 @@ process SPACEMARKERS_HD {
   input:
     tuple val(meta), path(features), path(data)
   output:
+    tuple val(meta), path("${prefix}/sme.rds"),            val(source),   emit: sme
     tuple val(meta), path("${prefix}/IMscores.rds"),       val(source),   emit: IMscores
     tuple val(meta), path("${prefix}/LRscores.rds"),       val(source),   emit: LRscores, optional: true
     path  "versions.yml",                                                 emit: versions
@@ -22,6 +23,7 @@ process SPACEMARKERS_HD {
     prefix = task.ext.prefix ?: "${meta.id}/${source}"
     """
     mkdir -p "${prefix}"
+    touch "${prefix}/sme.rds"
     touch "${prefix}/IMscores.rds"
     touch "${prefix}/LRscores.rds"
     touch "${prefix}/top_25_interactions.csv"
