@@ -1,26 +1,32 @@
 #!/usr/bin/env Rscript
-# SpaceMarkers >= 2.3 on AnnData via SpaceMarkersExperiment.
+# SpaceMarkers >= 2.2 on AnnData via SpaceMarkersExperiment.
 # NB: avoid dollar signs and backslashes here, Nextflow templates interpolate them.
 
 suppressPackageStartupMessages({
-  library(SpaceMarkers)
+  devtools::load_all("/spacemarkers")
   library(SummarizedExperiment)
 })
 
 adata_path <- "${adata}"
 output_dir <- "${prefix}"
-patterns_key <- "${params.analyze.sm_patterns_uns}"
-directed_param <- "${params.analyze.sm_directed == null ? '' : params.analyze.sm_directed}"
-spot_diameter_param <- "${params.analyze.sm_spot_diameter == null ? '' : params.analyze.sm_spot_diameter}"
-use_lr_genes <- as.logical("${params.use_ligand_receptor_genes}")
-good_gene_threshold <- ${params.good_gene_threshold}
+patterns_key <- "${params.sm_patterns_uns}"
+directed_param <- "${params.sm_directed}"
+spot_diameter_param <- "${params.sm_spot_diameter}"
+use_lr_genes <- as.logical("${params.sm_use_lr_genes}")
+good_gene_threshold <- ${params.sm_good_gene_thd}
 n_spots_directed <- 10000
 set.seed(${params.seed})
 
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
+message('setting up parallel param..')
+workers <- min(as.numeric("${task.cpus}"), parallel::detectCores())
+BiocParallel::register(BiocParallel::MulticoreParam(workers = workers)) #register backend
+
+message('creating sme object..')
 sme <- load_anndata(adata_path, patterns_meta_table = patterns_key)
 
+message('extracting spatial patterns..')
 pats <- spatial_patterns(sme)
 if (is.null(pats) || ncol(pats) < 2) {
   stop(sprintf("Need at least 2 latent features in uns[['%s']] of %s", patterns_key, adata_path))
@@ -84,14 +90,18 @@ if (directed) {
     goodgenes <- names(head(sort(rowSums(expr), decreasing = TRUE), good_gene_threshold))
     sme <- sme[rownames(sme) %in% goodgenes, ]
   }
-
+  message('calculating directed influence scores...')
   sme <- calculate_influence(sme)
+  message('finding pattern hotspots using GMM...')
   sme <- find_hotspots_gmm(sme, type = "pattern")
+  message('finding influence hotspots using GMM...')
   sme <- find_hotspots_gmm(sme, type = "influence")
+  message('calculating gene scores...')
   sme <- calculate_gene_scores_directed(sme, avoid_confounders = TRUE)
   saveRDS(directed_scores(sme), file = file.path(output_dir, "IMscores.rds"))
 
   if (use_lr_genes) {
+    message('calculating ligand-receptor scores...')
     sme <- calculate_gene_set_score(sme, gene_sets = ligands, weighted = TRUE, method = "arithmetic_mean")
     sme <- calculate_gene_set_specificity(sme, gene_sets = receptors, weighted = TRUE, method = "arithmetic_mean")
     sme <- calculate_lr_scores(sme, lr_pairs = lrpairs, method = "geometric_mean", weighted = TRUE)
