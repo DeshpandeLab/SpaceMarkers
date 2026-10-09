@@ -14,13 +14,13 @@ process SPACEMARKERS {
 
   script:
     def args = task.ext.args ?: ''
-    source = 'spacemarkers'
+    source = adata.simpleName
     prefix = task.ext.prefix ?: "${meta.id}/${source}"
     template 'spacemarkers.R'
 
   stub:
     def args = task.ext.args ?: ''
-    source = 'spacemarkers'
+    source = adata.simpleName
     prefix = task.ext.prefix ?: "${meta.id}/${source}"
     """
     mkdir -p "${prefix}"
