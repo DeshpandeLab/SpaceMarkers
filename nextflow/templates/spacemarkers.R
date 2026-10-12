@@ -14,6 +14,7 @@ directed_param <- "${params.sm_directed}"
 spot_diameter_param <- "${params.sm_spot_diameter}"
 use_lr_genes <- as.logical("${params.sm_use_lr_genes}")
 good_gene_threshold <- ${params.sm_good_gene_thd}
+lr_reference_path <- "${lr_reference}" # optional CSV overriding the CellChat ligand-receptor reference
 n_spots_directed <- 10000
 set.seed(${params.seed})
 
@@ -78,9 +79,28 @@ expr <- assay(sme, if ("logcounts" %in% assayNames(sme)) "logcounts" else 1L)
 
 if (directed) {
   if (use_lr_genes) {
-    library(CellChat)
-    lrdf <- CellChat::CellChatDB.human
-    lrpairs <- lrdf[["interaction"]][, c("ligand.symbol", "receptor.symbol")]
+    lrpairs <- NULL
+    if (nzchar(lr_reference_path)) {
+      message("using user-supplied lr_reference: ", lr_reference_path)
+      # CSV with pair IDs as row names (first column) and columns
+      # ligand.symbol/receptor.symbol (or ligand/receptor); entries may hold
+      # several symbols separated by ', ' (same convention as CellChatDB.human)
+      lrpairs <- read.csv(lr_reference_path, row.names = 1)
+      if (!all(c("ligand.symbol", "receptor.symbol") %in% colnames(lrpairs))) {
+        if (all(c("ligand", "receptor") %in% colnames(lrpairs))) {
+          lrpairs[["ligand.symbol"]] <- lrpairs[["ligand"]]
+          lrpairs[["receptor.symbol"]] <- lrpairs[["receptor"]]
+        } else {
+          stop("lr_reference CSV must have columns 'ligand.symbol'/'receptor.symbol' ",
+               "(or 'ligand'/'receptor'). Found: ", paste(colnames(lrpairs), collapse = ", "))
+        }
+      }
+      lrpairs <- lrpairs[, c("ligand.symbol", "receptor.symbol")]
+    } else {
+      library(CellChat)
+      lrdf <- CellChat::CellChatDB.human
+      lrpairs <- lrdf[["interaction"]][, c("ligand.symbol", "receptor.symbol")]
+    }
     ligands <- sapply(lrpairs[["ligand.symbol"]], function(i) strsplit(i, split = ", "))
     receptors <- sapply(lrpairs[["receptor.symbol"]], function(i) strsplit(i, split = ", "))
     names(ligands) <- names(receptors) <- rownames(lrpairs)
@@ -122,6 +142,9 @@ if (directed) {
   }
   saveRDS(imscores, file = file.path(output_dir, "IMscores.rds"))
 }
+
+# full SpaceMarkersExperiment, saved in both directed and undirected modes
+saveRDS(sme, file = file.path(output_dir, "sme.rds"))
 
 sinfo <- sessionInfo()
 versions <- lapply(sinfo[["otherPkgs"]], function(x) sprintf("  %s: %s", x[["Package"]], x[["Version"]]))

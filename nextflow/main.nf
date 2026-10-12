@@ -7,7 +7,9 @@ process SPACEMARKERS {
 
   input:
     tuple val(meta), path(adata)
+    path lr_reference
   output:
+    tuple val(meta), path("${prefix}/sme.rds"),      val(source), emit: sme
     tuple val(meta), path("${prefix}/IMscores.rds"), val(source), emit: IMscores
     tuple val(meta), path("${prefix}/LRscores.rds"), val(source), emit: LRscores, optional: true
     path  "versions.yml",                                         emit: versions
@@ -24,6 +26,7 @@ process SPACEMARKERS {
     prefix = task.ext.prefix ?: "${meta.id}/${source}"
     """
     mkdir -p "${prefix}"
+    touch "${prefix}/sme.rds"
     touch "${prefix}/IMscores.rds"
     touch "${prefix}/LRscores.rds"
 
@@ -44,5 +47,11 @@ workflow {
     .splitCsv(header: true)
     .map { row -> tuple([id: row.sample], file(row.anndata)) }
     .set { adata_ch }
-  SPACEMARKERS(adata_ch)
+
+  // optional user-supplied ligand-receptor reference; [] stages no file
+  lr_reference_ch = params.sm_lr_reference ?
+    channel.value(file(params.sm_lr_reference, checkIfExists: true)) :
+    channel.value([])
+
+  SPACEMARKERS(adata_ch, lr_reference_ch)
 }
