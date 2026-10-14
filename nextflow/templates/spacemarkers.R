@@ -7,30 +7,38 @@ suppressPackageStartupMessages({
   library(SummarizedExperiment)
 })
 
-adata_path <- "${adata}"
+spatial_path <- "${spatial}"
+features_path <- "${features}"
+lr_reference_path <- "${lr_reference}"
 output_dir <- "${prefix}"
 patterns_key <- "${params.sm_patterns_uns}"
 directed_param <- "${params.sm_directed}"
-spot_diameter_param <- "${params.sm_spot_diameter}"
+spot_diameter_param <- as.numeric("${params.sm_spot_diameter}")
 use_lr_genes <- as.logical("${params.sm_use_lr_genes}")
-good_gene_threshold <- ${params.sm_good_gene_thd}
-lr_reference_path <- "${lr_reference}" # optional CSV overriding the CellChat ligand-receptor reference
+good_gene_threshold <- as.numeric("${params.sm_good_gene_thd}")
 n_spots_directed <- 10000
-set.seed(${params.seed})
+set.seed(as.numeric("${params.seed}"))
 
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
-message('setting up parallel param..')
+message("setting up parallel param..")
 workers <- min(as.numeric("${task.cpus}"), parallel::detectCores())
 BiocParallel::register(BiocParallel::MulticoreParam(workers = workers)) #register backend
 
-message('creating sme object..')
-sme <- load_anndata(adata_path, patterns_meta_table = patterns_key)
+message("creating sme object..")
+if (grepl(".h5ad", spatial_path)) {
+  message("loading from AnnData..")
+  sme <- load_anndata(spatial_path, patterns_meta_table = patterns_key)
+} else {
+  message("loading from visium dir..")
+  sme <- load10X(spatial_path, features_path)
+}
 
-message('extracting spatial patterns..')
+
+message("extracting spatial patterns..")
 pats <- spatial_patterns(sme)
 if (is.null(pats) || ncol(pats) < 2) {
-  stop(sprintf("Need at least 2 latent features in uns[['%s']] of %s", patterns_key, adata_path))
+  stop(sprintf("Need at least 2 latent features in uns[['%s']] of %s", patterns_key, spatial_path))
 }
 
 # Mode: explicit param wins, otherwise by total spot count
@@ -56,7 +64,7 @@ estimate_spot_diameter <- function(coords, n_sample = 2000) {
 
 sigma <- NULL
 sigma_method <- NULL
-if (nzchar(spot_diameter_param)) {
+if (nzchar(spot_diameter_param) && !is.na(as.numeric(spot_diameter_param))) {
   sigma <- as.numeric(spot_diameter_param)
   sigma_method <- "param"
 } else if (is.null(spatial_params(sme))) {
@@ -82,15 +90,21 @@ if (directed) {
     lrpairs <- NULL
     if (nzchar(lr_reference_path)) {
       message("using user-supplied lr_reference: ", lr_reference_path)
+      lrpairs <- read.csv(lr_reference_path)
       # CSV with pair IDs as row names (first column) and columns
       # ligand.symbol/receptor.symbol (or ligand/receptor); entries may hold
       # several symbols separated by ', ' (same convention as CellChatDB.human)
-      lrpairs <- read.csv(lr_reference_path, row.names = 1)
       if (!all(c("ligand.symbol", "receptor.symbol") %in% colnames(lrpairs))) {
         if (all(c("ligand", "receptor") %in% colnames(lrpairs))) {
+          message("Using 'ligand' and 'receptor' columns as ligand.symbol and receptor.symbol")
           lrpairs[["ligand.symbol"]] <- lrpairs[["ligand"]]
           lrpairs[["receptor.symbol"]] <- lrpairs[["receptor"]]
-        } else {
+        } else if (all(c("source","target") %in% colnames(lrpairs))) {
+          message("Omnipath format detected: using 'source' and 'target' columns")
+          lrpairs[["ligand.symbol"]] <- lrpairs[["source"]]
+          lrpairs[["receptor.symbol"]] <- lrpairs[["target"]]
+        }
+          else {
           stop("lr_reference CSV must have columns 'ligand.symbol'/'receptor.symbol' ",
                "(or 'ligand'/'receptor'). Found: ", paste(colnames(lrpairs), collapse = ", "))
         }
