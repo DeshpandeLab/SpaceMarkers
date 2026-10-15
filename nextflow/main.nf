@@ -46,7 +46,7 @@ workflow {
   samplesheet_ch = channel.fromPath(params.input)
   samplesheet_ch
     .splitCsv(header: true)
-    .map { row -> tuple([id: row.sample], file(row.spatial), row.features ? file(row.features):'') }
+    .map { row -> tuple([id: row.sample], file(row.spatial), row.features ? file(row.features) : []) }
     .set { spacemarkers_ch }
 
   // optional user-supplied ligand-receptor reference; [] stages no file
