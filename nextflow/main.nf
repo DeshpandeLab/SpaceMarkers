@@ -6,8 +6,9 @@ process SPACEMARKERS {
   container 'ghcr.io/deshpandelab/spacemarkers@sha256:e13854a27622a04293fd8c26e8829a0407ab08a91d06259ece02eb440eab9ae2'
 
   input:
-    tuple val(meta), path(adata)
-    path lr_reference
+    tuple val(meta), path(spatial), path(features)
+    path( lr_reference )
+
   output:
     tuple val(meta), path("${prefix}/sme.rds"),      val(source), emit: sme
     tuple val(meta), path("${prefix}/IMscores.rds"), val(source), emit: IMscores
@@ -16,13 +17,13 @@ process SPACEMARKERS {
 
   script:
     def args = task.ext.args ?: ''
-    source = adata.simpleName
+    source = spatial.simpleName
     prefix = task.ext.prefix ?: "${meta.id}/${source}"
     template 'spacemarkers.R'
 
   stub:
     def args = task.ext.args ?: ''
-    source = adata.simpleName
+    source = spatial.simpleName
     prefix = task.ext.prefix ?: "${meta.id}/${source}"
     """
     mkdir -p "${prefix}"
@@ -45,13 +46,13 @@ workflow {
   samplesheet_ch = channel.fromPath(params.input)
   samplesheet_ch
     .splitCsv(header: true)
-    .map { row -> tuple([id: row.sample], file(row.anndata)) }
-    .set { adata_ch }
+    .map { row -> tuple([id: row.sample], file(row.spatial), row.features ? file(row.features) : []) }
+    .set { spacemarkers_ch }
 
   // optional user-supplied ligand-receptor reference; [] stages no file
   lr_reference_ch = params.sm_lr_reference ?
     channel.value(file(params.sm_lr_reference, checkIfExists: true)) :
     channel.value([])
 
-  SPACEMARKERS(adata_ch, lr_reference_ch)
+  SPACEMARKERS(spacemarkers_ch, lr_reference_ch)
 }
