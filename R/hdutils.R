@@ -261,6 +261,8 @@ return(df)
     } else {
        t1table <- matrix(NA, nrow=nrow(data), ncol=5)
        colnames(t1table) <- c("statistic", "p.value", "n1", "n2", "effect_size")
+       # keep gene names so the "gene" column below is not just row numbers
+       rownames(t1table) <- rownames(data)
     }
     t1table <- as.data.frame(t1table)
     t1table$gene <- rownames(t1table)
@@ -274,6 +276,8 @@ return(df)
     } else {
         t2table <- matrix(NA, nrow=nrow(data), ncol=5)
         colnames(t2table) <- c("statistic", "p.value", "n1", "n2", "effect_size")
+        # keep gene names so the "gene" column below is not just row numbers
+        rownames(t2table) <- rownames(data)
     }
     t2table <- as.data.frame(t2table)
     t2table$gene <- rownames(t2table)
