@@ -82,10 +82,12 @@ if (directed) {
     lrpairs <- NULL
     if (nzchar(lr_reference_path)) {
       message("using user-supplied lr_reference: ", lr_reference_path)
-      # CSV with pair IDs as row names (first column) and columns
-      # ligand.symbol/receptor.symbol (or ligand/receptor); entries may hold
-      # several symbols separated by ', ' (same convention as CellChatDB.human)
-      lrpairs <- read.csv(lr_reference_path, row.names = 1)
+      # CSV with columns ligand.symbol/receptor.symbol (or ligand/receptor);
+      # entries may hold several symbols separated by ', ' (same convention as
+      # CellChatDB.human). Only those two columns are used, so any other
+      # columns (e.g. a pair-ID column) are ignored and row names are not
+      # required.
+      lrpairs <- read.csv(lr_reference_path)
       if (!all(c("ligand.symbol", "receptor.symbol") %in% colnames(lrpairs))) {
         if (all(c("ligand", "receptor") %in% colnames(lrpairs))) {
           lrpairs[["ligand.symbol"]] <- lrpairs[["ligand"]]
