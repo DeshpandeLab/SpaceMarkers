@@ -719,6 +719,12 @@ add_features <- function(sme, features, ...) {
     features <- features[common, , drop = FALSE]
   }
   
+  # Put features in the SME's column order. The mismatch branch above only
+  # reorders when spots differ, so identical barcodes in a different order
+  # would otherwise make the NA mask below (and the colData assignment
+  # after it) positional against the wrong spot.
+  features <- features[colnames(sme), , drop = FALSE]
+
   # Some deconvolution methods (e.g. RCTD) leave NAs for barcodes they
   # could not estimate fractions for. Drop those spots here too --
   # otherwise they'd reach spatstat's ppp() downstream (e.g. inside

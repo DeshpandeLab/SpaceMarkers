@@ -262,6 +262,36 @@ test_that("add_features accepts matrix input", {
                  c("Pattern_A", "Pattern_B"))
 })
 
+test_that("add_features aligns features given in a different spot order", {
+    mat <- matrix(abs(rnorm(20)), nrow = 2, ncol = 10)
+    rownames(mat) <- paste0("gene_", seq_len(2))
+    colnames(mat) <- paste0("spot_", seq_len(10))
+    coords <- matrix(runif(20), ncol = 2)
+    colnames(coords) <- c("y", "x")
+    rownames(coords) <- colnames(mat)
+    sme <- SpaceMarkersExperiment(
+        assays = list(logcounts = mat),
+        spatialCoords = coords
+    )
+
+    # Same barcodes, reversed order, with an NA on spot_1 (last row here).
+    feats <- data.frame(P1 = seq_len(10) / 10, P2 = seq_len(10) / 20,
+                        row.names = colnames(mat))
+    feats <- feats[rev(rownames(feats)), ]
+    feats["spot_1", "P1"] <- NA
+
+    # NA row is dropped; spot_1 must be the one removed.
+    expect_message(sme2 <- add_features(sme, feats), "1 of 10")
+    expect_equal(ncol(sme2), 9L)
+    expect_false("spot_1" %in% colnames(sme2))
+
+    # Every remaining spot keeps its OWN feature values, not a neighbour's.
+    sp <- as.data.frame(spatial_patterns(sme2))
+    expected <- feats[colnames(sme2), c("P1", "P2")]
+    expect_equal(sp$P1, expected$P1)
+    expect_equal(sp$P2, expected$P2)
+})
+
 # ============================================================================
 # SME pipeline-methods tests (added 2026-04-20)
 # ============================================================================
