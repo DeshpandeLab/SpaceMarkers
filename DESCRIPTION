@@ -61,8 +61,7 @@ Suggests:
     CoGAPS,
     ComplexHeatmap,
     zellkonverter,
-    anndataR,
-    Seurat
+    anndataR
 Enhances:
     BiocParallel
 VignetteBuilder: 
