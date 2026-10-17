@@ -157,6 +157,27 @@ test_that("spatial_patterns<- reorders by rownames and rejects mismatches", {
     expect_error(spatial_patterns(sme) <- wrong_len, "nrow\\(value\\)")
 })
 
+test_that("spatial_patterns<- drops NA rows (spots) and messages the count", {
+    mat <- matrix(0, nrow = 2, ncol = 3)
+    rownames(mat) <- c("g1", "g2")
+    colnames(mat) <- c("s1", "s2", "s3")
+    coords <- matrix(1:6, ncol = 2); colnames(coords) <- c("y", "x")
+    rownames(coords) <- colnames(mat)
+    sme <- SpaceMarkersExperiment(
+        assays = list(logcounts = mat), spatialCoords = coords)
+
+    # s2 was not estimated by the deconvolution method (e.g. RCTD) and is NA
+    pats <- data.frame(P1 = c(0.1, NA, 0.3), P2 = c(0.4, NA, 0.6),
+                       row.names = c("s1", "s2", "s3"))
+    expect_message(spatial_patterns(sme) <- pats,
+                   "1 NA row out of 3 total rows removed")
+
+    expect_equal(ncol(sme), 2L)
+    expect_equal(colnames(sme), c("s1", "s3"))
+    expect_equal(rownames(spatial_patterns(sme)), c("s1", "s3"))
+    expect_false(anyNA(spatial_patterns(sme)))
+})
+
 test_that("spatial_params accessor works", {
     mat <- matrix(0, nrow = 2, ncol = 3)
     rownames(mat) <- c("g1", "g2")
