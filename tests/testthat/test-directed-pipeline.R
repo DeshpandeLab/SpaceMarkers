@@ -7,8 +7,8 @@ test_that("there is no numeric genes in the output", {
   good_gene_threshold <- 1000
   n_spots_directed <- 10000
   set.seed(123)
-  features_path <- "assets/ligrec_db.csv"
-  lr_reference_path <- ""
+  features_path <- ""
+  lr_reference_path <- "assets/ligrec_db.csv"
   output_dir <- "."
 
 
@@ -130,7 +130,6 @@ test_that("there is no numeric genes in the output", {
   } else {
     # drop barely expressed genes
     sme <- sme[rowSums(expr) > 10, ]
-
     sme <- find_all_hotspots(sme)
     sme <- get_pairwise_interacting_genes(sme, mode = "DE", analysis = "enrichment",
                                           minOverlap = 10, workers = workers)
