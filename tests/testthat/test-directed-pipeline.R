@@ -15,6 +15,9 @@ test_that("there is no numeric genes in the output", {
   message("creating sme object..")
   if (grepl(".h5ad", spatial_path)) {
     message("loading from AnnData..")
+    skip_if(!requireNamespace("anndataR", quietly = TRUE) &&
+              !requireNamespace("zellkonverter", quietly = TRUE),
+            "An AnnData reader is required")
     sme <- load_anndata(spatial_path, patterns_meta_table = patterns_key)
   } else {
     message("loading from visium dir..")
