@@ -39,7 +39,12 @@ Read (\code{spatial_patterns(x)}) or write
 (\code{spatial_patterns(x) <- value}) the per-spot spatial-pattern values
 stored in the columns of \code{colData(x)} named by
 \code{x@spacemarkers$params$pattern_names}. The setter also updates
-\code{pattern_names} to the column names of \code{value}.
+\code{pattern_names} to the column names of \code{value}. Spots (rows of
+\code{value}) containing an NA in any pattern column are dropped from
+both \code{value} and \code{x} before assignment, with a message
+reporting how many were removed; some deconvolution methods (e.g. RCTD)
+leave NAs for barcodes they could not estimate fractions for instead of
+omitting the row, which would otherwise error downstream.
 }
 \examples{
 sme <- SpaceMarkersExperiment(

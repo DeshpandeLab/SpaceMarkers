@@ -149,6 +149,31 @@ load10XCoords <- function(visiumDir, resolution = c("fullres","lowres","hires"),
     return(coord_values)
 }
 
+#' .complete_pattern_rows
+#' Identify complete-case rows (spots) across spatial pattern columns and
+#' message a summary of any incomplete rows found. Some deconvolution
+#' methods (e.g. RCTD) do not estimate fractions for every barcode and
+#' leave NAs in place instead of dropping the row, which otherwise
+#' propagates into the mixture-model tests downstream. Shared by
+#' \code{get_spatial_features()} and the \code{spatial_patterns<-} setter so
+#' every path that supplies spatial patterns is covered.
+#' @return A logical vector, one element per row of \code{df}, TRUE for
+#'   complete-case rows.
+#' @keywords internal
+.complete_pattern_rows <- function(df) {
+    keep <- stats::complete.cases(as.data.frame(df))
+    n_total <- length(keep)
+    n_na <- sum(!keep)
+    if (n_na > 0L) {
+        message(sprintf(
+            "NAs detected in spatial patterns and will be removed: %d NA row%s out of %d total row%s removed.",
+            n_na, if (n_na == 1L) "" else "s",
+            n_total, if (n_total == 1L) "" else "s"
+        ))
+    }
+    keep
+}
+
 #===================
 #' @title Load spatial features
 #' @description This function loads spatial features from a file containing
@@ -159,11 +184,14 @@ load10XCoords <- function(visiumDir, resolution = c("fullres","lowres","hires"),
 #' @param method A string specifying the type of object to obtain spatial
 #' feature from. Default NULL, where the method is inferred based on object
 #' type. Other methods are: "CoGAPS", "Seurat", or "BayesTME".
-#' @param featureNames An array of strings specifying the column names 
+#' @param featureNames An array of strings specifying the column names
 #' corresponding to the feature names or a regex string. In the case of Seurat,
 #' all metadata columns with "_Feature" suffix are selected.
-#' @return a matrix of spatial features with barcodes associated 
-#' with individual coordinates
+#' @return a matrix of spatial features with barcodes associated
+#' with individual coordinates. Rows (barcodes) with an NA in any selected
+#' feature column are dropped, with a message reporting how many were
+#' removed (some deconvolution methods, e.g. RCTD, leave NAs for barcodes
+#' they could not estimate fractions for instead of omitting the row).
 #' @examples
 #' library(SpaceMarkers)
 #' #CoGAPS data filePath
@@ -212,6 +240,12 @@ get_spatial_features <- function(filePath, method = NULL, featureNames = "."){
 
     featureNames <- intersect(featureNames, dataNames)
     spFeatures <- spFeatures[,featureNames, drop = FALSE]
+
+    # Some deconvolution methods (e.g. RCTD) leave NAs for barcodes they
+    # could not estimate fractions for rather than dropping the row; strip
+    # those out here so callers never have to special-case them downstream.
+    keep <- .complete_pattern_rows(spFeatures)
+    spFeatures <- spFeatures[keep, , drop = FALSE]
 
     return(spFeatures)
 }
@@ -369,96 +403,106 @@ get_spatial_features <- function(filePath, method = NULL, featureNames = "."){
 #' }
 #' @export
 load10X <- function(visiumDir,
-                         features = NULL,
-                         h5filename = "filtered_feature_bc_matrix.h5",
-                         resolution = c("fullres", "lowres", "hires"),
-                         version = NULL,
-                         ...) {
-    resolution <- match.arg(resolution)
-    expr <- load10XExpr(visiumDir = visiumDir, h5filename = h5filename)
-    coords <- load10XCoords(visiumDir = visiumDir,
-                            resolution = resolution, version = version)
-    rownames(coords) <- coords$barcode
-
-    all_expr <- colnames(expr)
-    all_coords <- coords$barcode
-    common <- intersect(all_expr, all_coords)
-    dropped <- length(all_expr) + length(all_coords) - 2L * length(common)
-    if (dropped > 0L) {
-        warning(sprintf(
-            "Dropped %d spots not present in both expression and coordinates. Keeping %d common spots.",
-            dropped, length(common)
-        ))
+                    features = NULL,
+                    h5filename = "filtered_feature_bc_matrix.h5",
+                    resolution = c("fullres", "lowres", "hires"),
+                    version = NULL,
+                    ...) {
+  resolution <- match.arg(resolution)
+  expr <- load10XExpr(visiumDir = visiumDir, h5filename = h5filename)
+  coords <- load10XCoords(visiumDir = visiumDir,
+                          resolution = resolution, version = version)
+  rownames(coords) <- coords$barcode
+  
+  all_expr <- colnames(expr)
+  all_coords <- coords$barcode
+  common <- intersect(all_expr, all_coords)
+  dropped <- length(all_expr) + length(all_coords) - 2L * length(common)
+  if (dropped > 0L) {
+    warning(sprintf(
+      "Dropped %d spots not present in both expression and coordinates. Keeping %d common spots.",
+      dropped, length(common)
+    ))
+  }
+  
+  pattern_names <- NULL
+  spFeatures <- NULL
+  
+  if (!is.null(features)) {
+    spFeatures <- get_spatial_features(features, ...)
+    shared <- intersect(common, rownames(spFeatures))
+    dropped_feat <- length(rownames(spFeatures)) - length(shared)
+    dropped_sme <- length(common) - length(shared)
+    if (dropped_feat > 0L || dropped_sme > 0L) {
+      # Spots present in expression/coords but missing a features row
+      # have no pattern values at all; keeping them would leave NA
+      # spatial_patterns downstream, which spatstat's ppp() hard-errors
+      # on (e.g. inside calculate_influence()). Drop them here instead,
+      # consistent with how spatial_patterns<- handles NA patterns
+      # elsewhere in the package.
+      warning(sprintf(
+        paste0("Spot mismatch: %d spots in expression/coords and ",
+               "%d spots in features not shared. ",
+               "Dropping to %d common spots."),
+        dropped_sme, dropped_feat, length(shared)
+      ))
     }
-    expr <- expr[, common, drop = FALSE]
-    coords <- coords[common, , drop = FALSE]
-
-    coord_mat <- as.matrix(coords[, c("y", "x")])
-    rownames(coord_mat) <- common
-
-    cd <- S4Vectors::DataFrame(row.names = common)
-    pattern_names <- NULL
-
-    if (!is.null(features)) {
-        spFeatures <- get_spatial_features(features, ...)
-        shared <- intersect(common, rownames(spFeatures))
-        dropped_feat <- length(rownames(spFeatures)) - length(shared)
-        dropped_sme <- length(common) - length(shared)
-        if (dropped_feat > 0L || dropped_sme > 0L) {
-            warning(sprintf(
-                paste0("Spot mismatch: %d spots in expression/coords and ",
-                       "%d spots in features not shared. ",
-                       "Keeping %d common spots for features (NA-padded)."),
-                dropped_sme, dropped_feat, length(shared)
-            ))
-        }
-        feat_df <- S4Vectors::DataFrame(
-            spFeatures[shared, , drop = FALSE],
-            row.names = shared
-        )
-        # Pad unmatched spots with NA
-        for (col in colnames(feat_df)) {
-            cd[[col]] <- NA_real_
-            cd[shared, col] <- feat_df[shared, col]
-        }
-        pattern_names <- colnames(spFeatures)
-    }
-
-    # Pre-compute spatial parameters from the scalefactors JSON if available
-    spatial_par <- NULL
-    if (!is.null(pattern_names) && length(shared) > 0L) {
-        spCoords <- coords[shared, c("barcode", "y", "x"), drop = FALSE]
-        spPats <- as.data.frame(spFeatures[shared, , drop = FALSE])
-        spPatterns_combined <- cbind(spCoords, spPats)
-        tryCatch({
-            spatial_par <- get_spatial_parameters(
-                spatialPatterns = spPatterns_combined,
-                visiumDir = visiumDir,
-                resolution = resolution
-            )
-        }, error = function(e) {
-            warning(sprintf(
-                "Pre-computing spatial_params failed: %s", conditionMessage(e)
-            ))
-            NULL
-        })
-    }
-
-    sm <- as(list(
-        params = list(
-            pattern_names = pattern_names,
-            spatial_params = spatial_par,
-            visiumDir = visiumDir,
-            resolution = resolution
-        )
-    ), "SimpleList")
-
-    SpaceMarkersExperiment(
-        assays = list(logcounts = expr),
-        colData = cd,
-        spatialCoords = coord_mat,
-        spaceMarkers = sm
+    common <- shared
+    pattern_names <- colnames(spFeatures)
+  }
+  
+  expr <- expr[, common, drop = FALSE]
+  coords <- coords[common, , drop = FALSE]
+  
+  coord_mat <- as.matrix(coords[, c("y", "x")])
+  rownames(coord_mat) <- common
+  
+  cd <- S4Vectors::DataFrame(row.names = common)
+  if (!is.null(spFeatures)) {
+    feat_df <- S4Vectors::DataFrame(
+      spFeatures[common, , drop = FALSE],
+      row.names = common
     )
+    for (col in colnames(feat_df)) {
+      cd[[col]] <- feat_df[[col]]
+    }
+  }
+  
+  # Pre-compute spatial parameters from the scalefactors JSON if available
+  spatial_par <- NULL
+  if (!is.null(pattern_names) && length(common) > 0L) {
+    spCoords <- coords[common, c("barcode", "y", "x"), drop = FALSE]
+    spPats <- as.data.frame(spFeatures[common, , drop = FALSE])
+    spPatterns_combined <- cbind(spCoords, spPats)
+    tryCatch({
+      spatial_par <- get_spatial_parameters(
+        spatialPatterns = spPatterns_combined,
+        visiumDir = visiumDir,
+        resolution = resolution
+      )
+    }, error = function(e) {
+      warning(sprintf(
+        "Pre-computing spatial_params failed: %s", conditionMessage(e)
+      ))
+      NULL
+    })
+  }
+  
+  sm <- as(list(
+    params = list(
+      pattern_names = pattern_names,
+      spatial_params = spatial_par,
+      visiumDir = visiumDir,
+      resolution = resolution
+    )
+  ), "SimpleList")
+  
+  SpaceMarkersExperiment(
+    assays = list(logcounts = expr),
+    colData = cd,
+    spatialCoords = coord_mat,
+    spaceMarkers = sm
+  )
 }
 
 #===================

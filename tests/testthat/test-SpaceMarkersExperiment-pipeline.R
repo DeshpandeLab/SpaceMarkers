@@ -262,6 +262,36 @@ test_that("add_features accepts matrix input", {
                  c("Pattern_A", "Pattern_B"))
 })
 
+test_that("add_features aligns features given in a different spot order", {
+    mat <- matrix(abs(rnorm(20)), nrow = 2, ncol = 10)
+    rownames(mat) <- paste0("gene_", seq_len(2))
+    colnames(mat) <- paste0("spot_", seq_len(10))
+    coords <- matrix(runif(20), ncol = 2)
+    colnames(coords) <- c("y", "x")
+    rownames(coords) <- colnames(mat)
+    sme <- SpaceMarkersExperiment(
+        assays = list(logcounts = mat),
+        spatialCoords = coords
+    )
+
+    # Same barcodes, reversed order, with an NA on spot_1 (last row here).
+    feats <- data.frame(P1 = seq_len(10) / 10, P2 = seq_len(10) / 20,
+                        row.names = colnames(mat))
+    feats <- feats[rev(rownames(feats)), ]
+    feats["spot_1", "P1"] <- NA
+
+    # NA row is dropped; spot_1 must be the one removed.
+    expect_message(sme2 <- add_features(sme, feats), "1 of 10")
+    expect_equal(ncol(sme2), 9L)
+    expect_false("spot_1" %in% colnames(sme2))
+
+    # Every remaining spot keeps its OWN feature values, not a neighbour's.
+    sp <- as.data.frame(spatial_patterns(sme2))
+    expected <- feats[colnames(sme2), c("P1", "P2")]
+    expect_equal(sp$P1, expected$P1)
+    expect_equal(sp$P2, expected$P2)
+})
+
 # ============================================================================
 # SME pipeline-methods tests (added 2026-04-20)
 # ============================================================================
@@ -275,8 +305,11 @@ make_fixture_sme <- function() {
                      dimnames = list(
                          paste0("G", seq_len(n_genes)),
                          paste0("spot", seq_len(n_spots))))
-    coords <- matrix(runif(n_spots * 2, 0, 10), ncol = 2,
-                     dimnames = list(NULL, c("y", "x")))
+    coords <- matrix(
+      runif(n_spots * 2, 0, 10),
+      ncol = 2,
+      dimnames = list(paste0("spot", seq_len(n_spots)), c("y", "x"))
+    )
     patterns <- S4Vectors::DataFrame(
         Pattern_1 = runif(n_spots), Pattern_2 = runif(n_spots),
         row.names = paste0("spot", seq_len(n_spots)))
@@ -434,6 +467,18 @@ test_that("get_pairwise_interacting_genes(SME) errors without hotspots", {
         get_pairwise_interacting_genes(sme, mode = "DE"),
         regexp = "find_all_hotspots"
     )
+})
+
+test_that("get_pairwise_interacting_genes(SME) also populates undirected_scores", {
+    # Mirrors the directed workflow, where calculate_gene_scores_directed()
+    # alone leaves directed_scores(sme) populated: a single call here should
+    # leave undirected_scores(sme) populated too, without a separate
+    # get_im_scores(sme) call.
+    sme <- make_fixture_sme() |> find_all_hotspots()
+    sme2 <- get_pairwise_interacting_genes(
+        sme, mode = "DE", analysis = "enrichment", minOverlap = 1, workers = 1)
+    expect_false(is.null(undirected_scores(sme2)))
+    expect_equal(undirected_scores(sme2), get_im_scores(interactions(sme2)))
 })
 
 # ---- Task 4: get_im_scores as S4 generic with SME method ----
