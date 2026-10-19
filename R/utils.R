@@ -915,13 +915,17 @@ setMethod("calculate_gene_set_specificity", "ANY",
                               low_thr = 0.2, high_thr = 0.8) {
 
   # Get thresholds
-  low_thr <- quantile(spPatterns[, ct], probs = low_thr, na.rm = TRUE)
-  high_thr <- quantile(spPatterns[, ct], probs = high_thr, na.rm = TRUE)
+  vals     <- spPatterns[, ct]
+  low_val  <- quantile(vals, probs = low_thr,  na.rm = TRUE)
+  high_val <- quantile(vals, probs = high_thr, na.rm = TRUE)
 
   # Get high and low bins
-  high_bins <- which(spPatterns[, ct] > high_thr)
-  low_bins <- which(spPatterns[, ct] < low_thr)
-  
+  # Strict '<' / '>' preserves prior behaviour for well-spread cell types.
+  # Relax to inclusive bounds ONLY when the quantile lands on the min/max
+  # (zero-inflation), so the boundary mass forms a non-empty group.
+  low_bins  <- if (low_val  <= min(vals, na.rm = TRUE)) which(vals <= low_val)  else which(vals < low_val)
+  high_bins <- if (high_val >= max(vals, na.rm = TRUE)) which(vals >= high_val) else which(vals > high_val)
+
   # Calculate means
   mean_high <- mean(expr[gene, high_bins])
   mean_low <- mean(expr[gene, low_bins])
@@ -930,10 +934,8 @@ setMethod("calculate_gene_set_specificity", "ANY",
   lfc <- mean_high - mean_low
   
   # Get p-value
-  if (all(expr[gene, c(high_bins, low_bins)] == 0)) {
-    score <- NA
-    attr(score, "p_value") <- 1
-    return(score)
+  if (!is.finite(low_val) || !is.finite(high_val) || high_val <= low_val) {
+    score <- NA; attr(score, "p_value") <- 1; return(score)
   }
   w_test <- wilcox.test(as.matrix(expr[gene, high_bins]), as.matrix(expr[gene, low_bins]))
 
