@@ -85,33 +85,31 @@ if (!is.null(sigma)) {
 
 expr <- assay(sme, if ("logcounts" %in% assayNames(sme)) "logcounts" else 1L)
 
+omnipath_or_user_to_cellchat <- function(om) {
+  if (all(c("source", "target") %in% colnames(om))) {
+    #omnipath format: source -> ligand, target -> receptor, complex.sep _
+    om[["ligand.symbol"]] <- gsub("_", ", ", om[["source"]])
+    om[["receptor.symbol"]] <- gsub("_", ", ", om[["target"]])
+    rownames(om) <- make.unique(paste0(om[["source"]], "-", om[["target"]]))
+  } else if (all(c("ligand", "receptor") %in% colnames(om))) {
+    om[["ligand.symbol"]] <- om[["ligand"]]
+    om[["receptor.symbol"]] <- om[["receptor"]]
+    rownames(om) <- make.unique(paste0(om[["ligand"]], "_", om[["receptor"]]))
+  } else {
+    stop("Omnipath or user-supplied data must have columns 'source'/'target' or 'ligand'/'receptor'")
+  }
+  # spacemarkers needs only these columns
+  om <- om[, c("ligand.symbol", "receptor.symbol")]
+  om
+}
+
 if (directed) {
   if (use_lr_genes) {
     lrpairs <- NULL
     if (nzchar(lr_reference_path)) {
       message("using user-supplied lr_reference: ", lr_reference_path)
-      # CSV with columns ligand.symbol/receptor.symbol (or ligand/receptor);
-      # entries may hold several symbols separated by ', ' (same convention as
-      # CellChatDB.human). Only those two columns are used, so any other
-      # columns (e.g. a pair-ID column) are ignored and row names are not
-      # required.
       lrpairs <- read.csv(lr_reference_path)
-      if (!all(c("ligand.symbol", "receptor.symbol") %in% colnames(lrpairs))) {
-        if (all(c("ligand", "receptor") %in% colnames(lrpairs))) {
-          message("Using 'ligand' and 'receptor' columns as ligand.symbol and receptor.symbol")
-          lrpairs[["ligand.symbol"]] <- lrpairs[["ligand"]]
-          lrpairs[["receptor.symbol"]] <- lrpairs[["receptor"]]
-        } else if (all(c("source","target") %in% colnames(lrpairs))) {
-          message("Omnipath format detected: using 'source' and 'target' columns")
-          lrpairs[["ligand.symbol"]] <- lrpairs[["source"]]
-          lrpairs[["receptor.symbol"]] <- lrpairs[["target"]]
-        }
-          else {
-          stop("lr_reference CSV must have columns 'ligand.symbol'/'receptor.symbol' ",
-               "(or 'ligand'/'receptor'). Found: ", paste(colnames(lrpairs), collapse = ", "))
-        }
-      }
-      lrpairs <- lrpairs[, c("ligand.symbol", "receptor.symbol")]
+      lrpairs <- omnipath_or_user_to_cellchat(lrpairs)
     } else {
       library(CellChat)
       lrdf <- CellChat::CellChatDB.human
