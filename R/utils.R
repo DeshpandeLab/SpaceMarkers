@@ -68,68 +68,71 @@ setMethod("calculate_overlap_undirected", "data.frame",
 )
 
 #' @title plot_overlap_scores
-#' @description Plot the overlap scores between patterns in hotspots
-#' @param df A data frame with columns pattern1, pattern2 and overlapScore
+#' @description Plot spatial overlap scores with optional clustering.
+#' @param df Overlap data frame or SpaceMarkersExperiment object
 #' @param title The title of the plot
-#' @param fontsize The font size of the plot
 #' @param out The output path for the plot
+#' @param fontsize The font size of the plot
+#' @param cluster_rows Whether to cluster rows (default TRUE)
+#' @param cluster_cols Whether to cluster columns (default TRUE)
+#' @param scale_quantile Upper fill-scale quantile (default 0.95)
 #' @return A ggplot object
 #' @export
 #' @examples
-#' df <- data.frame(pattern1 = c("pattern1","pattern1","pattern2","pattern2"), 
+#' df <- data.frame(pattern1 = c("pattern1","pattern1","pattern2","pattern2"),
 #'                  pattern2 = c("pattern1","pattern2","pattern1","pattern2"),
 #'                  overlapScore = c(0.5,0.7,0.3,0.9))
 #' plot_overlap_scores(df)
 #' plot_overlap_scores(df, "Overlap Scores", "overlapScores.png", 15)
 #' @import ggplot2
-#'
-plot_overlap_scores <- function(df, title = "Spatial Overlap Scores", out = NULL, fontsize = 15) {
-    # SME dispatch: use stored overlap_scores directly (no recomputation).
-    if (is(df, "SpaceMarkersExperiment")) {
-        ov <- overlap_scores(df)
-        if (is.null(ov)) {
-            stop("No overlap_scores stored. Run calculate_overlap_undirected(x) or calculate_overlap_directed(x) first.")
-        }
-        df <- ov
+plot_overlap_scores <- function(df, title = "Spatial Overlap Scores", out = NULL,
+                                fontsize = 15, cluster_rows = TRUE, cluster_cols = TRUE, scale_quantile = 0.95) {
+    if (methods::is(df, "SpaceMarkersExperiment")) {
+        df <- overlap_scores(df)
+        if (is.null(df)) stop("No overlap_scores stored; calculate overlap first.")
     }
-
-    # Detect shape:
-    #   undirected: columns pattern1, pattern2, overlapScore  (symmetric heatmap)
-    #   directed:   columns target, source, relAbundance   (source's influence -> "near.<target>")
-    cn <- colnames(df)
-    if (all(c("pattern1", "pattern2", "overlapScore") %in% cn)) {
+    if (all(c("pattern1", "pattern2", "overlapScore") %in% names(df))) {
         xcol <- "pattern1"; ycol <- "pattern2"; fill <- "overlapScore"
-    } else if (all(c("target", "source", "relAbundance") %in% cn)) {
+        x_label <- NULL; y_label <- NULL; directed <- FALSE
+    } else if (all(c("target", "source", "relAbundance") %in% names(df))) {
         xcol <- "target"; ycol <- "source"; fill <- "relAbundance"
-    } else {
-        stop("Unknown overlap_scores shape; expected undirected (pattern1/pattern2/overlapScore) or directed (target/source/relAbundance) columns.")
+        x_label <- "Target"; y_label <- "Source"; directed <- TRUE
+    } else stop("Unknown overlap_scores shape (undirected or directed expected).")
+    row_order <- col_order <- NULL
+    if (isTRUE(cluster_rows) || isTRUE(cluster_cols)) {
+        mat <- reshape2::acast(df, stats::as.formula(paste(ycol, "~", xcol)),
+                               value.var = fill)
+        mat[is.na(mat)] <- 0
+        if (any(!is.finite(mat))) stop("Non-finite overlap scores.")
+        if (isTRUE(cluster_rows) && nrow(mat) > 1L) row_order <-
+            rownames(mat)[stats::hclust(stats::dist(mat))$order]
+        if (isTRUE(cluster_cols) && ncol(mat) > 1L) col_order <- colnames(mat)[stats::hclust(stats::dist(t(mat)))$order]
+        if (!directed && !is.null(row_order) && !is.null(col_order) &&
+            identical(rownames(mat), colnames(mat)) &&
+            isTRUE(all.equal(unname(mat), unname(t(mat))))) col_order <- row_order
     }
-
-    p <- ggplot2::ggplot(data = df,
-            ggplot2::aes(x = .data[[xcol]], y = .data[[ycol]],
-                         fill = .data[[fill]])) +
-        ggplot2::geom_tile(color = "black", size = 0.8) +
+    if (length(scale_quantile) != 1L || !is.numeric(scale_quantile) ||
+        !is.finite(scale_quantile) || scale_quantile <= 0 || scale_quantile > 1) stop("Invalid scale_quantile.")
+    scores <- df[[fill]][is.finite(df[[fill]])]
+    if (!length(scores)) stop("No finite overlap scores available to plot.")
+    upper <- as.numeric(stats::quantile(scores, scale_quantile, names = FALSE))
+    lower <- min(scores); if (upper <= lower) upper <- lower + 1e-8
+    squish <- function(x, range) pmax(range[1], pmin(x, range[2]))
+    p <- ggplot2::ggplot(df, ggplot2::aes(x = .data[[xcol]], y = .data[[ycol]], fill = .data[[fill]])) +
+        ggplot2::geom_tile(color = "black", linewidth = 0.8) +
         ggplot2::geom_text(ggplot2::aes(label = round(.data[[fill]], 2)), size = 6) +
         ggplot2::scale_fill_gradient2(low = "#FFF7EC", mid = "#FDBB84",
-                                      high = "#D7301F", midpoint = 0.5) +
-        ggplot2::scale_y_discrete(limits = rev,
+            high = "#D7301F", midpoint = 0.5, limits = c(lower, upper), oob = squish) +
+        ggplot2::scale_y_discrete(limits = if (is.null(row_order)) rev else rev(row_order),
                                   guide = ggplot2::guide_axis(angle = 45)) +
-        ggplot2::theme_minimal() +
-        ggplot2::theme(
-            axis.text.x = ggplot2::element_text(angle = 45, vjust = 1,
-                                                size = fontsize, hjust = 1),
-            axis.text.y = ggplot2::element_text(size = fontsize)
-        ) +
-        ggplot2::coord_fixed() +
-        ggplot2::labs(x = NULL, y = NULL, fill = fill, title = title) +
-        ggplot2::theme(
-            panel.background = ggplot2::element_blank(),
-            panel.grid.major = ggplot2::element_blank(),
-            panel.border = ggplot2::element_blank()
-        )
-    if (!is.null(out)) {
-        ggplot2::ggsave(filename = out, plot = p)
-    }
+        ggplot2::theme_minimal() + ggplot2::theme(
+            axis.text.x = ggplot2::element_text(angle = 45, vjust = 1, size = fontsize, hjust = 1),
+            axis.text.y = ggplot2::element_text(size = fontsize),
+            panel.background = ggplot2::element_blank(), panel.grid.major = ggplot2::element_blank(),
+            panel.border = ggplot2::element_blank()) +
+        ggplot2::coord_fixed() + ggplot2::labs(x = x_label, y = y_label, fill = fill, title = title)
+    if (!is.null(col_order)) p <- p + ggplot2::scale_x_discrete(limits = col_order)
+    if (!is.null(out)) ggplot2::ggsave(filename = out, plot = p)
     p
 }
 

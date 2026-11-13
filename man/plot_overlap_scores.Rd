@@ -8,26 +8,35 @@ plot_overlap_scores(
   df,
   title = "Spatial Overlap Scores",
   out = NULL,
-  fontsize = 15
+  fontsize = 15,
+  cluster_rows = TRUE,
+  cluster_cols = TRUE,
+  scale_quantile = 0.95
 )
 }
 \arguments{
-\item{df}{A data frame with columns pattern1, pattern2 and overlapScore}
+\item{df}{Overlap data frame or SpaceMarkersExperiment object}
 
 \item{title}{The title of the plot}
 
 \item{out}{The output path for the plot}
 
 \item{fontsize}{The font size of the plot}
+
+\item{cluster_rows}{Whether to cluster rows (default TRUE)}
+
+\item{cluster_cols}{Whether to cluster columns (default TRUE)}
+
+\item{scale_quantile}{Upper fill-scale quantile (default 0.95)}
 }
 \value{
 A ggplot object
 }
 \description{
-Plot the overlap scores between patterns in hotspots
+Plot spatial overlap scores with optional clustering.
 }
 \examples{
-df <- data.frame(pattern1 = c("pattern1","pattern1","pattern2","pattern2"), 
+df <- data.frame(pattern1 = c("pattern1","pattern1","pattern2","pattern2"),
                  pattern2 = c("pattern1","pattern2","pattern1","pattern2"),
                  overlapScore = c(0.5,0.7,0.3,0.9))
 plot_overlap_scores(df)
