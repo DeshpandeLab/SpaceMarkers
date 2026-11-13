@@ -1,5 +1,7 @@
 # SpaceMarkers - unreleased
 
+* `classify_spots()` (formerly internal `.classify_spots()`) is now exported. It also supports undirected classification when `influence_hotspots = NULL`, and returns descriptively named columns (`<pat1>_near_<pat2>`, `<pat2>_near_<pat1>`, or `<pat1>_<pat2>`).
+
 # SpaceMarkers 2.3.1
 
 ## New SpaceMarkersExperiment class

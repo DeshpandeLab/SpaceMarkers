@@ -28,7 +28,7 @@ test_that("create_lr_dataframe round-trips a small fixture", {
                  paste0(out$source_cell_type, "_to_", out$target_cell_type))
 })
 
-test_that("create_lr_dataframe preserves NA in score (no silent NA -> 0)", {
+test_that("create_lr_dataframe replaces NA in score with 0", {
     lrpairs <- data.frame(ligand = "L1", receptor = "R1",
                           row.names = "L1_R1",
                           stringsAsFactors = FALSE)
@@ -40,6 +40,7 @@ test_that("create_lr_dataframe preserves NA in score (no silent NA -> 0)", {
                   dimnames = list("L1_R1", c("A", "B")))
 
     out <- create_lr_dataframe(lr, lig, rec, lrpairs)
-    expect_equal(sum(is.na(out$score)), 1L)
-    expect_true(any(out$score > 0, na.rm = TRUE))
+    expect_equal(nrow(out), 2L)
+    expect_false(anyNA(out$score))
+    expect_equal(sort(out$score), c(0, 0.5))
 })

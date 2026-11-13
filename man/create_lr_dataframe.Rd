@@ -60,9 +60,9 @@ cell-type pair. Ligand and receptor gene names are pulled from
 Column names in \code{ligand_scores} that start with \code{near_} are
 converted to \code{to_} so they line up with the LR-score columns.
 
-Missing LR scores are kept as \code{NA} (not coerced to 0). Callers
-choosing to plot zero-score interactions should filter or impute
-explicitly.
+Missing LR scores (\code{NA}) are replaced with 0, so every interaction
+appears in the output and can be plotted. A score of 0 therefore means the
+interaction is either absent or could not be computed.
 }
 \note{
 Cell-type names must not contain the substrings \code{"_to_"} or

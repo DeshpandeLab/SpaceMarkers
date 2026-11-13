@@ -165,31 +165,148 @@ setMethod("find_hotspots_gmm", "data.frame",
     return(hotspots)
 })
 
-.classify_spots <- function(pat_hotspots, influence_hotspots, patternpair = NULL) {
-    patnames <- setdiff(colnames(pat_hotspots), c("x", "y", "barcode"))
-    infnames <- setdiff(colnames(influence_hotspots), c("x", "y", "barcode"))  
-    #check if pat_hotspots and influence_hotspots have the same dimensions
-    if (!all(dim(pat_hotspots) == dim(influence_hotspots))) {
-        stop("pat_hotspots and influence_hotspots must have the same dimensions.")
-    } else if (!all(patnames == infnames)) {
-        stop("pat_hotspots and influence_hotspots must have the same column names.")
-    }
-    # Check if patternpair is NULL or is contained in patnames
-    if (!is.null(patternpair) && !all(patternpair %in% patnames)) {
-        stop("patternpair must be NULL or contained in patnames.")
-    } else if (is.null(patternpair) && length(patnames) > 2) {
-        stop("More than 2 patterns found. Please provide patternpair.")
-    }
-    
-    region <- pat_hotspots[,patternpair[1]]
-    pat1.inf2 <- ifelse(!is.na(region) & !is.na(influence_hotspots[,patternpair[2]]),"Interacting",
-    ifelse(!is.na(region),region,NA))
+#' Classify spots into interacting / non-interacting pattern regions
+#'
+#' @description
+#' Given pattern hotspots and their corresponding influence hotspots,
+#' classify each spot into:
+#' - undirected interacting region (when \code{influence_hotspots = NULL}), or
+#' - directed regions for each pattern pair (e.g. \code{"Epi_near_Plasma"},
+#'   \code{"Plasma_near_Epi"}).
+#'
+#' The function expects identical dimensions and pattern columns for
+#' \code{pat_hotspots} and \code{influence_hotspots}. When only
+#' \code{pat_hotspots} is provided, a single undirected column is created.
+#'
+#' @param pat_hotspots Data frame of pattern hotspots with columns:
+#'   \code{x}, \code{y}, \code{barcode}, and one or more pattern columns.
+#' @param influence_hotspots Data frame of influence hotspots with the same
+#'   dimensions and pattern columns as \code{pat_hotspots}. If \code{NULL},
+#'   a symmetric (undirected) classification is returned. Default: \code{NULL}.
+#' @param patternpair Character vector of length 2 giving the two pattern
+#'   names to classify, e.g. \code{c("Epi", "Plasma")}. If \code{NULL} and
+#'   exactly 2 patterns are present, those two are used. If \code{NULL} and
+#'   any other number of patterns is present, an error is thrown.
+#'
+#' @return
+#' A data frame of region labels:
+#' \itemize{
+#'   \item If \code{influence_hotspots} is \code{NULL}: one column named
+#'         \code{"<pattern1>_<pattern2>"} with values
+#'         \code{"Interacting"}, \code{pattern1}, \code{pattern2}, or \code{NA}.
+#'   \item Otherwise: two columns
+#'         \code{"<pattern1>_near_<pattern2>"} and
+#'         \code{"<pattern2>_near_<pattern1>"} with values
+#'         \code{"Interacting"}, \code{pattern1} / \code{pattern2}, or \code{NA}.
+#' }
+#'
+#' @examples
+#' \dontrun{
+#' pat_hotspots <- data.frame(
+#'   x = 1:5,
+#'   y = 1:5,
+#'   barcode = paste0("Spot", 1:5),
+#'   Epi    = c(1, NA, 1, NA, NA),
+#'   Plasma = c(NA, 1, NA, 1, NA)
+#' )
+#'
+#' influence_hotspots <- data.frame(
+#'   x = 1:5,
+#'   y = 1:5,
+#'   barcode = paste0("Spot", 1:5),
+#'   Epi    = c(NA, 1, 1, NA, NA),
+#'   Plasma = c(1, NA, NA, 1, 1)
+#' )
+#'
+#' # Directed classification
+#' cls <- classify_spots(
+#'   pat_hotspots       = pat_hotspots,
+#'   influence_hotspots = influence_hotspots,
+#'   patternpair        = c("Epi","Plasma")
+#' )
+#'
+#' # Undirected (influence_hotspots = NULL)
+#' und <- classify_spots(
+#'   pat_hotspots       = pat_hotspots,
+#'   influence_hotspots = NULL,
+#'   patternpair        = c("Epi","Plasma")
+#' )
+#' }
+#' @export
+classify_spots <- function(pat_hotspots,
+                           influence_hotspots = NULL,
+                           patternpair = NULL) {
+  patnames <- setdiff(colnames(pat_hotspots), c("x", "y", "barcode"))
 
-    region <- pat_hotspots[,patternpair[2]]
-    pat2.inf1 <- ifelse(!is.na(region) & !is.na(influence_hotspots[,patternpair[1]]),"Interacting",
-    ifelse(!is.na(region),region,NA))
-    df <- data.frame(pat1.inf2=pat1.inf2, pat2.inf1=pat2.inf1)
-return(df)
+  if (!is.null(influence_hotspots)) {
+    infnames <- setdiff(colnames(influence_hotspots), c("x", "y", "barcode"))
+    if (!all(dim(pat_hotspots) == dim(influence_hotspots))) {
+      stop("pat_hotspots and influence_hotspots must have the same dimensions.")
+    } else if (!identical(patnames, infnames)) {
+      stop("pat_hotspots and influence_hotspots must have the same column names.")
+    }
+  }
+
+  if (is.null(patternpair)) {
+    if (length(patnames) == 2) {
+      patternpair <- patnames
+    } else {
+      stop("patternpair is NULL but ", length(patnames),
+           " patterns were found. Please provide patternpair (exactly 2 patterns).")
+    }
+  } else if (length(patternpair) != 2 || !all(patternpair %in% patnames)) {
+    stop("patternpair must be NULL or a length-2 character vector contained in the pattern column names.")
+  }
+
+  ## Case 1: influence_hotspots is NULL  ----
+  if (is.null(influence_hotspots)) {
+    message("You only provided the pattern hotspots. Specify influence hotspots if present")
+
+    region <- ifelse(
+      !is.na(pat_hotspots[, patternpair[1]]) &
+        !is.na(pat_hotspots[, patternpair[2]]),
+      "Interacting",
+      ifelse(
+        !is.na(pat_hotspots[, patternpair[1]]),
+        pat_hotspots[, patternpair[1]],
+        ifelse(
+          !is.na(pat_hotspots[, patternpair[2]]),
+          pat_hotspots[, patternpair[2]],
+          NA
+        )
+      )
+    )
+
+    df <- data.frame(x = region)
+    colnames(df)[1] <- paste0(patternpair[1], "_", patternpair[2])
+    return(df)
+  }
+
+  ## Case 2: pattern + influence hotspots ----
+  region <- pat_hotspots[, patternpair[1]]
+  pat1.inf2 <- ifelse(
+    !is.na(region) & !is.na(influence_hotspots[, patternpair[2]]),
+    "Interacting",
+    ifelse(!is.na(region), region, NA)
+  )
+
+  region <- pat_hotspots[, patternpair[2]]
+  pat2.inf1 <- ifelse(
+    !is.na(region) & !is.na(influence_hotspots[, patternpair[1]]),
+    "Interacting",
+    ifelse(!is.na(region), region, NA)
+  )
+
+  df <- data.frame(
+    pat1.inf2 = pat1.inf2,
+    pat2.inf1 = pat2.inf1
+  )
+  colnames(df) <- c(
+    paste0(patternpair[1], "_near_", patternpair[2]),
+    paste0(patternpair[2], "_near_", patternpair[1])
+  )
+
+  return(df)
 }
 
 #' @title Perform row-wise t-tests from scratch
@@ -240,7 +357,7 @@ return(df)
 }
 #' @title Calculate interaction scores for a specific pattern pair
 #' @description This function calculates interaction scores for a specific pattern pair
-#' using the ` .classify_spots` function to determine the region of each spot.
+#' using the \code{\link{classify_spots}} function to determine the region of each spot.
 #' @param data A numeric matrix with genes as rows and barcodes as columns.
 #' @param pat_hotspots A data frame with pattern hotspots, containing columns for x, y, and barcode.
 #' @param influence_hotspots A data frame with influence hotspots, containing columns for x, y, and barcode.
@@ -249,7 +366,7 @@ return(df)
 #' @param ... Additional parameters to pass to lower level functions.
 #' @return A data frame with interaction scores for the specified pattern pair.
 .calc_IM_scores <- function(data, pat_hotspots, influence_hotspots, patternpair, avoid_confounders=FALSE,...) {
-    spotClass <-  .classify_spots(pat_hotspots, influence_hotspots, patternpair = patternpair)
+    spotClass <-  classify_spots(pat_hotspots, influence_hotspots, patternpair = patternpair)
     pat1 <- patternpair[1]
     pat2 <- patternpair[2]
     region <- spotClass[,1]
