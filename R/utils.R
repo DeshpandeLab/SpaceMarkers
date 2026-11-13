@@ -1099,6 +1099,7 @@ setMethod("calculate_gene_set_specificity", "ANY",
 create_lr_dataframe <- function(lrscores, ligand_scores, receptor_scores,
                                 lrpairs, complex_sep = ", ") {
     # LR scores -> long
+    lrscores[is.na(lrscores)] <- 0
     lr_long <- reshape2::melt(as.matrix(lrscores),
                               varnames = c("interaction", "source_to_target"),
                               value.name = "score")
