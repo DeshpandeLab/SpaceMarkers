@@ -1,4 +1,40 @@
-# SpaceMarkers - unreleased
+# SpaceMarkers 2.3.3
+
+## Breaking changes
+* Directed overlap scores now use `target` / `source` column names in place of
+`pattern` / `influence` (`relAbundance` is unchanged). `target` is the pattern
+whose own GMM hotspot is being examined; `source` (prefixed `near.`) is the
+pattern whose influence zone overlaps into that hotspot. Code that reads the
+old `pattern` / `influence` columns from directed results must be updated.
+
+## Bug fixes
+* `SpaceMarkers()` on a hand-built `SpaceMarkersExperiment` no longer errors
+with "spatial_params(sme) is NULL and no visiumDir is stored" — an SME
+assembled without `load10X()` now falls back to computing default spatial
+parameters instead of failing.
+* `add_features()`: fixed a positional misalignment when the SME and the
+features share the same barcodes in a different order. The NA mask and the
+subsequent `colData` assignment were applied against the wrong spot, so values
+were attached to the wrong barcodes and the wrong spot was dropped. Features
+are now reordered to the SME's column order first.
+* `load10X()` / `add_features()`: closed an NA-padding gap left by the earlier
+spatial-pattern NA handling.
+* Directed scores no longer mix numeric and character gene labels. When one
+direction of a pattern pair did not have two groups, the all-NA fallback table
+in `.calc_IM_scores()` was built without row names, so its `gene` column
+became row numbers ("1", "2", ...) while the other direction used real gene
+names. The fallback tables now carry gene names.
+* `calculate_fc_score()`: reworked binning logic so `low_bins` and `high_bins`
+can no longer come back empty.
+* The parallel backend is no longer registered globally from inside a closure,
+leaving a user's own registered `BiocParallel` backend intact.
+
+## Internal
+* `getSpatialParameters` and the image-creation path refactored; AnnData loader
+improvements; missing documentation added for several functions.
+* Tests skip gracefully when optional AnnData reader dependencies are absent.
+* No changes to the exported API in this release (`NAMESPACE` is unchanged
+since 2.3.1).
 
 # SpaceMarkers 2.3.1
 
