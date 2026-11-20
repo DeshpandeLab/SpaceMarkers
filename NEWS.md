@@ -1,3 +1,9 @@
+# SpaceMarkers 2.3.4
+
+* Documentation-only release. The 2.3.3 NEWS entries below were written after
+2.3.3 had already been pushed to Bioconductor devel, so this version exists to
+carry them upstream. No code changes relative to 2.3.3.
+
 # SpaceMarkers 2.3.3
 
 ## Breaking changes
